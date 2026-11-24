@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {BrandLogo} from './BrandLogo';
 
 interface SplashScreenProps {
@@ -7,15 +7,17 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({onFinish}) => {
   const [fading, setFading] = useState(false);
+  const finishRef = useRef(onFinish);
+  finishRef.current = onFinish;
 
   useEffect(() => {
-    const fadeTimer = window.setTimeout(() => setFading(true), 950);
-    const doneTimer = window.setTimeout(() => onFinish(), 1300);
+    const fadeTimer = window.setTimeout(() => setFading(true), 700);
+    const doneTimer = window.setTimeout(() => finishRef.current(), 1000);
     return () => {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(doneTimer);
     };
-  }, [onFinish]);
+  }, []);
 
   return (
     <div

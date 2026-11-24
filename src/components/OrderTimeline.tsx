@@ -21,8 +21,10 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
 }) => {
   const activeIndex = TIMELINE_STEPS.indexOf(currentStatus);
 
+  const safeHistory = Array.isArray(history) ? history : [];
+
   const getStepInfo = (step: OrderStatus) => {
-    const match = [...history].reverse().find((h) => h.status === step);
+    const match = [...safeHistory].reverse().find((h) => h.status === step);
     return match;
   };
 

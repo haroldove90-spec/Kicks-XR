@@ -40,9 +40,12 @@ function generateStrongPassword(): string {
   const digits = '23456789';
   const symbols = '#@!%$';
   const pick = (pool: string) => {
-    const arr = new Uint32Array(1);
-    crypto.getRandomValues(arr);
-    return pool[arr[0] % pool.length];
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      return pool[arr[0] % pool.length];
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
   };
   return `Kxr${pick(upper)}${pick(lower)}${pick(lower)}${pick(symbols)}${pick(digits)}${pick(digits)}${pick(digits)}`;
 }

@@ -136,13 +136,17 @@ export default function App() {
     });
   };
 
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
   const isAdminSession = user?.role === 'admin';
 
   return (
     <>
       <OfflineBanner />
       <NotificationPopupHost alerts={alerts} onDismiss={dismissAlert} />
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
 
       {route === 'home' && <RoleSelectorHome onSelect={handleSelectRole} />}
 

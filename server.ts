@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import express, {NextFunction, Request, Response} from 'express';
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
 import fs from 'fs';
 import http from 'http';
 import path from 'path';
@@ -599,20 +603,22 @@ async function hydrateFromSupabase(): Promise<void> {
 
     if (sbAdmins && sbAdmins.length > 0) {
       for (const row of sbAdmins) {
+        const rowUsername = String(row.username || '').trim();
+        if (!row.id || !rowUsername) continue;
         const idx = db.admins.findIndex(
           (a) =>
             a.id === row.id ||
-            a.username.toLowerCase() === row.username.toLowerCase(),
+            a.username.toLowerCase() === rowUsername.toLowerCase(),
         );
         const mapped: StoredAdmin = {
           id: row.id,
-          username: row.username,
+          username: rowUsername,
           email: row.email || undefined,
           whatsapp: row.whatsapp || undefined,
-          name: row.name,
-          passwordHash: row.password_hash,
-          active: row.active,
-          createdAt: row.created_at,
+          name: String(row.name || rowUsername),
+          passwordHash: String(row.password_hash || ''),
+          active: row.active !== false,
+          createdAt: row.created_at || new Date().toISOString(),
         };
         if (idx >= 0) db.admins[idx] = mapped;
         else db.admins.push(mapped);
@@ -622,20 +628,22 @@ async function hydrateFromSupabase(): Promise<void> {
 
     if (sbClients && sbClients.length > 0) {
       for (const row of sbClients) {
+        if (!row.id) continue;
+        const waNorm = String(row.whatsapp_normalized || normalizePhone(row.whatsapp || ''));
         const idx = db.clients.findIndex(
           (c) =>
             c.id === row.id ||
-            c.whatsappNormalized === row.whatsapp_normalized,
+            (waNorm && c.whatsappNormalized === waNorm),
         );
         const mapped: StoredClient = {
           id: row.id,
-          name: row.name,
-          whatsapp: row.whatsapp,
-          whatsappNormalized: row.whatsapp_normalized,
-          passwordHash: row.password_hash,
-          address: row.address,
+          name: String(row.name || 'Cliente'),
+          whatsapp: String(row.whatsapp || waNorm),
+          whatsappNormalized: waNorm,
+          passwordHash: row.password_hash || undefined,
+          address: String(row.address || ''),
           userType: row.user_type || 'general',
-          createdAt: row.created_at,
+          createdAt: row.created_at || new Date().toISOString(),
         };
         if (idx >= 0) db.clients[idx] = mapped;
         else db.clients.push(mapped);
@@ -2469,11 +2477,77 @@ export class ErrorOverlay extends HTMLElement {}
 `);
     });
 
+    // Cleanly self-unregister any stale Service Worker from earlier sessions during dev
+    app.get(['/sw.js', '/dev-sw.js'], (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.type('application/javascript; charset=utf-8').send(`
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.registration.unregister())
+      .then(() => self.clients.matchAll({type: 'window'}))
+      .then((clients) => clients.forEach((c) => c.navigate(c.url)))
+  );
+});
+`);
+    });
+
+    app.get('/manifest.webmanifest', (_req, res) => {
+      res.type('application/manifest+json; charset=utf-8').json({
+        id: '/',
+        name: 'Kicks XR',
+        short_name: 'Kicks XR',
+        description:
+          'Plataforma integral Kicks XR para registro, recolección, limpieza profesional y seguimiento en tiempo real de tenis.',
+        theme_color: '#109173',
+        background_color: '#FFFFFF',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        start_url: '/',
+        scope: '/',
+        icons: [
+          {src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any'},
+          {src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any'},
+          {
+            src: '/pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      });
+    });
+
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(__dirname, 'dist');
-    app.use(express.static(distDir));
-    app.get('*', (_req, res) => {
+    app.use(
+      express.static(distDir, {
+        setHeaders(res, filePath) {
+          if (
+            filePath.endsWith('index.html') ||
+            filePath.endsWith('sw.js') ||
+            filePath.endsWith('registerSW.js') ||
+            filePath.endsWith('manifest.webmanifest')
+          ) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      }),
+    );
+    app.get('*', (req, res) => {
+      // Do not return index.html for missing JS/CSS/image assets or API routes
+      if (
+        req.path.startsWith('/api/') ||
+        req.path.startsWith('/assets/') ||
+        /\.(js|css|map|png|jpg|jpeg|webp|svg|ico|woff2?|json)$/i.test(req.path)
+      ) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.resolve(distDir, 'index.html'));
     });
   }

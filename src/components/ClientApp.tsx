@@ -307,6 +307,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       }
     }
 
+    if (!selectedService || !selectedCampus) {
+      setError('Selecciona un servicio y una sede válida antes de confirmar.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await api.createOrder({

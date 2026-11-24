@@ -258,10 +258,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
     if (!q) return orders;
     return orders.filter(
       (o) =>
-        o.folio.toLowerCase().includes(q) ||
-        o.bagCode.toLowerCase().includes(q) ||
-        o.clientName.toLowerCase().includes(q) ||
-        o.campusName.toLowerCase().includes(q),
+        (o.folio || '').toLowerCase().includes(q) ||
+        (o.bagCode || '').toLowerCase().includes(q) ||
+        (o.clientName || '').toLowerCase().includes(q) ||
+        (o.campusName || '').toLowerCase().includes(q),
     );
   }, [orders, orderSearch]);
 
@@ -1211,12 +1211,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           <div className="flex justify-between gap-2">
                             <span className="text-slate-500">WhatsApp</span>
                             <a
-                              href={`https://wa.me/52${selectedOrder.clientWhatsapp.replace(/\D/g, '')}`}
+                              href={`https://wa.me/52${(selectedOrder.clientWhatsapp || '').replace(/\D/g, '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 font-mono font-bold text-[#109173] hover:underline"
                             >
-                              <span>{selectedOrder.clientWhatsapp}</span>
+                              <span>{selectedOrder.clientWhatsapp || '—'}</span>
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>

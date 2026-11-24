@@ -1,0 +1,299 @@
+{
+  "admin": null,
+  "clients": [
+    {
+      "id": "cli-59d373c7-2",
+      "name": "Johana Bribiesca",
+      "whatsapp": "5624222449",
+      "whatsappNormalized": "5624222449",
+      "passwordHash": "ecd13aecad3967d2d614a26504558bd9:b89cc720878759cc5a5825759cbe553778151e8d402ef87188caab833f5e0f463e6427c31a3baff3581e9eb33af6bf68236b3433609fd29b3d94519427f5a72a",
+      "address": "Alamo No. 8",
+      "userType": "general",
+      "createdAt": "2026-11-24T01:43:38.529+00:00"
+    },
+    {
+      "id": "cli-64809ab1-d",
+      "name": "Diag User",
+      "whatsapp": "5594986657",
+      "whatsappNormalized": "5594986657",
+      "passwordHash": "f10870afa809166a7ebb4df4f30e5b7c:7b961c52b4f3cd5a3d38ca8a49d827df19dd7b51dbdbe1126fcec01ad1373efed7bde0ffdb847f65d2a0e6e9dc5e9d49fc6be147b02725b7b7bd30ff9b2a0679",
+      "address": "Calle Test 123",
+      "userType": "general",
+      "createdAt": "2026-11-24T01:49:47.19+00:00"
+    }
+  ],
+  "campuses": [
+    {
+      "id": "campus-central",
+      "name": "Campus Central",
+      "code": "KXR-CAMPUS-CENTRAL",
+      "address": "Av. Universidad 3000, Módulo A, PB",
+      "type": "point",
+      "active": true
+    },
+    {
+      "id": "campus-norte",
+      "name": "Campus Norte",
+      "code": "KXR-CAMPUS-NORTE",
+      "address": "Blvd. Tecnológico 450, Edificio C",
+      "type": "point",
+      "active": true
+    },
+    {
+      "id": "punto-roma",
+      "name": "Punto KicksXR Roma",
+      "code": "KXR-PUNTO-ROMA",
+      "address": "Calle Orizaba 112, Col. Roma Norte",
+      "type": "point",
+      "active": true
+    }
+  ],
+  "services": [
+    {
+      "id": "svc-basic",
+      "name": "Limpieza básica",
+      "description": "Lavado exterior de suela, media suela y agujetas.",
+      "price": 180,
+      "turnaroundHours": 24,
+      "active": true
+    },
+    {
+      "id": "svc-premium",
+      "name": "Limpieza premium",
+      "description": "Limpieza profunda interior y exterior, desodorización UV y acondicionamiento.",
+      "price": 290,
+      "turnaroundHours": 36,
+      "active": true
+    },
+    {
+      "id": "svc-deep",
+      "name": "Restauración profunda",
+      "description": "Tratamiento de gamuza/piel, blanqueamiento de suela y revitalización de color.",
+      "price": 420,
+      "turnaroundHours": 48,
+      "active": true
+    },
+    {
+      "id": "svc-protect",
+      "name": "Limpieza + Impermeabilización",
+      "description": "Limpieza premium con capa hidrofóbica repelente a agua y manchas.",
+      "price": 350,
+      "turnaroundHours": 36,
+      "active": true
+    }
+  ],
+  "lockers": [
+    {
+      "id": "lk-1",
+      "code": "L-01",
+      "campusId": "campus-central",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-2",
+      "code": "L-02",
+      "campusId": "campus-central",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-3",
+      "code": "L-03",
+      "campusId": "campus-central",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-4",
+      "code": "L-04",
+      "campusId": "campus-central",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-5",
+      "code": "L-05",
+      "campusId": "campus-norte",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-6",
+      "code": "L-06",
+      "campusId": "campus-norte",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-7",
+      "code": "L-07",
+      "campusId": "punto-roma",
+      "status": "disponible"
+    },
+    {
+      "id": "lk-8",
+      "code": "L-08",
+      "campusId": "punto-roma",
+      "status": "disponible"
+    }
+  ],
+  "shippingFee": 75,
+  "nextOrderSeq": 1044,
+  "nextBagSeq": 30,
+  "orders": [
+    {
+      "id": "ord-1042",
+      "folio": "KXR-1042",
+      "bagCode": "B-028",
+      "orderQrPayload": "KICKSXR|KXR-1042|B-028|campus-central",
+      "clientId": "cli-seed-1",
+      "clientName": "Sofía Martínez",
+      "clientWhatsapp": "5512345678",
+      "userType": "university",
+      "campusId": "campus-central",
+      "campusName": "Campus Central",
+      "pairs": 1,
+      "serviceId": "svc-premium",
+      "serviceName": "Limpieza premium",
+      "unitPrice": 290,
+      "shippingFee": 0,
+      "totalAmount": 290,
+      "deliveryMethod": "pickup",
+      "dropoffMethod": "locker",
+      "assignedLockerCode": "L-01",
+      "paymentMethod": "cash",
+      "paymentStatus": "Pago pendiente",
+      "status": "Depósito reportado",
+      "collectionStatus": "Pendiente",
+      "bagVerified": false,
+      "createdAt": "2026-11-24T00:54:42.759Z",
+      "collectionDate": "2026-11-24",
+      "updatedAt": "2026-11-24T00:54:42.759Z",
+      "history": [
+        {
+          "status": "Depósito reportado",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Bolsa depositada en locker L-01 (Campus Central)"
+        }
+      ]
+    },
+    {
+      "id": "ord-1043",
+      "folio": "KXR-1043",
+      "bagCode": "B-029",
+      "orderQrPayload": "KICKSXR|KXR-1043|B-029|campus-central",
+      "clientId": "cli-seed-2",
+      "clientName": "Diego Hernández",
+      "clientWhatsapp": "5587654321",
+      "userType": "general",
+      "campusId": "campus-central",
+      "campusName": "Campus Central",
+      "pairs": 2,
+      "serviceId": "svc-basic",
+      "serviceName": "Limpieza básica",
+      "unitPrice": 180,
+      "shippingFee": 75,
+      "totalAmount": 435,
+      "deliveryMethod": "delivery",
+      "deliveryAddress": "Av. Álvaro Obregón 210, Depto 4B, Roma Norte",
+      "dropoffMethod": "locker",
+      "assignedLockerCode": "L-02",
+      "paymentMethod": "card",
+      "paymentStatus": "Pagado",
+      "cardLast4": "4242",
+      "status": "Depósito reportado",
+      "collectionStatus": "Pendiente",
+      "bagVerified": false,
+      "createdAt": "2026-11-24T00:54:42.759Z",
+      "collectionDate": "2026-11-24",
+      "updatedAt": "2026-11-24T00:54:42.759Z",
+      "history": [
+        {
+          "status": "Depósito reportado",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Bolsa depositada en locker L-02 (Campus Central)"
+        }
+      ]
+    },
+    {
+      "id": "ord-1041",
+      "folio": "KXR-1041",
+      "bagCode": "B-027",
+      "orderQrPayload": "KICKSXR|KXR-1041|B-027|campus-norte",
+      "clientId": "cli-seed-3",
+      "clientName": "Valeria Cruz",
+      "clientWhatsapp": "5544332211",
+      "userType": "university",
+      "campusId": "campus-norte",
+      "campusName": "Campus Norte",
+      "pairs": 1,
+      "serviceId": "svc-deep",
+      "serviceName": "Restauración profunda",
+      "unitPrice": 420,
+      "shippingFee": 0,
+      "totalAmount": 420,
+      "deliveryMethod": "pickup",
+      "dropoffMethod": "staff",
+      "paymentMethod": "card",
+      "paymentStatus": "Pagado",
+      "cardLast4": "8819",
+      "status": "Listo para entrega",
+      "collectionStatus": "Recolectado",
+      "bagVerified": true,
+      "createdAt": "2026-11-24T00:54:42.759Z",
+      "collectionDate": "2026-11-24",
+      "updatedAt": "2026-11-24T00:54:42.759Z",
+      "history": [
+        {
+          "status": "Depósito reportado",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Entregado con personal en Campus Norte"
+        },
+        {
+          "status": "Recibido por KicksXR",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Bolsa B-027 verificada en taller"
+        },
+        {
+          "status": "En limpieza",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Proceso de restauración profunda en curso"
+        },
+        {
+          "status": "Listo para entrega",
+          "timestamp": "2026-11-24T00:54:42.759Z",
+          "note": "Calzado listo para recoger en Campus Norte"
+        }
+      ]
+    }
+  ],
+  "incidents": [
+    {
+      "id": "inc-seed-1",
+      "type": "Bolsa sin pedido",
+      "bagCode": "B-026",
+      "campusId": "punto-roma",
+      "campusName": "Punto KicksXR Roma",
+      "description": "Bolsa recibida en mostrador sin folio vinculado en sistema.",
+      "status": "En revisión",
+      "createdAt": "2026-11-24T00:54:42.759Z",
+      "updatedAt": "2026-11-24T00:54:42.759Z"
+    }
+  ],
+  "notifications": [],
+  "admins": [
+    {
+      "id": "adm-haroldo90",
+      "username": "haroldo90",
+      "email": "haroldo90@kicksxr.com",
+      "name": "Harold Anguiano",
+      "passwordHash": "0e6cf9ddd5648fa3c0dab0bc6e0318ca:4be5db02406dc8acfaecf05572a32ae7b70bf76c55a0b93d8e1a7c53b6282586d3605ca9e2578d1d625ac830baec338b99fc7ce747d52b1c5cfc41cccd0dc656",
+      "active": true,
+      "createdAt": "2026-11-24T01:27:38.625705+00:00"
+    },
+    {
+      "id": "adm-admin1",
+      "username": "admin_1",
+      "email": "admin_1@kicksxr.com",
+      "name": "Administrador 1",
+      "passwordHash": "5f9024aa6e59695b4157757f5c24711c:a57ef8566d32d1808f69522395e491ff9e2dfe4ac841a5d2719f5d96ca3a229a0dc053bebd9776dfc8627e2e12bf493d6e231fed1f1ff69b583ed6b2ce1583ff",
+      "active": true,
+      "createdAt": "2026-11-24T01:27:38.625705+00:00"
+    }
+  ]
+}

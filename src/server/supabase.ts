@@ -99,6 +99,7 @@ async function sbRequest<T>(
       method: options.method || 'GET',
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: AbortSignal.timeout(8000),
     });
 
     const text = await res.text();
