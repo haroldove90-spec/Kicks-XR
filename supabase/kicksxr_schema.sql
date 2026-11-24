@@ -36,12 +36,16 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
   password_hash TEXT NOT NULL,
   address TEXT NOT NULL,
   user_type TEXT NOT NULL DEFAULT 'general',
+  ine_photo_data_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Compatibilidad si la tabla ya había sido creada previamente
 ALTER TABLE public.kicksxr_clients
   ADD COLUMN IF NOT EXISTS username TEXT;
+
+ALTER TABLE public.kicksxr_clients
+  ADD COLUMN IF NOT EXISTS ine_photo_data_url TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kicksxr_clients_username
   ON public.kicksxr_clients (LOWER(username))

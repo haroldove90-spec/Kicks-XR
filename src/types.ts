@@ -33,6 +33,7 @@ export interface AuthUser {
   userType?: 'general' | 'university';
   campusId?: string;
   campusName?: string;
+  inePhotoDataUrl?: string;
 }
 
 export interface Campus {
@@ -228,6 +229,7 @@ export interface ManagedClientUser {
   whatsapp: string;
   address: string;
   userType: 'general' | 'university';
+  inePhotoDataUrl?: string;
   createdAt: string;
 }
 

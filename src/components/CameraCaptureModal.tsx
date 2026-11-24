@@ -14,6 +14,8 @@ interface CameraCaptureModalProps {
   onCapture: (dataUrl: string) => void;
   onFallbackGallery: () => void;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
 }
 
 export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
@@ -21,6 +23,8 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   onCapture,
   onFallbackGallery,
   onClose,
+  title = 'Cámara del dispositivo',
+  subtitle = 'Toma la fotografía de evidencia inicial de tus tenis',
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -136,10 +140,10 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             </div>
             <div>
               <h3 className="font-display text-lg font-extrabold text-[#000000]">
-                Cámara del dispositivo
+                {title}
               </h3>
               <p className="text-xs text-slate-600">
-                Toma la fotografía de evidencia inicial de tus tenis
+                {subtitle}
               </p>
             </div>
           </div>

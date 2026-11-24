@@ -5,8 +5,8 @@ interface BrandLogoProps {
   alt?: string;
 }
 
-const PRIMARY_LOGO_URL = 'https://daloocomercializadora.com.mx/xrlogo.png';
-const LOCAL_FALLBACK_URL = '/xrlogo.png';
+const PRIMARY_LOGO_URL = 'https://daloocomercializadora.com.mx/xrlogo2.png';
+const LOCAL_FALLBACK_URL = '/xrlogo2.png';
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
   className = 'h-9 w-auto object-contain',

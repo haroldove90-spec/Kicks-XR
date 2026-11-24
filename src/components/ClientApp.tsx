@@ -9,6 +9,7 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  IdCard,
   Image as ImageIcon,
   KeyRound,
   ListChecks,
@@ -141,6 +142,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   const [profileName, setProfileName] = useState(user.name || '');
   const [profileWhatsapp, setProfileWhatsapp] = useState(user.whatsapp || '');
   const [profileAddress, setProfileAddress] = useState(user.address || '');
+  const [profileInePhoto, setProfileInePhoto] = useState<string | undefined>(
+    user.inePhotoDataUrl,
+  );
+  const [profileIneCameraOpen, setProfileIneCameraOpen] = useState(false);
+  const profileIneInputRef = useRef<HTMLInputElement | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -448,6 +454,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     setActiveTab('register');
   };
 
+  const handleProfileIneFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      const compressed = await compressImageFile(file);
+      setProfileInePhoto(compressed);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo procesar la foto de tu INE.',
+      );
+    }
+    e.target.value = '';
+  };
+
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSaved(false);
@@ -457,15 +478,17 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         name: profileName,
         whatsapp: profileWhatsapp,
         address: profileAddress,
+        inePhotoDataUrl: profileInePhoto,
       });
       onUserUpdated(res.user);
       setClientName(res.user.name);
       setClientWhatsapp(res.user.whatsapp || '');
       setDeliveryAddress(res.user.address || '');
+      setProfileInePhoto(res.user.inePhotoDataUrl);
       setProfileSaved(true);
       onPushAlert({
         title: 'Perfil actualizado',
-        message: 'Tus datos de contacto y entrega fueron guardados.',
+        message: 'Tus datos de contacto, entrega e identificación fueron guardados.',
         tone: 'success',
       });
       window.setTimeout(() => setProfileSaved(false), 3000);
@@ -2043,6 +2066,54 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 />
               </div>
 
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-bold text-[#000831]">
+                    <IdCard className="h-4 w-4 text-[#109173]" />
+                    <span>Identificación oficial (INE)</span>
+                  </label>
+                  {isSafePhotoDataUrl(profileInePhoto) && (
+                    <span className="text-xs font-bold text-[#109173]">
+                      Registrada
+                    </span>
+                  )}
+                </div>
+                <input
+                  ref={profileIneInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfileIneFile}
+                  className="hidden"
+                />
+                {isSafePhotoDataUrl(profileInePhoto) && (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
+                    <img
+                      src={profileInePhoto}
+                      alt="Tu identificación INE"
+                      className="max-h-40 w-full object-contain rounded-lg"
+                    />
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProfileIneCameraOpen(true)}
+                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                    <span>Tomar foto INE</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => profileIneInputRef.current?.click()}
+                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>Subir imagen</span>
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
@@ -2151,6 +2222,16 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         }}
         onFallbackGallery={() => galleryInputRef.current?.click()}
         onClose={() => setCameraModalOpen(false)}
+      />
+
+      {/* Camera Modal for updating Client INE from Profile */}
+      <CameraCaptureModal
+        open={profileIneCameraOpen}
+        title="Fotografía de identificación (INE)"
+        subtitle="Enfoca el frente de tu INE con buena iluminación y pulsa Guardar cambios"
+        onCapture={(dataUrl) => setProfileInePhoto(dataUrl)}
+        onFallbackGallery={() => profileIneInputRef.current?.click()}
+        onClose={() => setProfileIneCameraOpen(false)}
       />
 
       {/* QR Scanner for Tracking inside Cliente */}

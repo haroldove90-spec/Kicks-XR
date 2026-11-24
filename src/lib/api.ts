@@ -88,6 +88,7 @@ export const api = {
     whatsapp: string;
     password: string;
     address: string;
+    inePhotoDataUrl?: string;
   }) =>
     request<{token: string; user: AuthUser}>('/api/auth/client/register', {
       method: 'POST',
@@ -100,7 +101,12 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  updateClientProfile: (body: {name: string; whatsapp: string; address: string}) =>
+  updateClientProfile: (body: {
+    name: string;
+    whatsapp: string;
+    address: string;
+    inePhotoDataUrl?: string;
+  }) =>
     request<{user: AuthUser}>('/api/client/profile', {
       method: 'PATCH',
       body: JSON.stringify(body),
@@ -222,6 +228,7 @@ export const api = {
     whatsapp: string;
     address: string;
     password: string;
+    inePhotoDataUrl?: string;
   }) =>
     request<{
       client: ManagedClientUser;
@@ -234,7 +241,12 @@ export const api = {
 
   updateClientUser: (
     id: string,
-    body: {name?: string; address?: string; password?: string},
+    body: {
+      name?: string;
+      address?: string;
+      password?: string;
+      inePhotoDataUrl?: string;
+    },
   ) =>
     request<{
       client: ManagedClientUser;

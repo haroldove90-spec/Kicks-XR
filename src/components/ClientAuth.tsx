@@ -1,18 +1,25 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   ArrowLeft,
   AtSign,
+  Camera,
+  CheckCircle2,
   Eye,
   EyeOff,
+  IdCard,
+  Image as ImageIcon,
   Lock,
   MapPin,
   Phone,
+  Trash2,
   User,
   UserPlus,
 } from 'lucide-react';
 import {api, ApiError, setAuthToken} from '../lib/api';
+import {compressImageFile} from '../lib/image';
 import type {AuthUser} from '../types';
 import {BrandLogo} from './BrandLogo';
+import {CameraCaptureModal} from './CameraCaptureModal';
 
 interface ClientAuthProps {
   onAuthenticated: (user: AuthUser) => void;
@@ -32,15 +39,47 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [address, setAddress] = useState('');
+  const [inePhotoDataUrl, setInePhotoDataUrl] = useState<string | undefined>(
+    undefined,
+  );
+  const [ineCameraOpen, setIneCameraOpen] = useState(false);
+  const ineFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsRegistration, setNeedsRegistration] = useState(false);
 
+  const handleIneFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      const compressed = await compressImageFile(file);
+      setInePhotoDataUrl(compressed);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo procesar la foto de tu INE.',
+      );
+    }
+    e.target.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setNeedsRegistration(false);
+
+    if (generalTab === 'register' && !inePhotoDataUrl) {
+      setError(
+        'Adjunta o toma una fotografía de tu identificación oficial (INE) para completar tu registro.',
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const cleanUsername = username.trim().toLowerCase();
@@ -53,6 +92,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
               whatsapp: whatsapp.trim(),
               password,
               address: address.trim(),
+              inePhotoDataUrl,
             });
       setAuthToken(res.token);
       onAuthenticated(res.user);
@@ -80,7 +120,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             <ArrowLeft className="h-4 w-4" />
             <span>Inicio</span>
           </button>
-          <BrandLogo className="h-8 w-auto object-contain" />
+          <BrandLogo className="h-9 w-auto object-contain" />
           <div className="w-20" />
         </div>
 
@@ -94,7 +134,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             <p className="mt-1 text-sm text-slate-600">
               {generalTab === 'login'
                 ? 'Si ya estás registrado, ingresa directamente a tu panel con tu usuario y contraseña.'
-                : 'Si aún no tienes cuenta, regístrate para ingresar a tu panel y registrar tus tenis.'}
+                : 'Si aún no tienes cuenta, regístrate con tus datos e identificación oficial (INE) para ingresar.'}
             </p>
           </div>
 
@@ -256,22 +296,110 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             </div>
 
             {generalTab === 'register' && (
-              <div>
-                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                  Dirección de entrega
-                </label>
-                <div className="relative">
-                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Calle, número, colonia y código postal"
-                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
-                  />
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                    Dirección de entrega
+                  </label>
+                  <div className="relative">
+                    <MapPin className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Calle, número, colonia y código postal"
+                      className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                {/* Identificación oficial INE */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <IdCard className="h-4 w-4 text-[#109173] shrink-0" />
+                      <label className="text-sm font-semibold text-[#000831]">
+                        Identificación oficial (INE — México) *
+                      </label>
+                    </div>
+                    {inePhotoDataUrl && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#109173]">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Lista</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Toma una foto con tu cámara o sube una imagen legible del frente de tu INE. Solo será visible para el administrador de Kicks XR.
+                  </p>
+
+                  <input
+                    ref={ineFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIneFileChange}
+                    className="hidden"
+                  />
+
+                  {inePhotoDataUrl ? (
+                    <div className="space-y-2.5">
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
+                        <img
+                          src={inePhotoDataUrl}
+                          alt="Vista previa de INE"
+                          className="max-h-44 w-full object-contain rounded-lg"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIneCameraOpen(true)}
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                        >
+                          <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                          <span>Tomar otra</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => ineFileInputRef.current?.click()}
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5 text-[#5B21B6]" />
+                          <span>Cambiar archivo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInePhotoDataUrl(undefined)}
+                          className="min-h-[40px] inline-flex items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer"
+                          aria-label="Quitar foto de INE"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setIneCameraOpen(true)}
+                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs sm:text-sm font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                      >
+                        <Camera className="h-4 w-4 text-[#109173]" />
+                        <span>Tomar foto de INE</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => ineFileInputRef.current?.click()}
+                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        <span>Subir foto de INE</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             <button
@@ -322,6 +450,15 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
           </div>
         </div>
       </div>
+
+      <CameraCaptureModal
+        open={ineCameraOpen}
+        title="Fotografía de identificación (INE)"
+        subtitle="Enfoca el frente de tu INE con buena iluminación y texto legible"
+        onCapture={(dataUrl) => setInePhotoDataUrl(dataUrl)}
+        onFallbackGallery={() => ineFileInputRef.current?.click()}
+        onClose={() => setIneCameraOpen(false)}
+      />
     </div>
   );
 };

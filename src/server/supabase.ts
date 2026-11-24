@@ -29,6 +29,7 @@ export interface SupabaseClientRow {
   password_hash: string;
   address: string;
   user_type: 'general' | 'university';
+  ine_photo_data_url?: string | null;
   created_at: string;
 }
 
@@ -248,14 +249,28 @@ export const supabaseStore = {
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: client,
     });
-    if (!res.ok && res.error?.includes('username')) {
-      const {username: _omit, ...legacyClient} = client;
-      const retry = await sbRequest('kicksxr_clients?on_conflict=id', {
+    if (!res.ok && res.status === 400) {
+      // Backward-compatible fallback if ine_photo_data_url or username columns were not yet added
+      if (res.error?.includes('ine_photo_data_url')) {
+        const {ine_photo_data_url: _omitIne, ...withoutIne} = client;
+        const retry1 = await sbRequest('kicksxr_clients?on_conflict=id', {
+          method: 'POST',
+          prefer: 'resolution=merge-duplicates,return=minimal',
+          body: withoutIne,
+        });
+        if (retry1.ok) return true;
+      }
+      const {
+        username: _omitUser,
+        ine_photo_data_url: _omitIne2,
+        ...legacyClient
+      } = client;
+      const retry2 = await sbRequest('kicksxr_clients?on_conflict=id', {
         method: 'POST',
         prefer: 'resolution=merge-duplicates,return=minimal',
         body: legacyClient,
       });
-      return retry.ok;
+      return retry2.ok;
     }
     return res.ok;
   },

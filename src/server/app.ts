@@ -133,6 +133,7 @@ interface StoredClient {
   address: string;
   userType: 'general' | 'university';
   campusId?: string;
+  inePhotoDataUrl?: string;
   createdAt: string;
 }
 
@@ -746,6 +747,9 @@ async function hydrateFromSupabase(): Promise<void> {
           passwordHash: row.password_hash || undefined,
           address: String(row.address || ''),
           userType: row.user_type || 'general',
+          inePhotoDataUrl:
+            row.ine_photo_data_url ||
+            (idx >= 0 ? db.clients[idx].inePhotoDataUrl : undefined),
           createdAt: row.created_at || new Date().toISOString(),
         };
         if (idx >= 0) db.clients[idx] = mapped;
@@ -977,6 +981,7 @@ function buildAuthUserFromClient(client: StoredClient): AuthUser {
     userType: client.userType,
     campusId: client.campusId,
     campusName: campus?.name,
+    inePhotoDataUrl: client.inePhotoDataUrl,
   };
 }
 
@@ -1166,6 +1171,10 @@ export function createApiApp(): Express {
     const whatsappNormalized = normalizePhone(whatsapp);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     const address = sanitizeText(req.body?.address, 220);
+    const inePhotoDataUrl =
+      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
+        ? req.body.inePhotoDataUrl.trim()
+        : undefined;
 
     if (name.length < 2) {
       res.status(400).json({error: 'Ingresa tu nombre completo.'});
@@ -1190,6 +1199,18 @@ export function createApiApp(): Express {
     if (address.length < 5) {
       res.status(400).json({error: 'Ingresa tu dirección de entrega.'});
       return;
+    }
+    if (inePhotoDataUrl) {
+      if (
+        inePhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error:
+            'La imagen de tu INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
+        });
+        return;
+      }
     }
 
     const existingUsernameLocal = db.clients.find(
@@ -1230,6 +1251,7 @@ export function createApiApp(): Express {
       passwordHash,
       address,
       userType: 'general',
+      inePhotoDataUrl,
       createdAt: new Date().toISOString(),
     };
     db.clients.push(client);
@@ -1245,6 +1267,7 @@ export function createApiApp(): Express {
         password_hash: passwordHash,
         address: client.address,
         user_type: 'general',
+        ine_photo_data_url: client.inePhotoDataUrl || null,
         created_at: client.createdAt,
       });
     }
@@ -1294,6 +1317,7 @@ export function createApiApp(): Express {
           passwordHash: sbClient.password_hash,
           address: sbClient.address,
           userType: sbClient.user_type || 'general',
+          inePhotoDataUrl: sbClient.ine_photo_data_url || undefined,
           createdAt: sbClient.created_at,
         };
         const existingIdx = db.clients.findIndex(
@@ -1349,6 +1373,22 @@ export function createApiApp(): Express {
     const name = sanitizeText(req.body?.name, 80);
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
     const address = sanitizeText(req.body?.address, 220);
+    const inePhotoDataUrl =
+      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
+        ? req.body.inePhotoDataUrl.trim()
+        : undefined;
+
+    if (inePhotoDataUrl) {
+      if (
+        inePhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'La foto de INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
+        });
+        return;
+      }
+    }
 
     if (req.auth?.role === 'admin') {
       res.json({
@@ -1376,6 +1416,7 @@ export function createApiApp(): Express {
       client.whatsappNormalized = normalizePhone(whatsapp);
     }
     if (address) client.address = address;
+    if (inePhotoDataUrl) client.inePhotoDataUrl = inePhotoDataUrl;
 
     saveDb(db);
     if (isSupabaseConfigured() && client.passwordHash) {
@@ -1388,6 +1429,7 @@ export function createApiApp(): Express {
         password_hash: client.passwordHash,
         address: client.address,
         user_type: client.userType,
+        ine_photo_data_url: client.inePhotoDataUrl || null,
         created_at: client.createdAt,
       });
     }
@@ -3161,6 +3203,9 @@ export function createApiApp(): Express {
             passwordHash: row.password_hash,
             address: row.address,
             userType: row.user_type || 'general',
+            inePhotoDataUrl:
+              row.ine_photo_data_url ||
+              (idx >= 0 ? db.clients[idx].inePhotoDataUrl : undefined),
             createdAt: row.created_at,
           };
           if (idx >= 0) db.clients[idx] = mapped;
@@ -3188,6 +3233,7 @@ export function createApiApp(): Express {
         whatsapp: c.whatsapp,
         address: c.address,
         userType: c.userType,
+        inePhotoDataUrl: c.inePhotoDataUrl,
         createdAt: c.createdAt,
       })),
       supabaseConnected: isSupabaseConfigured(),
@@ -3366,6 +3412,10 @@ export function createApiApp(): Express {
     const whatsappNormalized = normalizePhone(whatsapp);
     const address = sanitizeText(req.body?.address, 220);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const inePhotoDataUrl =
+      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
+        ? req.body.inePhotoDataUrl.trim()
+        : undefined;
 
     if (name.length < 2) {
       res.status(400).json({error: 'Ingresa el nombre completo del cliente.'});
@@ -3388,6 +3438,17 @@ export function createApiApp(): Express {
     if (password.length < 6) {
       res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
       return;
+    }
+    if (inePhotoDataUrl) {
+      if (
+        inePhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'La imagen del INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
+        });
+        return;
+      }
     }
 
     const existsUserLocal = db.clients.some(
@@ -3429,6 +3490,7 @@ export function createApiApp(): Express {
       passwordHash,
       address,
       userType: 'general',
+      inePhotoDataUrl,
       createdAt: now,
     };
 
@@ -3445,6 +3507,7 @@ export function createApiApp(): Express {
           password_hash: passwordHash,
           address: newClient.address,
           user_type: 'general',
+          ine_photo_data_url: newClient.inePhotoDataUrl || null,
           created_at: newClient.createdAt,
         })
       : false;
@@ -3466,6 +3529,7 @@ export function createApiApp(): Express {
         whatsapp: newClient.whatsapp,
         address: newClient.address,
         userType: newClient.userType,
+        inePhotoDataUrl: newClient.inePhotoDataUrl,
         createdAt: newClient.createdAt,
       },
       credentials,
@@ -3483,6 +3547,24 @@ export function createApiApp(): Express {
 
     const name = sanitizeText(req.body?.name, 80);
     const address = sanitizeText(req.body?.address, 220);
+    const inePhotoDataUrl =
+      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
+        ? req.body.inePhotoDataUrl.trim()
+        : undefined;
+
+    if (inePhotoDataUrl) {
+      if (
+        inePhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'La imagen del INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
+        });
+        return;
+      }
+      client.inePhotoDataUrl = inePhotoDataUrl;
+    }
+
     if (name.length >= 2) client.name = name;
     if (address.length >= 5) client.address = address;
 
@@ -3517,6 +3599,7 @@ export function createApiApp(): Express {
             password_hash: client.passwordHash,
             address: client.address,
             user_type: client.userType,
+            ine_photo_data_url: client.inePhotoDataUrl || null,
             created_at: client.createdAt,
           })
         : false;
@@ -3529,6 +3612,7 @@ export function createApiApp(): Express {
         whatsapp: client.whatsapp,
         address: client.address,
         userType: client.userType,
+        inePhotoDataUrl: client.inePhotoDataUrl,
         createdAt: client.createdAt,
       },
       credentials,

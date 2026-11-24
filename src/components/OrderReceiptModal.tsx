@@ -4,7 +4,8 @@ import {QRCodeSVG} from 'qrcode.react';
 import type {Order} from '../types';
 import {isSafePhotoDataUrl} from './AdminOrderDetailModal';
 
-const LOGO_URL = 'https://daloocomercializadora.com.mx/xrlogo.png';
+const LOGO_URL = 'https://daloocomercializadora.com.mx/xrlogo2.png';
+const FALLBACK_LOGO_URL = '/xrlogo2.png';
 
 function escapeHtml(raw: string): string {
   return String(raw || '')
@@ -149,6 +150,13 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
               <img
                 src={LOGO_URL}
                 alt="Kicks XR"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.src.endsWith(FALLBACK_LOGO_URL)) {
+                    img.src = FALLBACK_LOGO_URL;
+                  }
+                }}
                 className="h-8 w-auto object-contain"
               />
               <div className="mt-1 text-xs text-slate-500">
