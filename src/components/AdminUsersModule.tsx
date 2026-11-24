@@ -131,6 +131,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
       } else {
         const res = await api.createClientUser({
           name: name.trim(),
+          username: username.trim().toLowerCase(),
           whatsapp: whatsapp.trim(),
           address: address.trim(),
           password,
@@ -138,7 +139,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
         setLatestCredentials(res.credentials);
         onPushAlert({
           title: 'Cliente final registrado',
-          message: `${res.client.name} creado${res.supabaseSynced ? ' y guardado en Supabase' : ''}. Listo para enviar credenciales por WhatsApp.`,
+          message: `${res.client.name}${res.client.username ? ` (@${res.client.username})` : ''} creado${res.supabaseSynced ? ' y guardado en Supabase' : ''}. Listo para enviar credenciales por WhatsApp.`,
           tone: 'success',
           whatsappUrl: res.credentials.whatsappUrl,
         });
@@ -254,6 +255,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
     return clients.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
+        (c.username || '').toLowerCase().includes(q) ||
         c.whatsapp.toLowerCase().includes(q) ||
         c.address.toLowerCase().includes(q),
     );
@@ -313,7 +315,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl bg-white border border-slate-200 p-3.5">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                {latestCredentials.role === 'admin' ? 'Usuario' : 'WhatsApp'}
+                Usuario
               </div>
               <div className="mt-1 font-mono text-sm font-extrabold text-[#000831] break-all">
                 {latestCredentials.identifier}
@@ -443,48 +445,49 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               </div>
             </div>
 
-            {createRole === 'admin' && (
-              <>
-                <div>
-                  <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                    Usuario de acceso
-                  </label>
-                  <div className="relative">
-                    <ShieldCheck className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Ej. admin_2"
-                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
-                    />
-                  </div>
-                </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                Usuario de acceso
+              </label>
+              <div className="relative">
+                <ShieldCheck className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={
+                    createRole === 'admin' ? 'Ej. admin_2' : 'Ej. ana.lopez'
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                />
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                    Correo (opcional)
-                  </label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="correo@kicksxr.com"
-                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
-                    />
-                  </div>
+            {createRole === 'admin' && (
+              <div>
+                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                  Correo (opcional)
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="correo@kicksxr.com"
+                    className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  />
                 </div>
-              </>
+              </div>
             )}
 
             <div>
               <label className="block text-sm font-semibold text-[#000831] mb-1.5">
                 {createRole === 'admin'
                   ? 'WhatsApp del admin (para enviar credenciales)'
-                  : 'Teléfono / WhatsApp (acceso del cliente)'}
+                  : 'Teléfono / WhatsApp (notificaciones y envío de credenciales)'}
               </label>
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -705,7 +708,12 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         <span className="font-display text-sm font-extrabold text-[#000831]">
                           {cli.name}
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#109173]">
+                        {cli.username && (
+                          <span className="font-mono text-xs font-bold text-[#109173]">
+                            @{cli.username}
+                          </span>
+                        )}
+                        <span className="font-mono text-xs text-slate-500">
                           {cli.whatsapp}
                         </span>
                       </div>

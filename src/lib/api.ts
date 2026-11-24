@@ -75,6 +75,7 @@ export const api = {
   // Client auth
   registerClient: (body: {
     name: string;
+    username: string;
     whatsapp: string;
     password: string;
     address: string;
@@ -84,7 +85,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  loginClient: (body: {whatsapp: string; password: string}) =>
+  loginClient: (body: {username: string; password: string}) =>
     request<{token: string; user: AuthUser}>('/api/auth/client/login', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -179,6 +180,7 @@ export const api = {
 
   createClientUser: (body: {
     name: string;
+    username: string;
     whatsapp: string;
     address: string;
     password: string;
@@ -331,6 +333,8 @@ export function subscribeToRealtimeUpdates(
     return () => {};
   }
   const source = new EventSource('/api/events');
+  let pollTimer: number | null = null;
+
   const handler = (ev: MessageEvent) => {
     try {
       const parsed = JSON.parse(ev.data);
@@ -339,9 +343,33 @@ export function subscribeToRealtimeUpdates(
       onUpdate({type: 'orders'});
     }
   };
+
+  const onConnected = (ev: MessageEvent) => {
+    try {
+      const parsed = JSON.parse(ev.data);
+      if (parsed?.mode === 'serverless') {
+        source.close();
+        if (pollTimer === null) {
+          pollTimer = window.setInterval(() => {
+            if (document.visibilityState === 'visible') {
+              onUpdate({type: 'orders'});
+            }
+          }, 20000);
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  };
+
   source.addEventListener('update', handler);
+  source.addEventListener('connected', onConnected);
   return () => {
     source.removeEventListener('update', handler);
+    source.removeEventListener('connected', onConnected);
     source.close();
+    if (pollTimer !== null) {
+      window.clearInterval(pollTimer);
+    }
   };
 }

@@ -22,6 +22,7 @@ export interface SupabaseAdminRow {
 export interface SupabaseClientRow {
   id: string;
   name: string;
+  username?: string | null;
   whatsapp: string;
   whatsapp_normalized: string;
   password_hash: string;
@@ -223,6 +224,14 @@ export const supabaseStore = {
     return res.ok ? res.data || [] : null;
   },
 
+  async findClientByUsername(username: string): Promise<SupabaseClientRow | null> {
+    const clean = encodeURIComponent(username.trim().toLowerCase());
+    const res = await sbRequest<SupabaseClientRow[]>(
+      `kicksxr_clients?username=ilike.${clean}&limit=1`,
+    );
+    return res.ok && res.data && res.data.length > 0 ? res.data[0] : null;
+  },
+
   async findClientByWhatsapp(whatsappNormalized: string): Promise<SupabaseClientRow | null> {
     const clean = encodeURIComponent(whatsappNormalized);
     const res = await sbRequest<SupabaseClientRow[]>(
@@ -237,6 +246,15 @@ export const supabaseStore = {
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: client,
     });
+    if (!res.ok && res.error?.includes('username')) {
+      const {username: _omit, ...legacyClient} = client;
+      const retry = await sbRequest('kicksxr_clients?on_conflict=id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+        body: legacyClient,
+      });
+      return retry.ok;
+    }
     return res.ok;
   },
 

@@ -193,6 +193,7 @@ export interface ManagedAdminUser {
 export interface ManagedClientUser {
   id: string;
   name: string;
+  username?: string;
   whatsapp: string;
   address: string;
   userType: 'general' | 'university';

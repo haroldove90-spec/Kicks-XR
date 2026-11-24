@@ -23,6 +23,18 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script>
+      window.__kicksxrDeferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__kicksxrDeferredPrompt = e;
+        window.dispatchEvent(new CustomEvent('kicksxr-install-prompt-ready'));
+      });
+      window.addEventListener('appinstalled', function () {
+        window.__kicksxrDeferredPrompt = null;
+        window.dispatchEvent(new CustomEvent('kicksxr-app-installed'));
+      });
+    </script>
   </head>
   <body class="bg-[#F8FAFC] text-[#000831] antialiased selection:bg-[#109173]/20 selection:text-[#000831]">
     <div id="root"></div>

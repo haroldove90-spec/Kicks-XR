@@ -25,12 +25,17 @@ export default defineConfig(() => {
           short_name: 'Kicks XR',
           description:
             'Plataforma integral Kicks XR para registro, recolección, limpieza profesional y seguimiento en tiempo real de tenis.',
+          lang: 'es-MX',
+          dir: 'ltr',
           theme_color: '#109173',
           background_color: '#FFFFFF',
           display: 'standalone',
+          display_override: ['standalone', 'minimal-ui'],
           orientation: 'portrait-primary',
           start_url: '/',
           scope: '/',
+          prefer_related_applications: false,
+          categories: ['lifestyle', 'shopping', 'utilities'],
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -49,6 +54,20 @@ export default defineConfig(() => {
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
+            },
+          ],
+          shortcuts: [
+            {
+              name: 'Registrar tenis',
+              short_name: 'Registrar',
+              url: '/?action=register',
+              icons: [{src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png'}],
+            },
+            {
+              name: 'Rastrear pedido',
+              short_name: 'Rastrear',
+              url: '/?action=track',
+              icons: [{src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png'}],
             },
           ],
         },
@@ -96,7 +115,9 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
+          type: 'module',
+          suppressWarnings: true,
         },
       }),
       // Copies src/assets into dist/ so root-relative URLs like

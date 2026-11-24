@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {
   ArrowLeft,
+  AtSign,
   Eye,
   EyeOff,
   Lock,
@@ -26,6 +27,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
   const [generalTab, setGeneralTab] = useState<'login' | 'register'>('login');
 
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,10 +43,17 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
     setNeedsRegistration(false);
     setLoading(true);
     try {
+      const cleanUsername = username.trim().toLowerCase();
       const res =
         generalTab === 'login'
-          ? await api.loginClient({whatsapp, password})
-          : await api.registerClient({name, whatsapp, password, address});
+          ? await api.loginClient({username: cleanUsername, password})
+          : await api.registerClient({
+              name: name.trim(),
+              username: cleanUsername,
+              whatsapp: whatsapp.trim(),
+              password,
+              address: address.trim(),
+            });
       setAuthToken(res.token);
       onAuthenticated(res.user);
     } catch (err) {
@@ -84,7 +93,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               {generalTab === 'login'
-                ? 'Si ya estás registrado, ingresa directamente a tu panel con tu WhatsApp y contraseña.'
+                ? 'Si ya estás registrado, ingresa directamente a tu panel con tu usuario y contraseña.'
                 : 'Si aún no tienes cuenta, regístrate para ingresar a tu panel y registrar tus tenis.'}
             </p>
           </div>
@@ -136,7 +145,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                   className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg bg-[#109173] px-3.5 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  <span>Registrarme ahora con este WhatsApp</span>
+                  <span>Registrarme ahora con este usuario</span>
                 </button>
               )}
             </div>
@@ -164,21 +173,50 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
 
             <div>
               <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                Teléfono / WhatsApp
+                {generalTab === 'login' ? 'Nombre de usuario' : 'Usuario'}
               </label>
               <div className="relative">
-                <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                {generalTab === 'login' ? (
+                  <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                ) : (
+                  <AtSign className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                )}
                 <input
-                  type="tel"
+                  type="text"
                   required
-                  autoComplete="tel"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="55 1234 5678"
+                  minLength={3}
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={
+                    generalTab === 'login'
+                      ? 'Ingresa tu usuario'
+                      : 'Ej. juan.perez (sin espacios)'
+                  }
                   className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
                 />
               </div>
             </div>
+
+            {generalTab === 'register' && (
+              <div>
+                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                  Teléfono / WhatsApp
+                </label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="tel"
+                    required
+                    autoComplete="tel"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="55 1234 5678"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-[#000831] mb-1.5">
@@ -195,7 +233,11 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                   }
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={
+                    generalTab === 'login'
+                      ? 'Ingresa tu contraseña'
+                      : 'Mínimo 6 caracteres'
+                  }
                   className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
                 />
                 <button

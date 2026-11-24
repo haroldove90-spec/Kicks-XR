@@ -30,6 +30,7 @@ ALTER TABLE public.kicksxr_admins
 CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  username TEXT,
   whatsapp TEXT NOT NULL,
   whatsapp_normalized TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -37,6 +38,14 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
   user_type TEXT NOT NULL DEFAULT 'general',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Compatibilidad si la tabla ya había sido creada previamente
+ALTER TABLE public.kicksxr_clients
+  ADD COLUMN IF NOT EXISTS username TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kicksxr_clients_username
+  ON public.kicksxr_clients (LOWER(username))
+  WHERE username IS NOT NULL;
 
 -- 3. Sedes y Puntos KicksXR
 CREATE TABLE IF NOT EXISTS public.kicksxr_campuses (
