@@ -154,7 +154,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [editStatus, setEditStatus] = useState<OrderStatus>('En limpieza');
   const [editPayment, setEditPayment] = useState<PaymentStatus>('Pago pendiente');
+  const [editFolio, setEditFolio] = useState('');
   const [editBagCode, setEditBagCode] = useState('');
+  const [editTotalAmount, setEditTotalAmount] = useState('');
   const [editAfterPhoto, setEditAfterPhoto] = useState<string | null | undefined>(
     undefined,
   );
@@ -219,6 +221,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [newLockerCode, setNewLockerCode] = useState('');
   const [newLockerCampus, setNewLockerCampus] = useState('');
   const [shippingFeeInput, setShippingFeeInput] = useState('75');
+  const [nextOrderSeqInput, setNextOrderSeqInput] = useState('1044');
+  const [nextBagSeqInput, setNextBagSeqInput] = useState('30');
   const [sbHealth, setSbHealth] = useState<SupabaseHealthStatus | null>(null);
   const [checkingSb, setCheckingSb] = useState(false);
 
@@ -243,6 +247,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       setNotifications(data.notifications);
       setConfig(data.config);
       setShippingFeeInput(String(data.config.shippingFee));
+      setNextOrderSeqInput(String(data.config.nextOrderSeq));
+      setNextBagSeqInput(String(data.config.nextBagSeq));
       if (!newLockerCampus && data.config.campuses[0]) {
         setNewLockerCampus(data.config.campuses[0].id);
       }
@@ -304,7 +310,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({
         : selectedOrder.status,
     );
     setEditPayment(selectedOrder.paymentStatus);
+    setEditFolio(selectedOrder.folio);
     setEditBagCode(selectedOrder.bagCode);
+    setEditTotalAmount(String(selectedOrder.totalAmount));
     setEditAfterPhoto(selectedOrder.afterPhotoDataUrl);
     setEditAdminNotes(selectedOrder.adminNotes || '');
     setEditStatusNote('');
@@ -513,8 +521,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
   const handleUpdateOrder = async () => {
     if (!selectedOrder) return;
+    const parsedTotal = Number(editTotalAmount);
+    if (!Number.isFinite(parsedTotal) || parsedTotal < 0) {
+      onPushAlert({
+        title: 'Costo inválido',
+        message: 'Ingresa un costo de servicio válido ($0 o mayor).',
+        tone: 'warning',
+      });
+      return;
+    }
     try {
       const res = await api.updateAdminOrder(selectedOrder.id, {
+        folio: editFolio.trim().toUpperCase(),
+        totalAmount: Math.round(parsedTotal),
         status: editStatus,
         paymentStatus: editPayment,
         bagCode: editBagCode.trim().toUpperCase(),
@@ -525,8 +544,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       });
       setEditStatusNote('');
       onPushAlert({
-        title: `Pedido ${selectedOrder.folio} actualizado`,
-        message: `Estatus: "${editStatus}" · Pago: ${editPayment}. Puedes avisar al cliente por WhatsApp.`,
+        title: `Pedido ${res.order.folio} actualizado`,
+        message: `Estatus: "${res.order.status}" · Costo: $${res.order.totalAmount} MXN · Pago: ${res.order.paymentStatus}.`,
         tone: 'success',
         whatsappUrl: res.whatsappUrl,
       });
@@ -838,6 +857,34 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       onPushAlert({
         title: 'Error',
         message: err instanceof Error ? err.message : 'Error guardando tarifa.',
+        tone: 'error',
+      });
+    }
+  };
+
+  const handleSaveSequences = async () => {
+    const nextOrderSeq = Math.floor(Number(nextOrderSeqInput));
+    const nextBagSeq = Math.floor(Number(nextBagSeqInput));
+    if (!Number.isFinite(nextOrderSeq) || nextOrderSeq < 1 || !Number.isFinite(nextBagSeq) || nextBagSeq < 1) {
+      onPushAlert({
+        title: 'Numeración inválida',
+        message: 'Ingresa números enteros mayores a 0 para folio y bolsa.',
+        tone: 'warning',
+      });
+      return;
+    }
+    try {
+      await api.updateSettings({nextOrderSeq, nextBagSeq});
+      onPushAlert({
+        title: 'Numeración actualizada',
+        message: `El próximo pedido usará el folio KXR-${nextOrderSeq} y bolsa B-${String(nextBagSeq).padStart(3, '0')}.`,
+        tone: 'success',
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'No se pudo guardar la numeración.',
         tone: 'error',
       });
     }
@@ -1704,49 +1751,73 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         className="sr-only"
                       />
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 rounded-2xl border border-slate-200 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
-                        <div className="p-4 flex items-center gap-4">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#000831] shrink-0">
-                            <ShoppingBag className="h-7 w-7" />
+                      <div className="grid grid-cols-1 lg:grid-cols-3 rounded-2xl border border-slate-200 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+                        {/* Folio editable por el Admin */}
+                        <div className="p-4 flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#000831] shrink-0">
+                            <ShoppingBag className="h-6 w-6" />
                           </div>
-                          <div>
-                            <div className="text-xs font-medium text-slate-500">
-                              Folio · Registrado{' '}
-                              {new Date(selectedOrder.createdAt).toLocaleDateString('es-MX')}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
-                                {selectedOrder.folio}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold text-slate-500">
+                                Folio (editable)
                               </span>
                               {selectedOrder.status === 'Cancelado' && (
-                                <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                                <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
                                   Cancelado
                                 </span>
                               )}
                             </div>
+                            <input
+                              type="text"
+                              value={editFolio}
+                              onChange={(e) => setEditFolio(e.target.value.toUpperCase())}
+                              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                            />
+                            <div className="mt-0.5 text-[10px] text-slate-400">
+                              Registrado{' '}
+                              {new Date(selectedOrder.createdAt).toLocaleDateString('es-MX')}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="p-4 flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-xs font-medium text-slate-500">
-                              Bolsa (vincular o editar etiqueta)
-                            </div>
+                        {/* Bolsa editable */}
+                        <div className="p-4 flex flex-col justify-center">
+                          <div className="text-[11px] font-semibold text-slate-500">
+                            Bolsa (vincular o editar etiqueta)
+                          </div>
+                          <input
+                            type="text"
+                            value={editBagCode}
+                            onChange={(e) => setEditBagCode(e.target.value.toUpperCase())}
+                            className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#5B21B6] focus:border-[#109173] focus:outline-none"
+                          />
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            {selectedOrder.pairs}{' '}
+                            {selectedOrder.pairs === 1 ? 'par' : 'pares'} ·{' '}
+                            {selectedOrder.serviceName}
+                          </div>
+                        </div>
+
+                        {/* Costo del servicio estipulado por el Admin */}
+                        <div className="p-4 flex flex-col justify-center bg-[#E6F7F3]/35">
+                          <div className="text-[11px] font-bold text-[#000831]">
+                            Costo del servicio ($ MXN)
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="font-mono text-lg font-extrabold text-[#109173]">
+                              $
+                            </span>
                             <input
-                              type="text"
-                              value={editBagCode}
-                              onChange={(e) => setEditBagCode(e.target.value)}
-                              className="mt-1 w-32 rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-xl font-extrabold uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                              type="number"
+                              min={0}
+                              value={editTotalAmount}
+                              onChange={(e) => setEditTotalAmount(e.target.value)}
+                              className="w-full rounded-lg border border-[#109173]/35 bg-white px-2.5 py-1 font-mono text-lg font-extrabold text-[#109173] tabular-nums focus:border-[#109173] focus:outline-none"
                             />
                           </div>
-                          <div className="text-right text-xs text-slate-500">
-                            <div className="font-semibold text-[#000831]">
-                              {selectedOrder.pairs}{' '}
-                              {selectedOrder.pairs === 1 ? 'par' : 'pares'}
-                            </div>
-                            <div className="font-mono text-base font-extrabold text-[#109173] tabular-nums">
-                              ${selectedOrder.totalAmount} MXN
-                            </div>
+                          <div className="mt-0.5 text-[10px] text-slate-500">
+                            Estipula o ajusta el precio total y guarda abajo
                           </div>
                         </div>
                       </div>
@@ -3160,17 +3231,36 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
                       <Layers className="h-5 w-5 text-[#5B21B6]" />
-                      <span>Lockers autoservicio y asignación de bolsas</span>
+                      <span>Lockers autoservicio y numeración de folios / bolsas</span>
                     </div>
-                    <div className="text-xs text-slate-600">
-                      Próximo folio:{' '}
-                      <strong className="font-mono text-[#000831]">
-                        KXR-{config.nextOrderSeq}
-                      </strong>{' '}
-                      · Próxima bolsa:{' '}
-                      <strong className="font-mono text-[#5B21B6]">
-                        B-{String(config.nextBagSeq).padStart(3, '0')}
-                      </strong>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <label className="inline-flex items-center gap-1.5 text-slate-600">
+                        <span>Próx. folio KXR-</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={nextOrderSeqInput}
+                          onChange={(e) => setNextOrderSeqInput(e.target.value)}
+                          className="w-20 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#000831]"
+                        />
+                      </label>
+                      <label className="inline-flex items-center gap-1.5 text-slate-600">
+                        <span>Próx. bolsa B-</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={nextBagSeqInput}
+                          onChange={(e) => setNextBagSeqInput(e.target.value)}
+                          className="w-16 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#5B21B6]"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleSaveSequences}
+                        className="min-h-[34px] rounded-lg bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                      >
+                        Guardar numeración
+                      </button>
                     </div>
                   </div>
 

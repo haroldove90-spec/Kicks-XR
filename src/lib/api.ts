@@ -24,6 +24,7 @@ import type {
 
 // Keep Bearer token strictly in JS memory (never localStorage/sessionStorage)
 let authToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
@@ -31,6 +32,10 @@ export function setAuthToken(token: string | null) {
 
 export function getAuthToken(): string | null {
   return authToken;
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
 }
 
 export class ApiError extends Error {
@@ -57,6 +62,9 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 401 && authToken && !url.includes('/api/auth/')) {
+      unauthorizedHandler?.();
+    }
     throw new ApiError(
       data?.error || `Error de comunicación (${res.status})`,
       res.status,
@@ -267,6 +275,9 @@ export const api = {
     deliveryAddress?: string;
     paymentMethod: PaymentMethod;
     markPaid?: boolean;
+    customFolio?: string;
+    customTotal?: number;
+    unitPrice?: number;
     shoeNotes?: string;
     adminNotes?: string;
     discountCode?: string;
@@ -280,6 +291,9 @@ export const api = {
   updateAdminOrder: (
     orderId: string,
     body: {
+      folio?: string;
+      totalAmount?: number;
+      unitPrice?: number;
       status?: OrderStatus;
       paymentStatus?: PaymentStatus;
       bagCode?: string;
@@ -390,7 +404,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  updateSettings: (body: {shippingFee: number}) =>
+  updateSettings: (body: {
+    shippingFee?: number;
+    nextOrderSeq?: number;
+    nextBagSeq?: number;
+  }) =>
     request('/api/admin/config/settings', {
       method: 'PATCH',
       body: JSON.stringify(body),

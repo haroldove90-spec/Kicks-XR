@@ -48,6 +48,8 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
   const [markPaid, setMarkPaid] = useState(true);
   const [shoeNotes, setShoeNotes] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
+  const [customFolio, setCustomFolio] = useState('');
+  const [customTotal, setCustomTotal] = useState('');
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<{
     code: string;
@@ -87,7 +89,13 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
   const shippingFee =
     deliveryMethod === 'delivery' ? config?.shippingFee ?? 75 : 0;
   const discountAmount = appliedDiscount?.amount || 0;
-  const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+  const calculatedTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+  const parsedCustomTotal =
+    customTotal.trim() !== '' && Number.isFinite(Number(customTotal)) && Number(customTotal) >= 0
+      ? Math.round(Number(customTotal))
+      : undefined;
+  const totalAmount =
+    parsedCustomTotal !== undefined ? parsedCustomTotal : calculatedTotal;
 
   const handleSelectClient = (id: string) => {
     setSelectedClientId(id);
@@ -140,6 +148,8 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
           deliveryMethod === 'delivery' ? deliveryAddress.trim() : undefined,
         paymentMethod,
         markPaid,
+        customFolio: customFolio.trim() ? customFolio.trim().toUpperCase() : undefined,
+        customTotal: parsedCustomTotal,
         shoeNotes: shoeNotes.trim() || undefined,
         adminNotes: adminNotes.trim() || undefined,
         discountCode: appliedDiscount?.code || undefined,
@@ -151,6 +161,8 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
       setClientName('');
       setClientWhatsapp('');
       setPairs(1);
+      setCustomFolio('');
+      setCustomTotal('');
       setShoeNotes('');
       setAdminNotes('');
       setDiscountCode('');
@@ -300,6 +312,41 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 }}
                 className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold text-[#000831]"
               />
+            </div>
+          </div>
+
+          {/* Folio personalizado + Costo estipulado por el Admin */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-[#109173]/25 bg-[#E6F7F3]/40 p-3.5">
+            <div>
+              <label className="block text-xs font-bold text-[#000831] mb-1">
+                Número de folio (opcional)
+              </label>
+              <input
+                type="text"
+                value={customFolio}
+                onChange={(e) => setCustomFolio(e.target.value.toUpperCase())}
+                placeholder={`Automático (KXR-${config?.nextOrderSeq ?? 1044})`}
+                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Déjalo vacío para generar el folio consecutivo automático.
+              </span>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#000831] mb-1">
+                Estipular costo del servicio ($ MXN)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={customTotal}
+                onChange={(e) => setCustomTotal(e.target.value)}
+                placeholder={`Catálogo: $${calculatedTotal} MXN`}
+                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold text-[#109173] focus:border-[#109173] focus:outline-none"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Escribe un monto para fijar precio especial a este servicio.
+              </span>
             </div>
           </div>
 

@@ -48,19 +48,38 @@ function resolveSessionSecret(): string {
   if (process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16) {
     return process.env.SESSION_SECRET;
   }
-  // Across serverless instances on Vercel, derive a stable key from deployment/service env vars
-  // so tokens signed by one instance remain valid on sibling instances.
-  const serverlessSeed =
+  // Derive a stable HMAC secret from configured deployment/Supabase env vars
+  // so sessions remain valid across dev server restarts and Vercel serverless instances.
+  const stableSeed =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
     process.env.VERCEL_PROJECT_ID ||
     process.env.VERCEL_GIT_REPO_ID ||
     '';
-  if (IS_VERCEL && serverlessSeed.length >= 8) {
+  if (stableSeed.length >= 8) {
     return crypto
-      .createHmac('sha256', serverlessSeed)
+      .createHmac('sha256', stableSeed)
       .update('kicksxr-session-v1')
       .digest('hex');
+  }
+  // Local fallback: persist generated key on disk so restarts don't expire active sessions
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, {recursive: true});
+    }
+    const secretFile = path.resolve(DATA_DIR, '.session-secret');
+    if (secretFile.startsWith(DATA_DIR + path.sep)) {
+      if (fs.existsSync(secretFile)) {
+        const existing = fs.readFileSync(secretFile, 'utf8').trim();
+        if (existing.length >= 32) return existing;
+      }
+      const generated = crypto.randomBytes(32).toString('hex');
+      fs.writeFileSync(secretFile, generated, {mode: 0o600});
+      return generated;
+    }
+  } catch {
+    // ignore fs error and fall back to ephemeral secret
   }
   return crypto.randomBytes(32).toString('hex');
 }
@@ -2060,6 +2079,17 @@ export function createApiApp(): Express {
     const shoeNotes = sanitizeText(req.body?.shoeNotes, 300);
     const adminNotes = sanitizeText(req.body?.adminNotes, 300);
     const rawDiscountCode = sanitizeText(req.body?.discountCode, 30).toUpperCase();
+    const rawCustomFolio = sanitizeText(req.body?.customFolio, 30)
+      .toUpperCase()
+      .replace(/[^A-Z0-9._-]/g, '');
+    const customTotalRaw =
+      req.body?.customTotal !== undefined && req.body?.customTotal !== '' && req.body?.customTotal !== null
+        ? Number(req.body.customTotal)
+        : undefined;
+    const customUnitPriceRaw =
+      req.body?.unitPrice !== undefined && req.body?.unitPrice !== '' && req.body?.unitPrice !== null
+        ? Number(req.body.unitPrice)
+        : undefined;
     const photoDataUrl =
       typeof req.body?.photoDataUrl === 'string' ? req.body.photoDataUrl : undefined;
 
@@ -2091,6 +2121,35 @@ export function createApiApp(): Express {
       res.status(400).json({error: 'Ingresa la dirección de entrega a domicilio.'});
       return;
     }
+    if (rawCustomFolio) {
+      if (rawCustomFolio.length < 2) {
+        res.status(400).json({error: 'El folio personalizado debe tener al menos 2 caracteres.'});
+        return;
+      }
+      const duplicateFolio = db.orders.find(
+        (o) => o.folio.toUpperCase() === rawCustomFolio,
+      );
+      if (duplicateFolio) {
+        res.status(409).json({
+          error: `El folio ${rawCustomFolio} ya existe. Elige un número de folio diferente.`,
+        });
+        return;
+      }
+    }
+    if (
+      customTotalRaw !== undefined &&
+      (!Number.isFinite(customTotalRaw) || customTotalRaw < 0)
+    ) {
+      res.status(400).json({error: 'Ingresa un costo total de servicio válido ($0 o mayor).'});
+      return;
+    }
+    if (
+      customUnitPriceRaw !== undefined &&
+      (!Number.isFinite(customUnitPriceRaw) || customUnitPriceRaw < 0)
+    ) {
+      res.status(400).json({error: 'Ingresa un precio unitario válido.'});
+      return;
+    }
     if (photoDataUrl) {
       if (photoDataUrl.length > 4_500_000 || !IMAGE_DATA_URL_REGEX.test(photoDataUrl)) {
         res.status(400).json({
@@ -2100,7 +2159,11 @@ export function createApiApp(): Express {
       }
     }
 
-    const subtotal = service.price * pairs;
+    const effectiveUnitPrice =
+      customUnitPriceRaw !== undefined
+        ? Math.round(customUnitPriceRaw)
+        : service.price;
+    const subtotal = effectiveUnitPrice * pairs;
     const {coupon, discountAmount, error: couponError} = calculateCouponDiscount(
       rawDiscountCode,
       subtotal,
@@ -2110,10 +2173,13 @@ export function createApiApp(): Express {
       return;
     }
 
-    const folio = getNextFolio();
+    const folio = rawCustomFolio || getNextFolio();
     const bagCode = getNextBagCode();
     const shippingFee = deliveryMethod === 'delivery' ? db.shippingFee : 0;
-    const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+    const totalAmount =
+      customTotalRaw !== undefined
+        ? Math.max(0, Math.round(customTotalRaw))
+        : Math.max(0, subtotal - discountAmount + shippingFee);
     const paymentStatus: PaymentStatus =
       markPaid || paymentMethod === 'card' ? 'Pagado' : 'Pago pendiente';
     const now = new Date().toISOString();
@@ -2140,7 +2206,10 @@ export function createApiApp(): Express {
       pairs,
       serviceId: service.id,
       serviceName: service.name,
-      unitPrice: service.price,
+      unitPrice:
+        customTotalRaw !== undefined && customUnitPriceRaw === undefined
+          ? Math.max(0, Math.round((totalAmount - shippingFee) / pairs))
+          : effectiveUnitPrice,
       shippingFee,
       discountCode: coupon?.code,
       discountAmount: discountAmount || 0,
@@ -2163,7 +2232,7 @@ export function createApiApp(): Express {
         {
           status: 'Recibido por KicksXR',
           timestamp: now,
-          note: `Pedido registrado en mostrador (${campus.name}).${coupon ? ` Cupón ${coupon.code} (-$${discountAmount} MXN).` : ''}`,
+          note: `Pedido registrado en mostrador (${campus.name}).${customTotalRaw !== undefined ? ` Costo estipulado: $${totalAmount} MXN.` : ''}${coupon ? ` Cupón ${coupon.code} (-$${discountAmount} MXN).` : ''}`,
         },
       ],
     };
@@ -2296,6 +2365,21 @@ export function createApiApp(): Express {
     const nextStatus = req.body?.status as OrderStatus | undefined;
     const nextPaymentStatus = req.body?.paymentStatus as PaymentStatus | undefined;
     const nextBagCode = sanitizeText(req.body?.bagCode, 20).toUpperCase();
+    const nextFolio = sanitizeText(req.body?.folio, 30)
+      .toUpperCase()
+      .replace(/[^A-Z0-9._-]/g, '');
+    const nextTotalAmountRaw =
+      req.body?.totalAmount !== undefined &&
+      req.body?.totalAmount !== '' &&
+      req.body?.totalAmount !== null
+        ? Number(req.body.totalAmount)
+        : undefined;
+    const nextUnitPriceRaw =
+      req.body?.unitPrice !== undefined &&
+      req.body?.unitPrice !== '' &&
+      req.body?.unitPrice !== null
+        ? Number(req.body.unitPrice)
+        : undefined;
     const note = sanitizeText(req.body?.note, 250);
     const adminNotes =
       typeof req.body?.adminNotes === 'string'
@@ -2320,6 +2404,32 @@ export function createApiApp(): Express {
       }
     }
 
+    if (nextFolio && nextFolio !== order.folio.toUpperCase()) {
+      if (nextFolio.length < 2) {
+        res.status(400).json({
+          error: 'El número de folio debe tener al menos 2 caracteres.',
+        });
+        return;
+      }
+      const duplicateFolio = db.orders.find(
+        (o) => o.id !== order.id && o.folio.toUpperCase() === nextFolio,
+      );
+      if (duplicateFolio) {
+        res.status(409).json({
+          error: `El folio ${nextFolio} ya está en uso en otro pedido.`,
+        });
+        return;
+      }
+      const prevFolio = order.folio;
+      order.folio = nextFolio;
+      order.orderQrPayload = `KICKSXR|${order.folio}|${order.bagCode}|${order.campusId}`;
+      order.history.push({
+        status: order.status,
+        timestamp: now,
+        note: `Folio actualizado manualmente de ${prevFolio} a ${nextFolio}.`,
+      });
+    }
+
     if (nextBagCode && nextBagCode !== order.bagCode) {
       const duplicate = db.orders.find(
         (o) => o.id !== order.id && o.bagCode.toUpperCase() === nextBagCode,
@@ -2332,6 +2442,39 @@ export function createApiApp(): Express {
       }
       order.bagCode = nextBagCode;
       order.orderQrPayload = `KICKSXR|${order.folio}|${order.bagCode}|${order.campusId}`;
+    }
+
+    if (nextTotalAmountRaw !== undefined) {
+      if (!Number.isFinite(nextTotalAmountRaw) || nextTotalAmountRaw < 0) {
+        res.status(400).json({error: 'Ingresa un costo del servicio válido ($0 o mayor).'});
+        return;
+      }
+      const roundedTotal = Math.round(nextTotalAmountRaw);
+      if (roundedTotal !== order.totalAmount) {
+        const prevTotal = order.totalAmount;
+        order.totalAmount = roundedTotal;
+        if (nextUnitPriceRaw === undefined) {
+          order.unitPrice = Math.max(
+            0,
+            Math.round((roundedTotal - (order.shippingFee || 0)) / Math.max(1, order.pairs)),
+          );
+        }
+        order.history.push({
+          status: order.status,
+          timestamp: now,
+          note: `Costo del servicio ajustado por Admin de $${prevTotal} a $${roundedTotal} MXN.`,
+        });
+      }
+    } else if (nextUnitPriceRaw !== undefined) {
+      if (!Number.isFinite(nextUnitPriceRaw) || nextUnitPriceRaw < 0) {
+        res.status(400).json({error: 'Ingresa un costo unitario válido.'});
+        return;
+      }
+      order.unitPrice = Math.round(nextUnitPriceRaw);
+      order.totalAmount = Math.max(
+        0,
+        order.unitPrice * order.pairs - (order.discountAmount || 0) + (order.shippingFee || 0),
+      );
     }
 
     const writes: Promise<unknown>[] = [];
@@ -2855,6 +2998,14 @@ export function createApiApp(): Express {
     if (Number.isFinite(shippingFee) && shippingFee >= 0) {
       db.shippingFee = Math.round(shippingFee);
     }
+    const nextOrderSeq = Number(req.body?.nextOrderSeq);
+    if (Number.isInteger(nextOrderSeq) && nextOrderSeq >= 1) {
+      db.nextOrderSeq = nextOrderSeq;
+    }
+    const nextBagSeq = Number(req.body?.nextBagSeq);
+    if (Number.isInteger(nextBagSeq) && nextBagSeq >= 1) {
+      db.nextBagSeq = nextBagSeq;
+    }
     saveDb(db);
     if (isSupabaseConfigured()) {
       await supabaseStore.upsertSettings({
@@ -2865,7 +3016,11 @@ export function createApiApp(): Express {
       });
     }
     broadcastEvent({type: 'config'});
-    res.json({shippingFee: db.shippingFee});
+    res.json({
+      shippingFee: db.shippingFee,
+      nextOrderSeq: db.nextOrderSeq,
+      nextBagSeq: db.nextBagSeq,
+    });
   });
 
   // --- ADMIN COUPONS CRUD ---

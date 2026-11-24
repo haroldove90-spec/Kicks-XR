@@ -20,6 +20,17 @@
       "address": "Calle Test 123",
       "userType": "general",
       "createdAt": "2026-11-24T01:49:47.19+00:00"
+    },
+    {
+      "id": "cli-79a7056f-f",
+      "name": "Johana bribiesca",
+      "username": "johana90",
+      "whatsapp": "5624222448",
+      "whatsappNormalized": "5624222448",
+      "passwordHash": "725cd2501e7b36da72bfc445f8118024:0c5c12a917cd1ec5d17eb2a54205c7bd30da49a08609bdf24a8e59fd0e5a7268afcff934651532351290b065e361a3c2a3a01af26c75864a92a5b9dc2e4375ea",
+      "address": "Alamo 8",
+      "userType": "general",
+      "createdAt": "2026-11-24T02:22:56.398+00:00"
     }
   ],
   "campuses": [
@@ -144,7 +155,7 @@
       "clientId": "cli-seed-1",
       "clientName": "Sofía Martínez",
       "clientWhatsapp": "5512345678",
-      "userType": "university",
+      "userType": "general",
       "campusId": "campus-central",
       "campusName": "Campus Central",
       "pairs": 1,
@@ -152,25 +163,31 @@
       "serviceName": "Limpieza premium",
       "unitPrice": 290,
       "shippingFee": 0,
+      "discountAmount": 0,
       "totalAmount": 290,
       "deliveryMethod": "pickup",
       "dropoffMethod": "locker",
       "assignedLockerCode": "L-01",
       "paymentMethod": "cash",
       "paymentStatus": "Pago pendiente",
-      "status": "Depósito reportado",
-      "collectionStatus": "Pendiente",
-      "bagVerified": false,
-      "createdAt": "2026-11-24T00:54:42.759Z",
+      "status": "Recibido por KicksXR",
+      "collectionStatus": "Recolectado",
+      "bagVerified": true,
       "collectionDate": "2026-11-24",
-      "updatedAt": "2026-11-24T00:54:42.759Z",
       "history": [
         {
+          "note": "Bolsa depositada en locker L-01 (Campus Central)",
           "status": "Depósito reportado",
-          "timestamp": "2026-11-24T00:54:42.759Z",
-          "note": "Bolsa depositada en locker L-01 (Campus Central)"
+          "timestamp": "2026-11-24T02:25:35.867Z"
+        },
+        {
+          "note": "Bolsa B-028 auditada y recibida en taller KicksXR.",
+          "status": "Recibido por KicksXR",
+          "timestamp": "2026-11-24T02:26:42.369Z"
         }
-      ]
+      ],
+      "createdAt": "2026-11-24T02:25:35.867+00:00",
+      "updatedAt": "2026-11-24T02:26:42.369+00:00"
     },
     {
       "id": "ord-1043",
@@ -275,7 +292,21 @@
       "updatedAt": "2026-11-24T00:54:42.759Z"
     }
   ],
-  "notifications": [],
+  "notifications": [
+    {
+      "id": "ntf-318dd724",
+      "orderId": "ord-1042",
+      "folio": "KXR-1042",
+      "recipientWhatsapp": "5512345678",
+      "recipientName": "Sofía Martínez",
+      "channel": "WhatsApp",
+      "title": "Recibido por KicksXR · KXR-1042",
+      "message": "¡Hola Sofía Martínez! Recibimos tu bolsa B-028 (KXR-1042) en el taller de Kicks XR. Pronto comenzaremos tu Limpieza premium.",
+      "whatsappUrl": "https://wa.me/525512345678?text=%C2%A1Hola%20Sof%C3%ADa%20Mart%C3%ADnez!%20Recibimos%20tu%20bolsa%20B-028%20(KXR-1042)%20en%20el%20taller%20de%20Kicks%20XR.%20Pronto%20comenzaremos%20tu%20Limpieza%20premium.",
+      "read": false,
+      "createdAt": "2026-11-24T02:26:42.371+00:00"
+    }
+  ],
   "admins": [
     {
       "id": "adm-haroldo90",
@@ -294,6 +325,28 @@
       "passwordHash": "5f9024aa6e59695b4157757f5c24711c:a57ef8566d32d1808f69522395e491ff9e2dfe4ac841a5d2719f5d96ca3a229a0dc053bebd9776dfc8627e2e12bf493d6e231fed1f1ff69b583ed6b2ce1583ff",
       "active": true,
       "createdAt": "2026-11-24T01:27:38.625705+00:00"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "cpn-bienvenido",
+      "code": "BIENVENIDO10",
+      "description": "10% de descuento en tu servicio de limpieza",
+      "discountType": "percent",
+      "value": 10,
+      "active": true,
+      "usageCount": 0,
+      "createdAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "cpn-kicks50",
+      "code": "KICKS50",
+      "description": "$50 MXN de descuento directo en tu pedido",
+      "discountType": "fixed",
+      "value": 50,
+      "active": true,
+      "usageCount": 0,
+      "createdAt": "2025-01-01T00:00:00.000Z"
     }
   ]
 }

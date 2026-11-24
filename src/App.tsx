@@ -13,7 +13,12 @@ import {
   type HomeEntryTarget,
 } from './components/RoleSelectorHome';
 import {SplashScreen} from './components/SplashScreen';
-import {api, setAuthToken, subscribeToRealtimeUpdates} from './lib/api';
+import {
+  api,
+  setAuthToken,
+  setUnauthorizedHandler,
+  subscribeToRealtimeUpdates,
+} from './lib/api';
 import {playNotificationSound, unlockNotificationAudio} from './lib/sound';
 import type {AuthUser, PopupAlert, PublicConfig} from './types';
 
@@ -110,6 +115,22 @@ export default function App() {
       // keep fallback if temporarily offline
     }
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      const targetRoute: AppRoute =
+        user?.role === 'admin' ? 'admin-auth' : 'client-auth';
+      setAuthToken(null);
+      setUser(null);
+      setRoute(targetRoute);
+      pushAlert({
+        title: 'Vuelve a iniciar sesión',
+        message: 'Tu sesión expiró. Ingresa tus credenciales para continuar.',
+        tone: 'warning',
+      });
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [user?.role, pushAlert]);
 
   useEffect(() => {
     loadConfig();
