@@ -2,8 +2,10 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import express, {NextFunction, Request, Response} from 'express';
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import {fileURLToPath} from 'url';
+import {isSupabaseConfigured, supabaseStore} from './src/server/supabase.ts';
 import type {
   AuthUser,
   Campus,
@@ -43,7 +45,9 @@ const IMAGE_DATA_URL_REGEX =
   /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
 interface StoredAdmin {
-  email: string;
+  id: string;
+  username: string;
+  email?: string;
   name: string;
   passwordHash: string;
   createdAt: string;
@@ -62,7 +66,8 @@ interface StoredClient {
 }
 
 interface DatabaseState {
-  admin: StoredAdmin | null;
+  admin?: StoredAdmin | null;
+  admins: StoredAdmin[];
   clients: StoredClient[];
   campuses: Campus[];
   services: ServiceItem[];
@@ -110,6 +115,7 @@ interface TokenPayload {
   sub: string;
   role: UserRole;
   name: string;
+  username?: string;
   exp: number;
 }
 
@@ -164,7 +170,7 @@ function createInitialDb(): DatabaseState {
       name: 'Campus Central',
       code: 'KXR-CAMPUS-CENTRAL',
       address: 'Av. Universidad 3000, Módulo A, PB',
-      type: 'university',
+      type: 'point',
       active: true,
     },
     {
@@ -172,7 +178,7 @@ function createInitialDb(): DatabaseState {
       name: 'Campus Norte',
       code: 'KXR-CAMPUS-NORTE',
       address: 'Blvd. Tecnológico 450, Edificio C',
-      type: 'university',
+      type: 'point',
       active: true,
     },
     {
@@ -243,7 +249,7 @@ function createInitialDb(): DatabaseState {
       clientId: 'cli-seed-1',
       clientName: 'Sofía Martínez',
       clientWhatsapp: '5512345678',
-      userType: 'university',
+      userType: 'general',
       campusId: 'campus-central',
       campusName: 'Campus Central',
       pairs: 1,
@@ -317,7 +323,7 @@ function createInitialDb(): DatabaseState {
       clientId: 'cli-seed-3',
       clientName: 'Valeria Cruz',
       clientWhatsapp: '5544332211',
-      userType: 'university',
+      userType: 'general',
       campusId: 'campus-norte',
       campusName: 'Campus Norte',
       pairs: 1,
@@ -376,8 +382,41 @@ function createInitialDb(): DatabaseState {
     },
   ];
 
+  const notifications: NotificationLog[] = [
+    {
+      id: 'ntf-seed-1',
+      orderId: 'ord-1042',
+      folio: 'KXR-1042',
+      recipientWhatsapp: '5512345678',
+      recipientName: 'Sofía Martínez',
+      channel: 'WhatsApp',
+      title: 'Depósito reportado · KXR-1042',
+      message:
+        'Bolsa B-028 depositada en locker L-01 (Campus Central) lista para recolección.',
+      whatsappUrl:
+        'https://wa.me/525512345678?text=Hola%20Sof%C3%ADa%2C%20registramos%20tu%20bolsa%20B-028%20(KXR-1042).',
+      read: false,
+      createdAt: now,
+    },
+    {
+      id: 'ntf-seed-2',
+      orderId: 'ord-1041',
+      folio: 'KXR-1041',
+      recipientWhatsapp: '5544332211',
+      recipientName: 'Valeria Cruz',
+      channel: 'WhatsApp',
+      title: 'Listo para entrega · KXR-1041',
+      message:
+        'Tus tenis del folio KXR-1041 (Bolsa B-027) están listos para recoger en Campus Norte.',
+      whatsappUrl:
+        'https://wa.me/525544332211?text=Hola%20Valeria%2C%20tu%20pedido%20KXR-1041%20est%C3%A1%20listo%20para%20entrega.',
+      read: false,
+      createdAt: now,
+    },
+  ];
+
   return {
-    admin: null,
+    admins: [],
     clients: [],
     campuses,
     services,
@@ -387,7 +426,7 @@ function createInitialDb(): DatabaseState {
     nextBagSeq: 30,
     orders,
     incidents,
-    notifications: [],
+    notifications,
   };
 }
 
@@ -400,6 +439,19 @@ function loadDb(): DatabaseState {
       const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && Array.isArray(parsed.campuses) && Array.isArray(parsed.orders)) {
+        if (!Array.isArray(parsed.admins)) {
+          parsed.admins = [];
+        }
+        if (parsed.admin && parsed.admins.length === 0) {
+          parsed.admins.push({
+            id: 'adm-migrated',
+            username: parsed.admin.email?.split('@')[0] || 'admin',
+            email: parsed.admin.email,
+            name: parsed.admin.name,
+            passwordHash: parsed.admin.passwordHash,
+            createdAt: parsed.admin.createdAt,
+          });
+        }
         return parsed;
       }
     }
@@ -433,6 +485,8 @@ function broadcastEvent(payload: {
   folio?: string;
   orderId?: string;
   status?: string;
+  title?: string;
+  message?: string;
 }) {
   const data = `event: update\ndata: ${JSON.stringify({
     ...payload,
@@ -473,6 +527,7 @@ function createNotification(params: {
     title: params.title,
     message: params.message,
     whatsappUrl,
+    read: false,
     createdAt: new Date().toISOString(),
   };
 
@@ -481,7 +536,16 @@ function createNotification(params: {
     db.notifications = db.notifications.slice(0, 200);
   }
   saveDb(db);
-  broadcastEvent({type: 'notifications', folio: params.folio, orderId: params.orderId});
+  void supabaseStore.upsertNotification(entry);
+  broadcastEvent({
+    type: 'notifications',
+    folio: params.folio,
+    orderId: params.orderId,
+    title: params.title,
+    message: params.folio
+      ? `Actualización en el folio ${params.folio}: ${params.title}`
+      : params.title,
+  });
   return entry;
 }
 
@@ -543,6 +607,7 @@ function buildPublicConfig() {
     services: db.services.filter((s) => s.active),
     shippingFee: db.shippingFee,
     availableLockersByCampus,
+    supabaseConnected: isSupabaseConfigured(),
   };
 }
 
@@ -583,9 +648,9 @@ const VALID_INCIDENT_STATUSES: IncidentStatus[] = [
 
 async function startServer() {
   const app = express();
-  app.use(express.json({limit: '5mb'}));
+  app.use(express.json({limit: '6mb'}));
 
-  // Real-time SSE endpoint (broadcasts non-PII invalidation notices only)
+  // Real-time SSE endpoint (non-PII notifications & state invalidations)
   app.get('/api/events', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -614,14 +679,16 @@ async function startServer() {
     res.json(buildPublicConfig());
   });
 
-  // Public sanitized order tracking by folio
+  // Sanitized order tracking by folio or bag code
   app.get('/api/orders/track/:folio', (req, res) => {
     const folio = sanitizeText(req.params.folio, 32).toUpperCase();
     const order = db.orders.find(
       (o) => o.folio.toUpperCase() === folio || o.bagCode.toUpperCase() === folio,
     );
     if (!order) {
-      res.status(404).json({error: 'No encontramos un pedido con ese folio o código de bolsa.'});
+      res.status(404).json({
+        error: 'No encontramos un pedido con ese folio o código de bolsa.',
+      });
       return;
     }
     res.json({
@@ -642,7 +709,7 @@ async function startServer() {
   });
 
   // --- CLIENT AUTH ---
-  app.post('/api/auth/client/register', (req, res) => {
+  app.post('/api/auth/client/register', async (req, res) => {
     const name = sanitizeText(req.body?.name, 80);
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
     const whatsappNormalized = normalizePhone(whatsapp);
@@ -654,7 +721,9 @@ async function startServer() {
       return;
     }
     if (whatsappNormalized.length < 10) {
-      res.status(400).json({error: 'Ingresa un número de WhatsApp válido de al menos 10 dígitos.'});
+      res.status(400).json({
+        error: 'Ingresa un número de WhatsApp válido de al menos 10 dígitos.',
+      });
       return;
     }
     if (password.length < 6) {
@@ -666,22 +735,27 @@ async function startServer() {
       return;
     }
 
-    const existing = db.clients.find(
+    const existingLocal = db.clients.find(
       (c) => c.whatsappNormalized === whatsappNormalized && c.passwordHash,
     );
-    if (existing) {
+    const existingSb = isSupabaseConfigured()
+      ? await supabaseStore.findClientByWhatsapp(whatsappNormalized)
+      : null;
+
+    if (existingLocal || existingSb) {
       res.status(409).json({
         error: 'Ya existe una cuenta registrada con ese WhatsApp. Inicia sesión.',
       });
       return;
     }
 
+    const passwordHash = hashPassword(password);
     const client: StoredClient = {
       id: `cli-${crypto.randomUUID().slice(0, 10)}`,
       name,
       whatsapp,
       whatsappNormalized,
-      passwordHash: hashPassword(password),
+      passwordHash,
       address,
       userType: 'general',
       createdAt: new Date().toISOString(),
@@ -689,11 +763,24 @@ async function startServer() {
     db.clients.push(client);
     saveDb(db);
 
+    if (isSupabaseConfigured()) {
+      await supabaseStore.upsertClient({
+        id: client.id,
+        name: client.name,
+        whatsapp: client.whatsapp,
+        whatsapp_normalized: client.whatsappNormalized,
+        password_hash: passwordHash,
+        address: client.address,
+        user_type: 'general',
+        created_at: client.createdAt,
+      });
+    }
+
     const token = signToken({sub: client.id, role: 'client', name: client.name});
     res.status(201).json({token, user: buildAuthUserFromClient(client)});
   });
 
-  app.post('/api/auth/client/login', (req, res) => {
+  app.post('/api/auth/client/login', async (req, res) => {
     const whatsappNormalized = normalizePhone(req.body?.whatsapp || '');
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -702,9 +789,28 @@ async function startServer() {
       return;
     }
 
-    const client = db.clients.find(
+    let client = db.clients.find(
       (c) => c.whatsappNormalized === whatsappNormalized && c.passwordHash,
     );
+
+    if (!client && isSupabaseConfigured()) {
+      const sbClient = await supabaseStore.findClientByWhatsapp(whatsappNormalized);
+      if (sbClient) {
+        client = {
+          id: sbClient.id,
+          name: sbClient.name,
+          whatsapp: sbClient.whatsapp,
+          whatsappNormalized: sbClient.whatsapp_normalized,
+          passwordHash: sbClient.password_hash,
+          address: sbClient.address,
+          userType: sbClient.user_type || 'general',
+          createdAt: sbClient.created_at,
+        };
+        db.clients.push(client);
+        saveDb(db);
+      }
+    }
+
     if (!client || !client.passwordHash || !verifyPassword(password, client.passwordHash)) {
       res.status(401).json({error: 'WhatsApp o contraseña incorrectos.'});
       return;
@@ -714,58 +820,31 @@ async function startServer() {
     res.json({token, user: buildAuthUserFromClient(client)});
   });
 
-  // University Community Fast QR Onboarding
-  app.post('/api/auth/client/campus', (req, res) => {
-    const campusCode = sanitizeText(req.body?.campusCode, 60).toUpperCase();
-    const name = sanitizeText(req.body?.name, 80) || 'Estudiante Universitario';
+  // Update authenticated client profile
+  app.patch('/api/client/profile', requireAuth, async (req: AuthedRequest, res) => {
+    const name = sanitizeText(req.body?.name, 80);
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
-    const whatsappNormalized = normalizePhone(whatsapp);
+    const address = sanitizeText(req.body?.address, 220);
 
-    const campus = db.campuses.find(
-      (c) =>
-        c.active &&
-        (c.code.toUpperCase() === campusCode ||
-          c.id.toUpperCase() === campusCode ||
-          c.name.toUpperCase() === campusCode),
-    );
-    if (!campus) {
-      res.status(404).json({
-        error: 'Código QR de campus no reconocido. Verifica o selecciona una sede activa.',
+    if (req.auth?.role === 'admin') {
+      res.json({
+        user: {
+          id: req.auth.sub,
+          role: 'admin',
+          name: name || req.auth.name,
+          username: req.auth.username,
+          whatsapp,
+          address,
+        } satisfies AuthUser,
       });
       return;
     }
 
-    const client: StoredClient = {
-      id: `uni-${crypto.randomUUID().slice(0, 10)}`,
-      name,
-      whatsapp,
-      whatsappNormalized,
-      address: campus.address,
-      userType: 'university',
-      campusId: campus.id,
-      createdAt: new Date().toISOString(),
-    };
-    db.clients.push(client);
-    saveDb(db);
-
-    const token = signToken({sub: client.id, role: 'client', name: client.name});
-    res.status(201).json({token, user: buildAuthUserFromClient(client), campus});
-  });
-
-  // Update authenticated client profile
-  app.patch('/api/client/profile', requireAuth, (req: AuthedRequest, res) => {
-    if (req.auth?.role !== 'client') {
-      res.status(403).json({error: 'Solo clientes pueden actualizar su perfil.'});
-      return;
-    }
     const client = db.clients.find((c) => c.id === req.auth?.sub);
     if (!client) {
       res.status(404).json({error: 'Perfil no encontrado.'});
       return;
     }
-    const name = sanitizeText(req.body?.name, 80);
-    const whatsapp = sanitizeText(req.body?.whatsapp, 25);
-    const address = sanitizeText(req.body?.address, 220);
 
     if (name.length >= 2) client.name = name;
     if (whatsapp) {
@@ -775,36 +854,67 @@ async function startServer() {
     if (address) client.address = address;
 
     saveDb(db);
+    if (isSupabaseConfigured() && client.passwordHash) {
+      await supabaseStore.upsertClient({
+        id: client.id,
+        name: client.name,
+        whatsapp: client.whatsapp,
+        whatsapp_normalized: client.whatsappNormalized,
+        password_hash: client.passwordHash,
+        address: client.address,
+        user_type: client.userType,
+        created_at: client.createdAt,
+      });
+    }
+
     res.json({user: buildAuthUserFromClient(client)});
   });
 
-  // --- ADMIN AUTH ---
-  app.get('/api/auth/admin/status', (_req, res) => {
+  // --- ADMIN AUTH (Supabase kicksxr_admins + local fallback + env override) ---
+  app.get('/api/auth/admin/status', async (_req, res) => {
     const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
     const usesEnvPasscode = envPasscode.length > 0;
-    const configured = usesEnvPasscode || Boolean(db.admin);
+    const sbConnected = isSupabaseConfigured();
+    let hasSbAdmins = false;
+    let firstUsername = db.admins[0]?.username || 'haroldo90';
+
+    if (sbConnected) {
+      const rows = await supabaseStore.listAdmins();
+      if (rows && rows.length > 0) {
+        hasSbAdmins = true;
+        firstUsername = rows[0].username;
+      }
+    }
+
+    const configured = usesEnvPasscode || hasSbAdmins || db.admins.length > 0;
     res.json({
       configured,
       usesEnvPasscode,
-      adminEmailHint: db.admin?.email || 'admin@kicksxr.com',
+      supabaseConnected: sbConnected,
+      adminUsernameHint: firstUsername,
     });
   });
 
-  app.post('/api/auth/admin/setup', (req, res) => {
+  app.post('/api/auth/admin/setup', async (req, res) => {
     const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
-    if (envPasscode.length > 0 || db.admin) {
+    const sbAdmins = isSupabaseConfigured()
+      ? await supabaseStore.listAdmins()
+      : null;
+
+    if (envPasscode.length > 0 || db.admins.length > 0 || (sbAdmins && sbAdmins.length > 0)) {
       res.status(409).json({
-        error: 'El acceso de administrador ya está configurado. Inicia sesión.',
+        error: 'El acceso de administrador ya está configurado. Inicia sesión con tu usuario y contraseña.',
       });
       return;
     }
 
+    const username = sanitizeText(req.body?.username, 60).toLowerCase();
     const email = sanitizeText(req.body?.email, 120).toLowerCase();
-    const name = sanitizeText(req.body?.name, 80) || 'Administrador KicksXR';
+    const name = sanitizeText(req.body?.name, 80) || 'Harold Anguiano';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
-    if (!email || !email.includes('@')) {
-      res.status(400).json({error: 'Ingresa un correo electrónico válido.'});
+    if (username.length < 3) {
+      res.status(400).json({error: 'Ingresa un nombre de usuario (ej. haroldo90).'});
       return;
     }
     if (password.length < 6) {
@@ -812,28 +922,54 @@ async function startServer() {
       return;
     }
 
-    db.admin = {
-      email,
+    const newAdmin: StoredAdmin = {
+      id: `adm-${crypto.randomUUID().slice(0, 8)}`,
+      username,
+      email: email || `${username}@kicksxr.com`,
       name,
       passwordHash: hashPassword(password),
       createdAt: new Date().toISOString(),
     };
+
+    db.admins.push(newAdmin);
     saveDb(db);
 
-    const token = signToken({sub: 'admin-root', role: 'admin', name: db.admin.name});
+    if (isSupabaseConfigured()) {
+      await supabaseStore.upsertAdmin({
+        id: newAdmin.id,
+        name: newAdmin.name,
+        username: newAdmin.username,
+        email: newAdmin.email,
+        role: 'admin',
+        password_hash: newAdmin.passwordHash,
+        active: true,
+        created_at: newAdmin.createdAt,
+      });
+    }
+
+    const token = signToken({
+      sub: newAdmin.id,
+      role: 'admin',
+      name: newAdmin.name,
+      username: newAdmin.username,
+    });
     res.status(201).json({
       token,
       user: {
-        id: 'admin-root',
+        id: newAdmin.id,
         role: 'admin',
-        name: db.admin.name,
-        email: db.admin.email,
+        name: newAdmin.name,
+        username: newAdmin.username,
+        email: newAdmin.email,
       } satisfies AuthUser,
     });
   });
 
-  app.post('/api/auth/admin/login', (req, res) => {
-    const email = sanitizeText(req.body?.email, 120).toLowerCase();
+  app.post('/api/auth/admin/login', async (req, res) => {
+    const identifier = sanitizeText(
+      req.body?.username || req.body?.email,
+      120,
+    ).toLowerCase();
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
 
@@ -842,57 +978,100 @@ async function startServer() {
       return;
     }
 
-    if (envPasscode.length > 0) {
-      if (!constantTimeCompare(password, envPasscode)) {
-        res.status(401).json({error: 'Credenciales de administrador inválidas.'});
-        return;
-      }
-      const adminEmail = email || db.admin?.email || 'admin@kicksxr.com';
-      const adminName = db.admin?.name || 'Administrador KicksXR';
-      const token = signToken({sub: 'admin-root', role: 'admin', name: adminName});
+    // 1) Server-side ADMIN_PASSCODE override if configured in Secrets
+    if (envPasscode.length > 0 && constantTimeCompare(password, envPasscode)) {
+      const adminUsername = identifier || db.admins[0]?.username || 'haroldo90';
+      const adminName =
+        adminUsername === 'haroldo90'
+          ? 'Harold Anguiano'
+          : db.admins.find((a) => a.username === adminUsername)?.name ||
+            'Administrador KicksXR';
+      const token = signToken({
+        sub: `adm-${adminUsername}`,
+        role: 'admin',
+        name: adminName,
+        username: adminUsername,
+      });
       res.json({
         token,
         user: {
-          id: 'admin-root',
+          id: `adm-${adminUsername}`,
           role: 'admin',
           name: adminName,
-          email: adminEmail,
+          username: adminUsername,
+          email: `${adminUsername}@kicksxr.com`,
         } satisfies AuthUser,
       });
       return;
     }
 
-    if (!db.admin) {
-      res.status(400).json({
-        error: 'Primero configura la contraseña inicial de administrador.',
+    // 2) Verify against Supabase kicksxr_admins if configured
+    if (isSupabaseConfigured() && identifier) {
+      const sbAdmin = await supabaseStore.findAdminByIdentifier(identifier);
+      if (sbAdmin && verifyPassword(password, sbAdmin.password_hash)) {
+        const token = signToken({
+          sub: sbAdmin.id,
+          role: 'admin',
+          name: sbAdmin.name,
+          username: sbAdmin.username,
+        });
+        res.json({
+          token,
+          user: {
+            id: sbAdmin.id,
+            role: 'admin',
+            name: sbAdmin.name,
+            username: sbAdmin.username,
+            email: sbAdmin.email || undefined,
+          } satisfies AuthUser,
+        });
+        return;
+      }
+    }
+
+    // 3) Verify against local server-side admins store
+    const localAdmin = db.admins.find(
+      (a) =>
+        !identifier ||
+        a.username.toLowerCase() === identifier ||
+        (a.email && a.email.toLowerCase() === identifier),
+    );
+    if (localAdmin && verifyPassword(password, localAdmin.passwordHash)) {
+      const token = signToken({
+        sub: localAdmin.id,
+        role: 'admin',
+        name: localAdmin.name,
+        username: localAdmin.username,
+      });
+      res.json({
+        token,
+        user: {
+          id: localAdmin.id,
+          role: 'admin',
+          name: localAdmin.name,
+          username: localAdmin.username,
+          email: localAdmin.email,
+        } satisfies AuthUser,
       });
       return;
     }
 
-    if (email && email !== db.admin.email) {
-      res.status(401).json({error: 'Correo o contraseña incorrectos.'});
+    if (db.admins.length === 0 && !isSupabaseConfigured() && envPasscode.length === 0) {
+      res.status(400).json({
+        error: 'Primero configura tu usuario y contraseña de administrador.',
+      });
       return;
     }
 
-    if (!verifyPassword(password, db.admin.passwordHash)) {
-      res.status(401).json({error: 'Correo o contraseña incorrectos.'});
-      return;
-    }
-
-    const token = signToken({sub: 'admin-root', role: 'admin', name: db.admin.name});
-    res.json({
-      token,
-      user: {
-        id: 'admin-root',
-        role: 'admin',
-        name: db.admin.name,
-        email: db.admin.email,
-      } satisfies AuthUser,
-    });
+    res.status(401).json({error: 'Usuario o contraseña incorrectos.'});
   });
 
-  // --- CLIENT ORDERS ---
+  // --- CLIENT ORDERS & NOTIFICATIONS (also accessible by Admin in Client View) ---
   app.get('/api/orders/mine', requireAuth, (req: AuthedRequest, res) => {
+    if (req.auth?.role === 'admin') {
+      res.json({orders: db.orders, notifications: db.notifications.slice(0, 60)});
+      return;
+    }
     const client = db.clients.find((c) => c.id === req.auth?.sub);
     const mine = db.orders.filter(
       (o) =>
@@ -905,6 +1084,67 @@ async function startServer() {
       (n) => n.orderId && myOrderIds.has(n.orderId),
     );
     res.json({orders: mine, notifications});
+  });
+
+  app.patch('/api/notifications/:id/read', requireAuth, (req: AuthedRequest, res) => {
+    const ntf = db.notifications.find((n) => n.id === req.params.id);
+    if (!ntf) {
+      res.status(404).json({error: 'Notificación no encontrada.'});
+      return;
+    }
+    if (req.auth?.role !== 'admin') {
+      const client = db.clients.find((c) => c.id === req.auth?.sub);
+      const ownsOrder = db.orders.some(
+        (o) =>
+          o.id === ntf.orderId &&
+          (o.clientId === req.auth?.sub ||
+            (client?.whatsappNormalized &&
+              normalizePhone(o.clientWhatsapp) === client.whatsappNormalized)),
+      );
+      if (!ownsOrder) {
+        res.status(403).json({error: 'No tienes permiso para actualizar esta notificación.'});
+        return;
+      }
+    }
+    ntf.read = true;
+    saveDb(db);
+    void supabaseStore.upsertNotification(ntf);
+    res.json({ok: true});
+  });
+
+  app.post('/api/notifications/read-all', requireAuth, (req: AuthedRequest, res) => {
+    const updated: NotificationLog[] = [];
+    if (req.auth?.role === 'admin') {
+      db.notifications.forEach((n) => {
+        if (!n.read) {
+          n.read = true;
+          updated.push(n);
+        }
+      });
+    } else {
+      const client = db.clients.find((c) => c.id === req.auth?.sub);
+      const myOrderIds = new Set(
+        db.orders
+          .filter(
+            (o) =>
+              o.clientId === req.auth?.sub ||
+              (client?.whatsappNormalized &&
+                normalizePhone(o.clientWhatsapp) === client.whatsappNormalized),
+          )
+          .map((o) => o.id),
+      );
+      db.notifications.forEach((n) => {
+        if (n.orderId && myOrderIds.has(n.orderId) && !n.read) {
+          n.read = true;
+          updated.push(n);
+        }
+      });
+    }
+    saveDb(db);
+    updated.forEach((n) => {
+      void supabaseStore.upsertNotification(n);
+    });
+    res.json({ok: true});
   });
 
   app.post('/api/orders', requireAuth, (req: AuthedRequest, res) => {
@@ -960,9 +1200,9 @@ async function startServer() {
       return;
     }
     if (photoDataUrl) {
-      if (photoDataUrl.length > 3_800_000 || !IMAGE_DATA_URL_REGEX.test(photoDataUrl)) {
+      if (photoDataUrl.length > 4_500_000 || !IMAGE_DATA_URL_REGEX.test(photoDataUrl)) {
         res.status(400).json({
-          error: 'Formato de fotografía inválido. Usa JPG, PNG o WebP menor a 2.5MB.',
+          error: 'Formato de fotografía inválido. Usa JPG, PNG o WebP menor a 3MB.',
         });
         return;
       }
@@ -986,7 +1226,6 @@ async function startServer() {
       if (deliveryAddress) client.address = deliveryAddress;
     }
 
-    // Reserve an available locker at campus if any
     const freeLocker = db.lockers.find(
       (l) => l.campusId === campus.id && l.status === 'disponible',
     );
@@ -999,7 +1238,7 @@ async function startServer() {
       clientId: req.auth!.sub,
       clientName,
       clientWhatsapp,
-      userType: client?.userType || 'general',
+      userType: 'general',
       campusId: campus.id,
       campusName: campus.name,
       pairs,
@@ -1032,6 +1271,7 @@ async function startServer() {
 
     db.orders.unshift(order);
     saveDb(db);
+    void supabaseStore.upsertOrder(order);
 
     createNotification({
       orderId: order.id,
@@ -1039,14 +1279,21 @@ async function startServer() {
       recipientWhatsapp: order.clientWhatsapp,
       recipientName: order.clientName,
       title: `Pedido ${order.folio} confirmado`,
-      message: `Hola ${order.clientName}, tu pedido Kicks XR ${order.folio} fue confirmado. Código de bolsa asignado: ${order.bagCode}. Total: $${order.totalAmount} MXN (${order.paymentStatus}).`,
+      message: `Hola ${order.clientName}, tu pedido Kicks XR ${order.folio} fue confirmado. Código de bolsa: ${order.bagCode}. Total: $${order.totalAmount} MXN (${order.paymentStatus}).`,
     });
 
-    broadcastEvent({type: 'orders', folio: order.folio, orderId: order.id, status: order.status});
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: order.status,
+      title: `Nuevo pedido ${order.folio}`,
+      message: `Bolsa ${order.bagCode} asignada en ${order.campusName}.`,
+    });
     res.status(201).json({order});
   });
 
-  // Client reports physical bag drop-off (Staff or Self-service Locker)
+  // Client reports physical bag drop-off
   app.post('/api/orders/:id/deposit', requireAuth, (req: AuthedRequest, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) {
@@ -1075,6 +1322,7 @@ async function startServer() {
         targetLocker.status = 'ocupado';
         targetLocker.currentBagCode = order.bagCode;
         lockerCode = targetLocker.code;
+        void supabaseStore.upsertLocker(targetLocker);
       }
     }
 
@@ -1093,6 +1341,7 @@ async function startServer() {
     });
 
     saveDb(db);
+    void supabaseStore.upsertOrder(order);
 
     createNotification({
       orderId: order.id,
@@ -1103,7 +1352,14 @@ async function startServer() {
       message: `Kicks XR: Registramos el depósito de tu bolsa ${order.bagCode} (${order.folio}) en ${order.campusName}. Te avisaremos cuando llegue a taller.`,
     });
 
-    broadcastEvent({type: 'orders', folio: order.folio, orderId: order.id, status: order.status});
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: order.status,
+      title: `Depósito reportado · ${order.folio}`,
+      message: `Bolsa ${order.bagCode} lista para recolección en ${order.campusName}.`,
+    });
     res.json({order});
   });
 
@@ -1133,7 +1389,7 @@ async function startServer() {
       metrics,
       orders,
       incidents: db.incidents,
-      notifications: db.notifications.slice(0, 40),
+      notifications: db.notifications.slice(0, 60),
       config: {
         campuses: db.campuses,
         services: db.services,
@@ -1142,18 +1398,20 @@ async function startServer() {
         nextOrderSeq: db.nextOrderSeq,
         nextBagSeq: db.nextBagSeq,
         availableLockersByCampus: buildPublicConfig().availableLockersByCampus,
+        supabaseConnected: isSupabaseConfigured(),
       },
     });
   });
 
-  // Admin Module 2: Verify bags & confirm reception (bulk or individual)
   app.post('/api/admin/collections/confirm', requireAdmin, (req, res) => {
     const bagCodes = Array.isArray(req.body?.bagCodes)
       ? (req.body.bagCodes as unknown[]).map((c) => sanitizeText(c, 20).toUpperCase())
       : [];
 
     if (bagCodes.length === 0) {
-      res.status(400).json({error: 'Selecciona al menos una bolsa verificada para confirmar recepción.'});
+      res.status(400).json({
+        error: 'Selecciona al menos una bolsa verificada para confirmar recepción.',
+      });
       return;
     }
 
@@ -1179,14 +1437,15 @@ async function startServer() {
       }
       order.updatedAt = now;
 
-      // Free the locker once bag is collected
       const locker = db.lockers.find((l) => l.currentBagCode === order.bagCode);
       if (locker) {
         locker.status = 'disponible';
         locker.currentBagCode = undefined;
+        void supabaseStore.upsertLocker(locker);
       }
 
       updatedOrders.push(order);
+      void supabaseStore.upsertOrder(order);
 
       createNotification({
         orderId: order.id,
@@ -1199,12 +1458,15 @@ async function startServer() {
     }
 
     saveDb(db);
-    broadcastEvent({type: 'orders'});
+    broadcastEvent({
+      type: 'orders',
+      title: 'Recepción confirmada en taller',
+      message: `${updatedOrders.length} bolsa(s) actualizadas a "Recibido por KicksXR".`,
+    });
     broadcastEvent({type: 'config'});
     res.json({updatedCount: updatedOrders.length, orders: updatedOrders});
   });
 
-  // Admin Module 3: Update order status, payment status, or link physical bag code
   app.patch('/api/admin/orders/:id', requireAdmin, (req, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) {
@@ -1275,11 +1537,18 @@ async function startServer() {
 
     order.updatedAt = now;
     saveDb(db);
-    broadcastEvent({type: 'orders', folio: order.folio, orderId: order.id, status: order.status});
+    void supabaseStore.upsertOrder(order);
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: order.status,
+      title: `Estatus actualizado · ${order.folio}`,
+      message: `El pedido ${order.folio} ahora está en "${order.status}" (${order.paymentStatus}).`,
+    });
     res.json({order});
   });
 
-  // Admin Module 4: Confirm delivery / return closure by folio
   app.post('/api/admin/orders/deliver', requireAdmin, (req, res) => {
     const folio = sanitizeText(req.body?.folio, 32).toUpperCase();
     const deliveryMethod = req.body?.deliveryMethod as DeliveryMethod;
@@ -1294,7 +1563,9 @@ async function startServer() {
       (o) => o.folio.toUpperCase() === folio || o.bagCode.toUpperCase() === folio,
     );
     if (!order) {
-      res.status(404).json({error: `No se encontró ningún pedido con el folio ${folio}.`});
+      res.status(404).json({
+        error: `No se encontró ningún pedido con el folio ${folio}.`,
+      });
       return;
     }
 
@@ -1318,14 +1589,15 @@ async function startServer() {
           : `Recogida en punto (${order.campusName}) confirmada y cerrada.`,
     });
 
-    // Ensure locker released
     const locker = db.lockers.find((l) => l.currentBagCode === order.bagCode);
     if (locker) {
       locker.status = 'disponible';
       locker.currentBagCode = undefined;
+      void supabaseStore.upsertLocker(locker);
     }
 
     saveDb(db);
+    void supabaseStore.upsertOrder(order);
 
     createNotification({
       orderId: order.id,
@@ -1336,11 +1608,17 @@ async function startServer() {
       message: `¡Gracias por confiar en Kicks XR, ${order.clientName}! Tu pedido ${order.folio} fue marcado como Entregado. ¡Disfruta tus tenis como nuevos!`,
     });
 
-    broadcastEvent({type: 'orders', folio: order.folio, orderId: order.id, status: order.status});
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: order.status,
+      title: `Entrega confirmada · ${order.folio}`,
+      message: `El folio ${order.folio} fue entregado y cerrado exitosamente.`,
+    });
     res.json({order});
   });
 
-  // Admin Module 5: Incidents CRUD
   app.post('/api/admin/incidents', requireAdmin, (req, res) => {
     const type = req.body?.type as IncidentType;
     const bagCode = sanitizeText(req.body?.bagCode, 25).toUpperCase();
@@ -1383,6 +1661,7 @@ async function startServer() {
 
     db.incidents.unshift(incident);
     saveDb(db);
+    void supabaseStore.upsertIncident(incident);
 
     if (linkedOrder) {
       createNotification({
@@ -1395,7 +1674,12 @@ async function startServer() {
       });
     }
 
-    broadcastEvent({type: 'incidents', folio: incident.folio});
+    broadcastEvent({
+      type: 'incidents',
+      folio: incident.folio,
+      title: `Incidencia: ${type}`,
+      message: `Bolsa ${bagCode} reportada en ${campus.name}.`,
+    });
     res.status(201).json({incident});
   });
 
@@ -1421,19 +1705,24 @@ async function startServer() {
     }
     incident.updatedAt = new Date().toISOString();
     saveDb(db);
+    void supabaseStore.upsertIncident(incident);
 
-    broadcastEvent({type: 'incidents', folio: incident.folio});
+    broadcastEvent({
+      type: 'incidents',
+      folio: incident.folio,
+      title: `Incidencia ${incident.status}`,
+      message: `Bolsa ${incident.bagCode} actualizada a ${incident.status}.`,
+    });
     res.json({incident});
   });
 
-  // Admin Module 6: Configuration (Campuses, Services, Lockers, Shipping Fee)
   app.post('/api/admin/config/campuses', requireAdmin, (req, res) => {
     const name = sanitizeText(req.body?.name, 80);
     const address = sanitizeText(req.body?.address, 200);
-    const type = req.body?.type === 'point' ? 'point' : 'university';
+    const type = req.body?.type === 'university' ? 'university' : 'point';
 
     if (name.length < 2) {
-      res.status(400).json({error: 'Ingresa el nombre de la sede o campus.'});
+      res.status(400).json({error: 'Ingresa el nombre de la sede o punto.'});
       return;
     }
 
@@ -1442,7 +1731,7 @@ async function startServer() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 28);
-    const id = `${type === 'university' ? 'campus' : 'punto'}-${slug}-${Date.now().toString().slice(-3)}`;
+    const id = `punto-${slug}-${Date.now().toString().slice(-3)}`;
     const code = `KXR-${slug.toUpperCase().slice(0, 14)}`;
 
     const campus: Campus = {
@@ -1455,6 +1744,7 @@ async function startServer() {
     };
     db.campuses.push(campus);
     saveDb(db);
+    void supabaseStore.upsertCampus(campus);
     broadcastEvent({type: 'config'});
     res.status(201).json({campus});
   });
@@ -1471,6 +1761,7 @@ async function startServer() {
     if (name) campus.name = name;
     if (address) campus.address = address;
     saveDb(db);
+    void supabaseStore.upsertCampus(campus);
     broadcastEvent({type: 'config'});
     res.json({campus});
   });
@@ -1496,6 +1787,7 @@ async function startServer() {
     };
     db.services.push(service);
     saveDb(db);
+    void supabaseStore.upsertService(service);
     broadcastEvent({type: 'config'});
     res.status(201).json({service});
   });
@@ -1512,6 +1804,7 @@ async function startServer() {
     const name = sanitizeText(req.body?.name, 80);
     if (name) service.name = name;
     saveDb(db);
+    void supabaseStore.upsertService(service);
     broadcastEvent({type: 'config'});
     res.json({service});
   });
@@ -1535,6 +1828,7 @@ async function startServer() {
     };
     db.lockers.push(locker);
     saveDb(db);
+    void supabaseStore.upsertLocker(locker);
     broadcastEvent({type: 'config'});
     res.status(201).json({locker});
   });
@@ -1551,6 +1845,7 @@ async function startServer() {
       if (status !== 'ocupado') locker.currentBagCode = undefined;
     }
     saveDb(db);
+    void supabaseStore.upsertLocker(locker);
     broadcastEvent({type: 'config'});
     res.json({locker});
   });
@@ -1565,13 +1860,65 @@ async function startServer() {
     res.json({shippingFee: db.shippingFee});
   });
 
+  const httpServer = http.createServer(app);
+
   // Vite middleware in development, static dist in production
   if (process.env.NODE_ENV !== 'production') {
     const {createServer: createViteServer} = await import('vite');
     const vite = await createViteServer({
-      server: {middlewareMode: true},
+      server: {
+        middlewareMode: true,
+        hmr: false,
+        ws: false,
+      },
       appType: 'spa',
     });
+
+    // Prevent Vite 8's default /@vite/client from opening a failing WebSocket to port 24678
+    app.get('/@vite/client', (_req, res) => {
+      res.type('application/javascript; charset=utf-8').send(`
+const sheetsMap = new Map();
+export function updateStyle(id, content) {
+  let style = sheetsMap.get(id);
+  if (!style) {
+    style = document.createElement('style');
+    style.setAttribute('type', 'text/css');
+    style.setAttribute('data-vite-dev-id', id);
+    style.textContent = content;
+    document.head.appendChild(style);
+    sheetsMap.set(id, style);
+  } else {
+    style.textContent = content;
+  }
+}
+export function removeStyle(id) {
+  const style = sheetsMap.get(id);
+  if (style) {
+    document.head.removeChild(style);
+    sheetsMap.delete(id);
+  }
+}
+export function createHotContext() {
+  return {
+    data: {},
+    accept() {},
+    acceptExports() {},
+    dispose() {},
+    prune() {},
+    decline() {},
+    invalidate() {},
+    on() {},
+    off() {},
+    send() {},
+  };
+}
+export function injectQuery(url) {
+  return url;
+}
+export class ErrorOverlay extends HTMLElement {}
+`);
+    });
+
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(__dirname, 'dist');
@@ -1582,7 +1929,7 @@ async function startServer() {
   }
 
   const PORT = Number(process.env.PORT) || 3000;
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Kicks XR server listening on http://0.0.0.0:${PORT}`);
   });
 }

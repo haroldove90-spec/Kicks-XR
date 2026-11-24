@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {ArrowLeft, Lock, Mail, ShieldCheck, User} from 'lucide-react';
+import {ArrowLeft, Lock, ShieldCheck, User} from 'lucide-react';
 import {api, setAuthToken} from '../lib/api';
 import type {AuthUser} from '../types';
 import {BrandLogo} from './BrandLogo';
@@ -15,10 +15,9 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
 }) => {
   const [statusLoading, setStatusLoading] = useState(true);
   const [configured, setConfigured] = useState(true);
-  const [usesEnvPasscode, setUsesEnvPasscode] = useState(false);
 
-  const [name, setName] = useState('Administrador KicksXR');
-  const [email, setEmail] = useState('admin@kicksxr.com');
+  const [name, setName] = useState('Harold Anguiano');
+  const [username, setUsername] = useState('haroldo90');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -32,8 +31,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
       .then((res) => {
         if (!active) return;
         setConfigured(res.configured);
-        setUsesEnvPasscode(res.usesEnvPasscode);
-        if (res.adminEmailHint) setEmail(res.adminEmailHint);
+        if (res.adminUsernameHint) setUsername(res.adminUsernameHint);
       })
       .catch(() => {
         if (active) setError('No se pudo verificar el estado de acceso.');
@@ -58,8 +56,8 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
     setSubmitting(true);
     try {
       const res = configured
-        ? await api.loginAdmin({email, password})
-        : await api.setupAdmin({name, email, password});
+        ? await api.loginAdmin({username, password})
+        : await api.setupAdmin({name, username, password});
       setAuthToken(res.token);
       onAuthenticated(res.user);
     } catch (err) {
@@ -95,13 +93,13 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                 {statusLoading
                   ? 'Verificando acceso...'
                   : configured
-                    ? 'Panel de Administración'
-                    : 'Configurar acceso de Administrador'}
+                    ? 'Acceso Administrador'
+                    : 'Configurar cuenta Administrador'}
               </h1>
               <p className="text-sm text-slate-600">
                 {configured
-                  ? 'Ingresa tus credenciales operativas de Kicks XR'
-                  : 'Primer inicio: define el correo y contraseña maestra del panel operativo'}
+                  ? 'Ingresa con tu usuario (ej. haroldo90 o admin_1) y contraseña'
+                  : 'Primer inicio: registra tu usuario y contraseña de administrador'}
               </p>
             </div>
           </div>
@@ -123,7 +121,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
               {!configured && (
                 <div>
                   <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                    Nombre del administrador
+                    Nombre completo
                   </label>
                   <div className="relative">
                     <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -132,6 +130,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      placeholder="Harold Anguiano"
                       className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
                     />
                   </div>
@@ -140,16 +139,17 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
 
               <div>
                 <label className="block text-sm font-semibold text-[#000831] mb-1.5">
-                  Correo institucional
+                  Usuario o correo
                 </label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
-                    type="email"
-                    required={!usesEnvPasscode}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@kicksxr.com"
+                    type="text"
+                    required
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="haroldo90 o admin_1"
                     className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
                   />
                 </div>
@@ -165,9 +165,10 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                     type="password"
                     required
                     minLength={6}
+                    autoComplete={configured ? 'current-password' : 'new-password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Ingresa tu contraseña"
                     className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
                   />
                 </div>
@@ -202,7 +203,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                   ? 'Validando...'
                   : configured
                     ? 'Ingresar al Panel'
-                    : 'Guardar contraseña e ingresar'}
+                    : 'Guardar acceso e ingresar'}
               </button>
             </form>
           )}

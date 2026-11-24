@@ -3,24 +3,20 @@ import {AdminApp} from './components/AdminApp';
 import {AdminAuth} from './components/AdminAuth';
 import {ClientApp} from './components/ClientApp';
 import {ClientAuth} from './components/ClientAuth';
+import {
+  NotificationPopupHost,
+  triggerDeviceNotification,
+} from './components/NotificationPopupHost';
 import {OfflineBanner} from './components/OfflineBanner';
-import {PublicTracker} from './components/PublicTracker';
 import {
   RoleSelectorHome,
   type HomeEntryTarget,
 } from './components/RoleSelectorHome';
 import {SplashScreen} from './components/SplashScreen';
 import {api, setAuthToken, subscribeToRealtimeUpdates} from './lib/api';
-import type {AuthUser, PublicConfig} from './types';
+import type {AuthUser, PopupAlert, PublicConfig} from './types';
 
-type AppRoute =
-  | 'home'
-  | 'client-auth-general'
-  | 'client-auth-university'
-  | 'admin-auth'
-  | 'public-track'
-  | 'client-app'
-  | 'admin-app';
+type AppRoute = 'home' | 'client-auth' | 'admin-auth' | 'client-app' | 'admin-app';
 
 const FALLBACK_CONFIG: PublicConfig = {
   campuses: [
@@ -29,7 +25,7 @@ const FALLBACK_CONFIG: PublicConfig = {
       name: 'Campus Central',
       code: 'KXR-CAMPUS-CENTRAL',
       address: 'Av. Universidad 3000, Módulo A, PB',
-      type: 'university',
+      type: 'point',
       active: true,
     },
     {
@@ -37,7 +33,7 @@ const FALLBACK_CONFIG: PublicConfig = {
       name: 'Campus Norte',
       code: 'KXR-CAMPUS-NORTE',
       address: 'Blvd. Tecnológico 450, Edificio C',
-      type: 'university',
+      type: 'point',
       active: true,
     },
     {
@@ -77,6 +73,20 @@ export default function App() {
   const [route, setRoute] = useState<AppRoute>('home');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [config, setConfig] = useState<PublicConfig>(FALLBACK_CONFIG);
+  const [alerts, setAlerts] = useState<PopupAlert[]>([]);
+
+  const pushAlert = useCallback((alert: Omit<PopupAlert, 'id'>) => {
+    const id = `pop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setAlerts((prev) => [{...alert, id}, ...prev].slice(0, 4));
+    triggerDeviceNotification(`Kicks XR · ${alert.title}`, alert.message);
+    window.setTimeout(() => {
+      setAlerts((prev) => prev.filter((a) => a.id !== id));
+    }, 6500);
+  }, []);
+
+  const dismissAlert = useCallback((id: string) => {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -99,35 +109,42 @@ export default function App() {
   }, [loadConfig]);
 
   const handleSelectRole = (target: HomeEntryTarget) => {
-    if (target === 'client') setRoute('client-auth-general');
-    else if (target === 'university') setRoute('client-auth-university');
+    if (target === 'client') setRoute('client-auth');
     else if (target === 'admin') setRoute('admin-auth');
-    else if (target === 'track') setRoute('public-track');
   };
 
   const handleLogout = () => {
     setAuthToken(null);
     setUser(null);
     setRoute('home');
+    pushAlert({
+      title: 'Sesión cerrada',
+      message: 'Has salido de forma segura de Kicks XR.',
+      tone: 'info',
+    });
   };
+
+  const isAdminSession = user?.role === 'admin';
 
   return (
     <>
       <OfflineBanner />
+      <NotificationPopupHost alerts={alerts} onDismiss={dismissAlert} />
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
       {route === 'home' && <RoleSelectorHome onSelect={handleSelectRole} />}
 
-      {(route === 'client-auth-general' ||
-        route === 'client-auth-university') && (
+      {route === 'client-auth' && (
         <ClientAuth
-          initialMode={
-            route === 'client-auth-university' ? 'university' : 'general'
-          }
-          campuses={config.campuses}
           onAuthenticated={(authUser) => {
             setUser(authUser);
             setRoute('client-app');
+            pushAlert({
+              title: `¡Bienvenido, ${authUser.name}!`,
+              message:
+                'Ya puedes registrar tus tenis, tomar fotografía de evidencia y rastrear tus pedidos.',
+              tone: 'success',
+            });
           }}
           onBack={() => setRoute('home')}
         />
@@ -138,13 +155,15 @@ export default function App() {
           onAuthenticated={(authUser) => {
             setUser(authUser);
             setRoute('admin-app');
+            pushAlert({
+              title: `Sesión iniciada · ${authUser.name}`,
+              message:
+                'Acceso activo a Panel Administrador y Vista Cliente desde la cabecera.',
+              tone: 'success',
+            });
           }}
           onBack={() => setRoute('home')}
         />
-      )}
-
-      {route === 'public-track' && (
-        <PublicTracker onBack={() => setRoute('home')} />
       )}
 
       {route === 'client-app' && user && (
@@ -153,11 +172,37 @@ export default function App() {
           config={config}
           onUserUpdated={setUser}
           onLogout={handleLogout}
+          onPushAlert={pushAlert}
+          onSwitchToAdmin={
+            isAdminSession
+              ? () => {
+                  setRoute('admin-app');
+                  pushAlert({
+                    title: 'Modo Administrador',
+                    message: 'Regresaste al panel operativo de Kicks XR.',
+                    tone: 'info',
+                  });
+                }
+              : undefined
+          }
         />
       )}
 
       {route === 'admin-app' && user && (
-        <AdminApp user={user} onLogout={handleLogout} />
+        <AdminApp
+          user={user}
+          onLogout={handleLogout}
+          onPushAlert={pushAlert}
+          onSwitchToClient={() => {
+            setRoute('client-app');
+            pushAlert({
+              title: 'Vista Cliente activa',
+              message:
+                'Estás navegando el flujo de Cliente con tu sesión de Administrador. Pulsa "Panel Admin" para volver.',
+              tone: 'info',
+            });
+          }}
+        />
       )}
     </>
   );

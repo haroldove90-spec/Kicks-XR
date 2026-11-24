@@ -25,6 +25,7 @@ export interface AuthUser {
   id: string;
   role: UserRole;
   name: string;
+  username?: string;
   whatsapp?: string;
   email?: string;
   address?: string;
@@ -139,6 +140,7 @@ export interface NotificationLog {
   title: string;
   message: string;
   whatsappUrl?: string;
+  read?: boolean;
   createdAt: string;
 }
 
@@ -147,6 +149,7 @@ export interface PublicConfig {
   services: ServiceItem[];
   shippingFee: number;
   availableLockersByCampus: Record<string, number>;
+  supabaseConnected?: boolean;
 }
 
 export interface AdminConfig extends PublicConfig {
@@ -164,4 +167,14 @@ export interface AdminDashboardMetrics {
   openIncidents: number;
   revenuePaid: number;
   revenuePending: number;
+}
+
+export interface PopupAlert {
+  id: string;
+  title: string;
+  message: string;
+  tone?: 'success' | 'info' | 'warning' | 'error';
+  actionLabel?: string;
+  onAction?: () => void;
+  whatsappUrl?: string;
 }

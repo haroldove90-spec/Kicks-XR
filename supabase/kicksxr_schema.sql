@@ -1,0 +1,203 @@
+-- ============================================================================
+-- Kicks XR — Esquema completo de base de datos para Supabase
+-- Proyecto: kicksxr@appdesign.appdesignproyectos.com's Project
+-- Project ID: ayzsvsbxhmbjegrzxlds
+-- ============================================================================
+
+-- 1. Administradores (contraseñas cifradas con scrypt salt:hash)
+CREATE TABLE IF NOT EXISTS public.kicksxr_admins (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT UNIQUE,
+  role TEXT NOT NULL DEFAULT 'admin',
+  password_hash TEXT NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Clientes registrados
+CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  whatsapp TEXT NOT NULL,
+  whatsapp_normalized TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  address TEXT NOT NULL,
+  user_type TEXT NOT NULL DEFAULT 'general',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. Sedes y Puntos KicksXR
+CREATE TABLE IF NOT EXISTS public.kicksxr_campuses (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  address TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'point',
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- 4. Catálogo de Servicios
+CREATE TABLE IF NOT EXISTS public.kicksxr_services (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price INTEGER NOT NULL,
+  turnaround_hours INTEGER NOT NULL DEFAULT 24,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- 5. Lockers autoservicio
+CREATE TABLE IF NOT EXISTS public.kicksxr_lockers (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  campus_id TEXT NOT NULL REFERENCES public.kicksxr_campuses(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'disponible',
+  current_bag_code TEXT
+);
+
+-- 6. Pedidos
+CREATE TABLE IF NOT EXISTS public.kicksxr_orders (
+  id TEXT PRIMARY KEY,
+  folio TEXT NOT NULL UNIQUE,
+  bag_code TEXT NOT NULL UNIQUE,
+  order_qr_payload TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  client_name TEXT NOT NULL,
+  client_whatsapp TEXT NOT NULL,
+  user_type TEXT NOT NULL DEFAULT 'general',
+  campus_id TEXT NOT NULL,
+  campus_name TEXT NOT NULL,
+  pairs INTEGER NOT NULL DEFAULT 1,
+  service_id TEXT NOT NULL,
+  service_name TEXT NOT NULL,
+  unit_price INTEGER NOT NULL,
+  shipping_fee INTEGER NOT NULL DEFAULT 0,
+  total_amount INTEGER NOT NULL,
+  photo_data_url TEXT,
+  delivery_method TEXT NOT NULL,
+  delivery_address TEXT,
+  dropoff_method TEXT,
+  assigned_locker_code TEXT,
+  payment_method TEXT NOT NULL,
+  payment_status TEXT NOT NULL DEFAULT 'Pago pendiente',
+  card_last4 TEXT,
+  status TEXT NOT NULL DEFAULT 'Pendiente de depósito',
+  collection_status TEXT NOT NULL DEFAULT 'Pendiente',
+  bag_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  collection_date TEXT NOT NULL,
+  history JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 7. Incidencias operativas
+CREATE TABLE IF NOT EXISTS public.kicksxr_incidents (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  bag_code TEXT NOT NULL,
+  folio TEXT,
+  campus_id TEXT NOT NULL,
+  campus_name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Abierta',
+  resolution_note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 8. Notificaciones (Admin y Cliente)
+CREATE TABLE IF NOT EXISTS public.kicksxr_notifications (
+  id TEXT PRIMARY KEY,
+  order_id TEXT,
+  folio TEXT,
+  recipient_whatsapp TEXT,
+  recipient_name TEXT,
+  channel TEXT NOT NULL DEFAULT 'WhatsApp',
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  whatsapp_url TEXT,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 9. Configuración general y secuencias
+CREATE TABLE IF NOT EXISTS public.kicksxr_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  shipping_fee INTEGER NOT NULL DEFAULT 75,
+  next_order_seq INTEGER NOT NULL DEFAULT 1044,
+  next_bag_seq INTEGER NOT NULL DEFAULT 30
+);
+
+INSERT INTO public.kicksxr_settings (id, shipping_fee, next_order_seq, next_bag_seq)
+VALUES (1, 75, 1044, 30)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- Credenciales iniciales de Administrador (hash scrypt seguro)
+-- Usuarios creados:
+--   1) Nombre: Harold Anguiano | Usuario: haroldo90 | Rol: admin
+--   2) Nombre: Administrador 1 | Usuario: admin_1   | Rol: admin
+-- ============================================================================
+INSERT INTO public.kicksxr_admins (id, name, username, email, role, password_hash, active)
+VALUES
+  (
+    'adm-haroldo90',
+    'Harold Anguiano',
+    'haroldo90',
+    'haroldo90@kicksxr.com',
+    'admin',
+    '0e6cf9ddd5648fa3c0dab0bc6e0318ca:4be5db02406dc8acfaecf05572a32ae7b70bf76c55a0b93d8e1a7c53b6282586d3605ca9e2578d1d625ac830baec338b99fc7ce747d52b1c5cfc41cccd0dc656',
+    TRUE
+  ),
+  (
+    'adm-admin1',
+    'Administrador 1',
+    'admin_1',
+    'admin_1@kicksxr.com',
+    'admin',
+    '5f9024aa6e59695b4157757f5c24711c:a57ef8566d32d1808f69522395e491ff9e2dfe4ac841a5d2719f5d96ca3a229a0dc053bebd9776dfc8627e2e12bf493d6e231fed1f1ff69b583ed6b2ce1583ff',
+    TRUE
+  )
+ON CONFLICT (username) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  password_hash = EXCLUDED.password_hash,
+  active = TRUE;
+
+-- ============================================================================
+-- Datos iniciales de Sedes, Servicios y Lockers
+-- ============================================================================
+INSERT INTO public.kicksxr_campuses (id, name, code, address, type, active)
+VALUES
+  ('campus-central', 'Campus Central', 'KXR-CAMPUS-CENTRAL', 'Av. Universidad 3000, Módulo A, PB', 'point', TRUE),
+  ('campus-norte', 'Campus Norte', 'KXR-CAMPUS-NORTE', 'Blvd. Tecnológico 450, Edificio C', 'point', TRUE),
+  ('punto-roma', 'Punto KicksXR Roma', 'KXR-PUNTO-ROMA', 'Calle Orizaba 112, Col. Roma Norte', 'point', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.kicksxr_services (id, name, description, price, turnaround_hours, active)
+VALUES
+  ('svc-basic', 'Limpieza básica', 'Lavado exterior de suela, media suela y agujetas.', 180, 24, TRUE),
+  ('svc-premium', 'Limpieza premium', 'Limpieza profunda interior y exterior, desodorización UV y acondicionamiento.', 290, 36, TRUE),
+  ('svc-deep', 'Restauración profunda', 'Tratamiento de gamuza/piel, blanqueamiento de suela y revitalización de color.', 420, 48, TRUE),
+  ('svc-protect', 'Limpieza + Impermeabilización', 'Limpieza premium con capa hidrofóbica repelente a agua y manchas.', 350, 36, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.kicksxr_lockers (id, code, campus_id, status)
+VALUES
+  ('lk-1', 'L-01', 'campus-central', 'disponible'),
+  ('lk-2', 'L-02', 'campus-central', 'disponible'),
+  ('lk-3', 'L-03', 'campus-central', 'disponible'),
+  ('lk-4', 'L-04', 'campus-central', 'disponible'),
+  ('lk-5', 'L-05', 'campus-norte', 'disponible'),
+  ('lk-6', 'L-06', 'campus-norte', 'disponible'),
+  ('lk-7', 'L-07', 'punto-roma', 'disponible'),
+  ('lk-8', 'L-08', 'punto-roma', 'disponible')
+ON CONFLICT (id) DO NOTHING;
+
+-- Índices recomendados
+CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_client ON public.kicksxr_orders(client_id);
+CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_status ON public.kicksxr_orders(status);
+CREATE INDEX IF NOT EXISTS idx_kicksxr_notifications_order ON public.kicksxr_notifications(order_id);
+CREATE INDEX IF NOT EXISTS idx_kicksxr_incidents_status ON public.kicksxr_incidents(status);

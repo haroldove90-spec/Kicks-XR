@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   AlertTriangle,
   Banknote,
+  Bell,
   Building2,
   Calendar,
   Check,
@@ -22,7 +23,6 @@ import {
   Sparkles,
   Store,
   Truck,
-  X,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
@@ -39,16 +39,26 @@ import type {
   Order,
   OrderStatus,
   PaymentStatus,
+  PopupAlert,
 } from '../types';
 import {AppShell, type NavModuleItem} from './AppShell';
+import {NotificationsCenter} from './NotificationsCenter';
 import {QRScannerModal} from './QRScannerModal';
 
 interface AdminAppProps {
   user: AuthUser;
   onLogout: () => void;
+  onPushAlert: (alert: Omit<PopupAlert, 'id'>) => void;
+  onSwitchToClient: () => void;
 }
 
-type AdminTab = 'home' | 'collections' | 'orders' | 'incidents' | 'config';
+type AdminTab =
+  | 'home'
+  | 'collections'
+  | 'orders'
+  | 'incidents'
+  | 'notifications'
+  | 'config';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'Depósito reportado',
@@ -64,7 +74,12 @@ const INCIDENT_TYPES: IncidentType[] = [
   'Código duplicado',
 ];
 
-export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
+export const AdminApp: React.FC<AdminAppProps> = ({
+  user,
+  onLogout,
+  onPushAlert,
+  onSwitchToClient,
+}) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('collections');
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(null);
@@ -72,9 +87,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [config, setConfig] = useState<AdminConfig | null>(null);
-  const [feedback, setFeedback] = useState<{type: 'ok' | 'err'; text: string} | null>(
-    null,
-  );
 
   // Module 1: Recolecciones filters
   const [filterCampus, setFilterCampus] = useState('all');
@@ -113,7 +125,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
   const [newCampusName, setNewCampusName] = useState('');
   const [newCampusAddress, setNewCampusAddress] = useState('');
   const [newCampusType, setNewCampusType] = useState<'university' | 'point'>(
-    'university',
+    'point',
   );
   const [qrCampusModal, setQrCampusModal] = useState<Campus | null>(null);
   const [newServiceName, setNewServiceName] = useState('');
@@ -123,11 +135,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
   const [newLockerCode, setNewLockerCode] = useState('');
   const [newLockerCampus, setNewLockerCampus] = useState('');
   const [shippingFeeInput, setShippingFeeInput] = useState('75');
-
-  const notifyBanner = (type: 'ok' | 'err', text: string) => {
-    setFeedback({type, text});
-    window.setTimeout(() => setFeedback(null), 4500);
-  };
 
   const fetchOverview = useCallback(async () => {
     try {
@@ -146,24 +153,35 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       }
       setSelectedOrderId((prev) => prev || data.orders[0]?.id || null);
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'Error cargando datos del panel.',
-      );
+      onPushAlert({
+        title: 'Error de carga',
+        message:
+          err instanceof Error ? err.message : 'Error cargando datos del panel.',
+        tone: 'error',
+      });
     } finally {
       setLoading(false);
     }
-  }, [incCampusId, newLockerCampus]);
+  }, [incCampusId, newLockerCampus, onPushAlert]);
 
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
 
   useEffect(() => {
-    return subscribeToRealtimeUpdates(() => {
+    return subscribeToRealtimeUpdates((ev) => {
       fetchOverview();
+      if (ev.title && ev.type === 'orders') {
+        onPushAlert({
+          title: ev.title,
+          message: ev.message || 'Actualización operativa en tiempo real.',
+          tone: 'info',
+          actionLabel: 'Ver notificaciones',
+          onAction: () => setActiveTab('notifications'),
+        });
+      }
     });
-  }, [fetchOverview]);
+  }, [fetchOverview, onPushAlert]);
 
   const selectedOrder = useMemo(
     () => orders.find((o) => o.id === selectedOrderId) || orders[0] || null,
@@ -181,7 +199,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
     setEditBagCode(selectedOrder.bagCode);
   }, [selectedOrder]);
 
-  // Filtered collections batch
   const collectionBatch = useMemo(() => {
     return orders.filter((o) => {
       if (filterCampus !== 'all' && o.campusId !== filterCampus) return false;
@@ -235,16 +252,26 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       (o) => o.bagCode.toUpperCase() === code || o.folio.toUpperCase() === code,
     );
     if (!match) {
-      notifyBanner(
-        'err',
-        `La bolsa "${code}" no tiene pedido registrado. Puedes reportarla como Bolsa sin pedido.`,
-      );
-      setIncType('Bolsa sin pedido');
-      setIncBagCode(code);
+      onPushAlert({
+        title: `Bolsa ${code} sin pedido`,
+        message:
+          'No existe un pedido vinculado a este código. Puedes registrarla como incidencia.',
+        tone: 'warning',
+        actionLabel: 'Ir a incidencias',
+        onAction: () => {
+          setIncType('Bolsa sin pedido');
+          setIncBagCode(code);
+          setActiveTab('incidents');
+        },
+      });
       return;
     }
     setCheckedBags((prev) => ({...prev, [match.bagCode]: true}));
-    notifyBanner('ok', `Bolsa ${match.bagCode} (${match.folio}) marcada como verificada.`);
+    onPushAlert({
+      title: `Bolsa ${match.bagCode} verificada`,
+      message: `Vinculada al folio ${match.folio} (${match.clientName}).`,
+      tone: 'success',
+    });
   };
 
   const handleConfirmReception = async () => {
@@ -253,10 +280,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       .map(([code]) => code);
 
     if (verifiedCodes.length === 0) {
-      notifyBanner(
-        'err',
-        'Marca al menos una bolsa como verificada antes de confirmar recepción.',
-      );
+      onPushAlert({
+        title: 'Selecciona al menos una bolsa',
+        message: 'Marca las bolsas verificadas antes de confirmar recepción.',
+        tone: 'warning',
+      });
       return;
     }
 
@@ -264,16 +292,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       const res = await api.confirmCollectionBags(verifiedCodes);
       setCheckedBags({});
       setBagScanInput('');
-      notifyBanner(
-        'ok',
-        `Recepción confirmada para ${res.updatedCount} bolsa(s). Clientes actualizados a "Recibido por KicksXR".`,
-      );
+      onPushAlert({
+        title: 'Recepción confirmada',
+        message: `${res.updatedCount} bolsa(s) recibidas en taller. Clientes actualizados a "Recibido por KicksXR".`,
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'Error al confirmar recepción.',
-      );
+      onPushAlert({
+        title: 'Error en recepción',
+        message:
+          err instanceof Error ? err.message : 'Error al confirmar recepción.',
+        tone: 'error',
+      });
     }
   };
 
@@ -301,16 +332,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
         paymentStatus: editPayment,
         bagCode: editBagCode.trim().toUpperCase(),
       });
-      notifyBanner(
-        'ok',
-        `Pedido ${selectedOrder.folio} actualizado a "${editStatus}" (${editPayment}). Cliente notificado.`,
-      );
+      onPushAlert({
+        title: `Pedido ${selectedOrder.folio} actualizado`,
+        message: `Estatus: "${editStatus}" · Pago: ${editPayment}. Notificación enviada al cliente.`,
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'Error al actualizar el pedido.',
-      );
+      onPushAlert({
+        title: 'Error al actualizar pedido',
+        message:
+          err instanceof Error ? err.message : 'Error al actualizar el pedido.',
+        tone: 'error',
+      });
     }
   };
 
@@ -321,7 +355,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       code = code.split('|')[1] || code;
     }
     if (!code) {
-      notifyBanner('err', 'Ingresa o escanea el folio de confirmación.');
+      onPushAlert({
+        title: 'Folio requerido',
+        message: 'Ingresa o escanea el folio de confirmación.',
+        tone: 'warning',
+      });
       return;
     }
     try {
@@ -331,16 +369,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
         markPaid: deliverMarkPaid,
       });
       setDeliverFolio('');
-      notifyBanner(
-        'ok',
-        `Pedido ${res.order.folio} marcado como Entregado. Ciclo cerrado y cliente notificado.`,
-      );
+      onPushAlert({
+        title: `Entrega cerrada · ${res.order.folio}`,
+        message: `El pedido ${res.order.folio} fue marcado como Entregado y el cliente fue notificado.`,
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'Error al confirmar entrega.',
-      );
+      onPushAlert({
+        title: 'Error al confirmar entrega',
+        message:
+          err instanceof Error ? err.message : 'Error al confirmar entrega.',
+        tone: 'error',
+      });
     }
   };
 
@@ -357,13 +398,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       setIncBagCode('');
       setIncFolio('');
       setIncDesc('');
-      notifyBanner('ok', 'Incidencia registrada en bandeja de resolución.');
+      onPushAlert({
+        title: 'Incidencia registrada',
+        message: `Se registró "${incType}" en la bandeja de resolución.`,
+        tone: 'warning',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'No se pudo registrar la incidencia.',
-      );
+      onPushAlert({
+        title: 'Error en incidencia',
+        message:
+          err instanceof Error ? err.message : 'No se pudo registrar la incidencia.',
+        tone: 'error',
+      });
     }
   };
 
@@ -374,13 +421,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
   ) => {
     try {
       await api.updateIncident(id, {status, resolutionNote});
-      notifyBanner('ok', `Incidencia actualizada a ${status}.`);
+      onPushAlert({
+        title: `Incidencia ${status}`,
+        message: 'El seguimiento de la incidencia fue actualizado.',
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner(
-        'err',
-        err instanceof Error ? err.message : 'Error actualizando incidencia.',
-      );
+      onPushAlert({
+        title: 'Error',
+        message:
+          err instanceof Error ? err.message : 'Error actualizando incidencia.',
+        tone: 'error',
+      });
     }
   };
 
@@ -394,10 +447,18 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       });
       setNewCampusName('');
       setNewCampusAddress('');
-      notifyBanner('ok', 'Sede agregada correctamente.');
+      onPushAlert({
+        title: 'Sede creada',
+        message: 'La nueva sede ya está disponible en la app.',
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner('err', err instanceof Error ? err.message : 'Error agregando sede.');
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error agregando sede.',
+        tone: 'error',
+      });
     }
   };
 
@@ -412,10 +473,18 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       });
       setNewServiceName('');
       setNewServiceDesc('');
-      notifyBanner('ok', 'Servicio agregado al catálogo.');
+      onPushAlert({
+        title: 'Servicio agregado',
+        message: 'El catálogo de servicios fue actualizado.',
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner('err', err instanceof Error ? err.message : 'Error agregando servicio.');
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error agregando servicio.',
+        tone: 'error',
+      });
     }
   };
 
@@ -424,22 +493,57 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
     try {
       await api.createLocker({code: newLockerCode, campusId: newLockerCampus});
       setNewLockerCode('');
-      notifyBanner('ok', 'Locker agregado.');
+      onPushAlert({
+        title: 'Locker registrado',
+        message: 'El locker está listo para asignaciones autoservicio.',
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner('err', err instanceof Error ? err.message : 'Error agregando locker.');
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error agregando locker.',
+        tone: 'error',
+      });
     }
   };
 
   const handleSaveShipping = async () => {
     try {
       await api.updateSettings({shippingFee: Number(shippingFeeInput)});
-      notifyBanner('ok', 'Tarifa de envío a domicilio actualizada.');
+      onPushAlert({
+        title: 'Tarifa guardada',
+        message: 'El costo de envío a domicilio fue actualizado.',
+        tone: 'success',
+      });
       fetchOverview();
     } catch (err) {
-      notifyBanner('err', err instanceof Error ? err.message : 'Error guardando tarifa.');
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error guardando tarifa.',
+        tone: 'error',
+      });
     }
   };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? {...n, read: true} : n)),
+    );
+    await api.markNotificationRead(id).catch(() => {});
+  };
+
+  const handleMarkAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({...n, read: true})));
+    await api.markAllNotificationsRead().catch(() => {});
+    onPushAlert({
+      title: 'Notificaciones leídas',
+      message: 'Todas las alertas del panel se marcaron como leídas.',
+      tone: 'info',
+    });
+  };
+
+  const unreadNotifications = notifications.filter((n) => !n.read).length;
 
   const navItems: NavModuleItem[] = [
     {id: 'home', label: 'Inicio', icon: Home},
@@ -463,6 +567,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       icon: AlertTriangle,
       badgeCount: metrics?.openIncidents || 0,
     },
+    {
+      id: 'notifications',
+      label: 'Notificaciones',
+      shortLabel: 'Alertas',
+      icon: Bell,
+      badgeCount: unreadNotifications,
+      hideOnMobileBar: true, // Accessible via Header Bell Icon on mobile to keep bottom bar spacious (5 items)
+    },
     {id: 'config', label: 'Configuración', shortLabel: 'Config.', icon: Settings},
   ];
 
@@ -478,28 +590,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
       navItems={navItems}
       activeNav={activeTab}
       onSelectNav={(id) => setActiveTab(id as AdminTab)}
+      onOpenNotifications={() => setActiveTab('notifications')}
       onLogout={onLogout}
       notifications={notifications}
+      switchRoleAction={{
+        label: 'Vista Cliente',
+        shortLabel: 'Cliente',
+        onSwitch: onSwitchToClient,
+      }}
     >
-      {feedback && (
-        <div
-          className={`mb-5 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold border ${
-            feedback.type === 'ok'
-              ? 'bg-[#E6F7F3] border-[#109173]/30 text-[#000831]'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}
-        >
-          <span>{feedback.text}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="p-1 rounded-lg hover:bg-black/5 cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
@@ -511,7 +610,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
         </div>
       ) : (
         <>
-          {/* MODULE 0: INICIO (Dashboard Principal) */}
+          {/* MODULE 0: INICIO */}
           {activeTab === 'home' && metrics && (
             <div className="space-y-6">
               <div>
@@ -643,16 +742,25 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                 </div>
 
                 <div className="lg:col-span-5 rounded-2xl bg-white border border-slate-200 p-5">
-                  <h2 className="font-display text-base font-bold text-[#000000] mb-4">
-                    Alertas WhatsApp enviadas
-                  </h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-base font-bold text-[#000000]">
+                      Alertas recientes
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('notifications')}
+                      className="text-xs font-bold text-[#109173] hover:underline cursor-pointer"
+                    >
+                      Ver módulo
+                    </button>
+                  </div>
                   {notifications.length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      Cuando cambies el estado de un pedido aparecerán aquí los avisos listos para WhatsApp.
+                      Cuando cambies el estado de un pedido aparecerán aquí las alertas.
                     </p>
                   ) : (
                     <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                      {notifications.slice(0, 8).map((n) => (
+                      {notifications.slice(0, 6).map((n) => (
                         <div
                           key={n.id}
                           className="rounded-xl bg-slate-50 p-3 text-xs space-y-1"
@@ -688,10 +796,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
             </div>
           )}
 
-          {/* MODULE 1 & 2: RECOLECCIONES + VERIFICAR BOLSAS (matches Image 2 Steps 1 & 2) */}
+          {/* MODULE 1 & 2: RECOLECCIONES + VERIFICAR BOLSAS */}
           {activeTab === 'collections' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              {/* STEP 1: 1. Recolecciones */}
               <section className="xl:col-span-7 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
                 <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
@@ -702,11 +809,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   </h2>
                 </div>
 
-                {/* Operational Filters */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[#000831] mb-1">
-                      Sede universitaria / Punto
+                      Sede / Punto
                     </label>
                     <select
                       value={filterCampus}
@@ -757,7 +863,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   </div>
                 </div>
 
-                {/* Batch Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
@@ -833,7 +938,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                 </div>
               </section>
 
-              {/* STEP 2: 2. Verificar bolsas */}
               <section className="xl:col-span-5 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
                 <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
@@ -882,7 +986,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   </form>
                 </div>
 
-                {/* Physical Audit Checklist */}
                 <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
                   {pendingVerificationOrders.length === 0 ? (
                     <div className="p-5 text-center text-sm text-slate-500">
@@ -934,7 +1037,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   )}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -958,10 +1060,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
             </div>
           )}
 
-          {/* MODULE 3 & 4: GESTIONAR PEDIDO + CONFIRMAR DEVOLUCIÓN (matches Image 2 Steps 3 & 4) */}
+          {/* MODULE 3 & 4: GESTIONAR PEDIDO + CONFIRMAR DEVOLUCIÓN */}
           {activeTab === 'orders' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              {/* Order Selector List */}
               <div className="xl:col-span-4 rounded-2xl bg-white border border-slate-200 p-4 space-y-3">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1011,9 +1112,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                 </div>
               </div>
 
-              {/* Right Column: Step 3 (Gestionar pedido) + Step 4 (Confirmar devolución) */}
               <div className="xl:col-span-8 space-y-6">
-                {/* STEP 3: 3. Gestionar pedido */}
                 <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
                   <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
@@ -1026,7 +1125,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
 
                   {selectedOrder ? (
                     <div className="space-y-5">
-                      {/* Cross-referenced Folio / Bag Header (matches Image 2) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 rounded-2xl border border-slate-200 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
                         <div className="p-4 flex items-center gap-4">
                           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#000831] shrink-0">
@@ -1066,7 +1164,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                         </div>
                       </div>
 
-                      {/* Client Metadata + Photo Evidence */}
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                         <div className="md:col-span-7 rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2 text-sm">
                           <div className="flex justify-between gap-2">
@@ -1130,7 +1227,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                         </div>
                       </div>
 
-                      {/* Workflow & Financial Controls (matches Image 2) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="rounded-xl border border-slate-200 p-4">
                           <label className="block text-xs font-bold text-slate-500 mb-2">
@@ -1155,28 +1251,26 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                           <label className="block text-xs font-bold text-slate-500 mb-2">
                             Pago ({selectedOrder.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'})
                           </label>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditPayment((p) =>
-                                  p === 'Pagado' ? 'Pago pendiente' : 'Pagado',
-                                )
-                              }
-                              className={`flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors cursor-pointer ${
-                                editPayment === 'Pagado'
-                                  ? 'bg-[#E6F7F3] text-[#109173] border border-[#109173]/30'
-                                  : 'bg-[#EFEAFF] text-[#5B21B6] border border-[#5B21B6]/25'
-                              }`}
-                            >
-                              {editPayment === 'Pagado' ? (
-                                <CheckCircle2 className="h-4 w-4" />
-                              ) : (
-                                <CreditCard className="h-4 w-4" />
-                              )}
-                              <span>{editPayment}</span>
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditPayment((p) =>
+                                p === 'Pagado' ? 'Pago pendiente' : 'Pagado',
+                              )
+                            }
+                            className={`w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors cursor-pointer ${
+                              editPayment === 'Pagado'
+                                ? 'bg-[#E6F7F3] text-[#109173] border border-[#109173]/30'
+                                : 'bg-[#EFEAFF] text-[#5B21B6] border border-[#5B21B6]/25'
+                            }`}
+                          >
+                            {editPayment === 'Pagado' ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <CreditCard className="h-4 w-4" />
+                            )}
+                            <span>{editPayment}</span>
+                          </button>
                         </div>
                       </div>
 
@@ -1196,7 +1290,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   )}
                 </section>
 
-                {/* STEP 4: 4. Confirmar devolución */}
                 <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
                   <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
@@ -1330,7 +1423,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
           {/* MODULE 5: INCIDENCIAS */}
           {activeTab === 'incidents' && (
             <div className="space-y-6">
-              {/* Purple Incidents Banner matching Image 2 */}
               <div className="rounded-2xl bg-[#5B21B6] px-5 py-4 text-white flex items-center gap-3">
                 <AlertTriangle className="h-6 w-6 shrink-0" />
                 <div>
@@ -1543,6 +1635,23 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
             </div>
           )}
 
+          {/* MODULE: NOTIFICACIONES */}
+          {activeTab === 'notifications' && (
+            <NotificationsCenter
+              notifications={notifications}
+              onMarkRead={handleMarkNotificationRead}
+              onMarkAllRead={handleMarkAllRead}
+              onPushAlert={onPushAlert}
+              onOpenFolio={(folio) => {
+                const match = orders.find(
+                  (o) => o.folio.toUpperCase() === folio.toUpperCase(),
+                );
+                if (match) setSelectedOrderId(match.id);
+                setActiveTab('orders');
+              }}
+            />
+          )}
+
           {/* MODULE 6: CONFIGURACIÓN */}
           {activeTab === 'config' && config && (
             <div className="space-y-6">
@@ -1551,16 +1660,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   Configuración operativa
                 </h1>
                 <p className="text-sm text-slate-600">
-                  Administra sedes universitarias, códigos QR de campus, servicios, precios y lockers.
+                  Administra sedes, servicios, precios, lockers y estado de conexión con Supabase.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {/* Sedes y Campus */}
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
                     <Building2 className="h-5 w-5 text-[#109173]" />
-                    <span>Sedes universitarias y puntos KicksXR</span>
+                    <span>Sedes y puntos KicksXR</span>
                   </div>
 
                   <div className="space-y-2.5">
@@ -1587,7 +1695,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                             className="min-h-[36px] inline-flex items-center gap-1.5 rounded-lg bg-[#EFEAFF] px-3 text-xs font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
                           >
                             <QrCode className="h-3.5 w-3.5" />
-                            <span>QR Campus</span>
+                            <span>QR Sede</span>
                           </button>
                           <button
                             type="button"
@@ -1621,7 +1729,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                         required
                         value={newCampusName}
                         onChange={(e) => setNewCampusName(e.target.value)}
-                        placeholder="Ej. Campus Sur"
+                        placeholder="Ej. Punto Condesa"
                         className="min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm"
                       />
                       <select
@@ -1631,8 +1739,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                         }
                         className="min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm"
                       >
-                        <option value="university">Sede universitaria</option>
                         <option value="point">Punto físico KicksXR</option>
+                        <option value="university">Sede universitaria</option>
                       </select>
                     </div>
                     <div className="flex gap-2">
@@ -1654,7 +1762,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   </form>
                 </div>
 
-                {/* Servicios y Precios */}
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
@@ -1769,7 +1876,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                   </form>
                 </div>
 
-                {/* Lockers y Secuencia de Bolsas */}
                 <div className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
@@ -1867,7 +1973,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
         </>
       )}
 
-      {/* QR Scanner Modal for Bag Verification & Delivery Confirmation */}
+      {/* QR Scanner Modal */}
       <QRScannerModal
         open={scannerTarget !== null}
         title={
@@ -1899,7 +2005,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
         onClose={() => setScannerTarget(null)}
       />
 
-      {/* Campus QR Modal */}
+      {/* Sede QR Modal */}
       {qrCampusModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/65 p-4 backdrop-blur-xs"
@@ -1910,7 +2016,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-display text-lg font-extrabold text-[#000000]">
-              QR General del Campus
+              QR de Sede Kicks XR
             </h3>
             <p className="mt-1 text-sm text-slate-600">{qrCampusModal.name}</p>
             <div className="mt-5 inline-flex flex-col items-center rounded-2xl bg-[#EFEAFF] p-5 border border-[#5B21B6]/20">
@@ -1921,9 +2027,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({user, onLogout}) => {
                 {qrCampusModal.code}
               </span>
             </div>
-            <p className="mt-3 text-xs text-slate-500">
-              Coloca este código QR en el módulo de {qrCampusModal.name} para el flujo rápido universitario.
-            </p>
             <button
               type="button"
               onClick={() => setQrCampusModal(null)}

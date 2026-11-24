@@ -1,13 +1,14 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ArrowLeft,
   Banknote,
+  Bell,
   Building2,
   Camera,
   Check,
-  CheckCircle2,
   CreditCard,
   ExternalLink,
+  Image as ImageIcon,
   ListChecks,
   Lock,
   MapPin,
@@ -16,6 +17,7 @@ import {
   Phone,
   PlusCircle,
   QrCode,
+  Search,
   ShoppingBag,
   Sparkles,
   Store,
@@ -33,19 +35,26 @@ import type {
   NotificationLog,
   Order,
   PaymentMethod,
+  PopupAlert,
   PublicConfig,
+  PublicOrderTrack,
 } from '../types';
 import {AppShell, type NavModuleItem} from './AppShell';
+import {CameraCaptureModal} from './CameraCaptureModal';
+import {NotificationsCenter} from './NotificationsCenter';
 import {OrderTimeline} from './OrderTimeline';
+import {QRScannerModal} from './QRScannerModal';
 
 interface ClientAppProps {
   user: AuthUser;
   config: PublicConfig;
   onUserUpdated: (user: AuthUser) => void;
   onLogout: () => void;
+  onPushAlert: (alert: Omit<PopupAlert, 'id'>) => void;
+  onSwitchToAdmin?: () => void;
 }
 
-type ClientTab = 'register' | 'track' | 'orders' | 'profile';
+type ClientTab = 'register' | 'track' | 'orders' | 'notifications' | 'profile';
 type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 async function compressImageFile(file: File): Promise<string> {
@@ -89,6 +98,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   config,
   onUserUpdated,
   onLogout,
+  onPushAlert,
+  onSwitchToAdmin,
 }) => {
   const [activeTab, setActiveTab] = useState<ClientTab>('register');
   const [step, setStep] = useState<WizardStep>(1);
@@ -96,12 +107,19 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   const [orders, setOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [liveToast, setLiveToast] = useState<string | null>(null);
+
+  // Integrated Folio Tracker inside Client Role
+  const [folioQuery, setFolioQuery] = useState('');
+  const [searchedTrack, setSearchedTrack] = useState<PublicOrderTrack | null>(null);
+  const [trackSearchError, setTrackSearchError] = useState<string | null>(null);
+  const [trackScannerOpen, setTrackScannerOpen] = useState(false);
+
+  // Camera capture modal + gallery file input
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   // Step 1: Registra tus tenis
-  const [clientName, setClientName] = useState(
-    user.name === 'Estudiante Universitario' ? '' : user.name || '',
-  );
+  const [clientName, setClientName] = useState(user.name || '');
   const [clientWhatsapp, setClientWhatsapp] = useState(user.whatsapp || '');
   const [pairs, setPairs] = useState(1);
   const [serviceId, setServiceId] = useState(
@@ -165,23 +183,79 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     fetchMyOrders();
   }, [fetchMyOrders]);
 
-  // Real-time SSE sync with Admin changes
+  // Real-time SSE sync + Global Popups on service & delivery status updates
   useEffect(() => {
     return subscribeToRealtimeUpdates((ev) => {
       if (ev.type === 'orders' || ev.type === 'notifications') {
         fetchMyOrders();
-        if (ev.folio) {
-          setLiveToast(`Actualización en tiempo real del pedido ${ev.folio}`);
-          window.setTimeout(() => setLiveToast(null), 4000);
+        if (ev.title) {
+          onPushAlert({
+            title: ev.title,
+            message:
+              ev.message ||
+              (ev.folio
+                ? `Tu pedido ${ev.folio} tiene una nueva actualización.`
+                : 'Hay una nueva actualización en tus servicios.'),
+            tone: 'info',
+            actionLabel: 'Rastrear pedido',
+            onAction: () => {
+              if (ev.folio) setFolioQuery(ev.folio);
+              setActiveTab('track');
+            },
+          });
         }
       }
     });
-  }, [fetchMyOrders]);
+  }, [fetchMyOrders, onPushAlert]);
 
   const activeOrder = useMemo(
     () => orders.find((o) => o.id === activeOrderId) || orders[0] || null,
     [orders, activeOrderId],
   );
+
+  const handleTrackSearch = async (rawCode: string) => {
+    const cleaned = rawCode.trim();
+    if (!cleaned) return;
+    const normalized = cleaned.startsWith('KICKSXR|')
+      ? cleaned.split('|')[1] || cleaned
+      : cleaned;
+    setFolioQuery(normalized);
+    setTrackSearchError(null);
+
+    // Check own orders first
+    const localMatch = orders.find(
+      (o) =>
+        o.folio.toUpperCase() === normalized.toUpperCase() ||
+        o.bagCode.toUpperCase() === normalized.toUpperCase(),
+    );
+    if (localMatch) {
+      setActiveOrderId(localMatch.id);
+      setSearchedTrack(null);
+      onPushAlert({
+        title: `Pedido ${localMatch.folio} encontrado`,
+        message: `Estatus actual: ${localMatch.status} · Bolsa ${localMatch.bagCode}`,
+        tone: 'success',
+      });
+      return;
+    }
+
+    try {
+      const data = await api.trackOrder(normalized);
+      setSearchedTrack(data);
+      onPushAlert({
+        title: `Seguimiento ${data.folio}`,
+        message: `Estatus actual: ${data.status} · Bolsa ${data.bagCode}`,
+        tone: 'info',
+      });
+    } catch (err) {
+      setSearchedTrack(null);
+      setTrackSearchError(
+        err instanceof Error
+          ? err.message
+          : 'No se encontró ese folio o código de bolsa.',
+      );
+    }
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -190,9 +264,15 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     try {
       const compressed = await compressImageFile(file);
       setPhotoDataUrl(compressed);
+      onPushAlert({
+        title: 'Fotografía adjuntada',
+        message: 'Evidencia inicial del calzado lista para tu registro.',
+        tone: 'success',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al procesar imagen.');
     }
+    e.target.value = '';
   };
 
   const handleStep1Next = () => {
@@ -249,6 +329,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       setOrders((prev) => [res.order, ...prev]);
       setActiveOrderId(res.order.id);
       setStep(4);
+      onPushAlert({
+        title: `Pedido ${res.order.folio} confirmado`,
+        message: `Bolsa asignada: ${res.order.bagCode}. Ahora selecciona cómo entregarás tu bolsa.`,
+        tone: 'success',
+      });
       fetchMyOrders();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar el pedido.');
@@ -267,6 +352,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         prev.map((o) => (o.id === res.order.id ? res.order : o)),
       );
       setStep(5);
+      onPushAlert({
+        title: `Depósito reportado · ${res.order.folio}`,
+        message: `Tu bolsa ${res.order.bagCode} fue registrada. Te notificaremos en cada etapa del servicio.`,
+        tone: 'success',
+      });
       fetchMyOrders();
     } catch (err) {
       setError(
@@ -303,11 +393,35 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       setClientWhatsapp(res.user.whatsapp || '');
       setDeliveryAddress(res.user.address || '');
       setProfileSaved(true);
+      onPushAlert({
+        title: 'Perfil actualizado',
+        message: 'Tus datos de contacto y entrega fueron guardados.',
+        tone: 'success',
+      });
       window.setTimeout(() => setProfileSaved(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar tu perfil.');
     }
   };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? {...n, read: true} : n)),
+    );
+    await api.markNotificationRead(id).catch(() => {});
+  };
+
+  const handleMarkAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({...n, read: true})));
+    await api.markAllNotificationsRead().catch(() => {});
+    onPushAlert({
+      title: 'Notificaciones al día',
+      message: 'Todas tus alertas se marcaron como leídas.',
+      tone: 'info',
+    });
+  };
+
+  const unreadNotifications = notifications.filter((n) => !n.read).length;
 
   const navItems: NavModuleItem[] = [
     {
@@ -318,8 +432,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     },
     {
       id: 'track',
-      label: 'Sigue tu pedido',
-      shortLabel: 'Seguir',
+      label: 'Rastrear pedido',
+      shortLabel: 'Rastrear',
       icon: ListChecks,
       badgeCount: orders.filter((o) => o.status !== 'Entregado').length,
     },
@@ -330,6 +444,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       icon: ShoppingBag,
     },
     {
+      id: 'notifications',
+      label: 'Notificaciones',
+      shortLabel: 'Alertas',
+      icon: Bell,
+      badgeCount: unreadNotifications,
+    },
+    {
       id: 'profile',
       label: 'Mi perfil',
       shortLabel: 'Perfil',
@@ -337,18 +458,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     },
   ];
 
-  const roleLabel =
-    user.userType === 'university'
-      ? `Comunidad Universitaria · ${user.campusName || 'Campus'}`
-      : 'Cliente';
-
   const orderNotifications = activeOrder
     ? notifications.filter((n) => n.orderId === activeOrder.id)
     : [];
 
   return (
     <AppShell
-      roleLabel={roleLabel}
+      roleLabel={onSwitchToAdmin ? 'Vista Cliente (Admin)' : 'Cliente'}
       userName={user.name}
       navItems={navItems}
       activeNav={activeTab}
@@ -356,32 +472,31 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         setActiveTab(id as ClientTab);
         setError(null);
       }}
+      onOpenNotifications={() => setActiveTab('notifications')}
       onLogout={onLogout}
       notifications={notifications}
+      switchRoleAction={
+        onSwitchToAdmin
+          ? {
+              label: 'Panel Admin',
+              shortLabel: 'Admin',
+              onSwitch: onSwitchToAdmin,
+            }
+          : undefined
+      }
     >
-      {liveToast && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-[#000831] px-4 py-3 text-sm font-medium text-white shadow-sm">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-[#109173] shrink-0" />
-            <span>{liveToast}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setLiveToast(null);
-              setActiveTab('track');
-            }}
-            className="text-xs font-bold text-[#E6F7F3] underline cursor-pointer shrink-0"
-          >
-            Ver estatus
-          </button>
-        </div>
-      )}
+      {/* Hidden gallery picker */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoUpload}
+        className="sr-only"
+      />
 
-      {/* MODULE: REGISTRAR TENIS (5-Step Flow from Image 1) */}
+      {/* MODULE: REGISTRAR TENIS (5-Step Flow) */}
       {activeTab === 'register' && (
         <div className="space-y-5">
-          {/* Compact Step Breadcrumb */}
           <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3.5 sm:px-6 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-3">
               {step > 1 && step < 4 && (
@@ -403,10 +518,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {step === 5 && 'Sigue tu pedido'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Paso {step} de 5 ·{' '}
-                  {user.userType === 'university'
-                    ? `Vinculado a ${selectedCampus?.name || 'Campus'}`
-                    : 'Servicio Kicks XR'}
+                  Paso {step} de 5 · Servicio Kicks XR
                 </p>
               </div>
             </div>
@@ -434,9 +546,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Primary Step Surface */}
             <div className="lg:col-span-7 xl:col-span-8 rounded-2xl bg-white border border-slate-200 p-5 sm:p-7">
-              {/* STEP 1: Registra tus tenis */}
+              {/* STEP 1 */}
               {step === 1 && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -478,19 +589,17 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       <label className="block text-sm font-bold text-[#000831] mb-1.5">
                         Pares
                       </label>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={pairs}
-                          onChange={(e) => setPairs(Number(e.target.value))}
-                          className="flex-1 min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
-                        >
-                          {[1, 2, 3, 4, 5, 6].map((n) => (
-                            <option key={n} value={n}>
-                              {n} {n === 1 ? 'par' : 'pares'}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <select
+                        value={pairs}
+                        onChange={(e) => setPairs(Number(e.target.value))}
+                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                      >
+                        {[1, 2, 3, 4, 5, 6].map((n) => (
+                          <option key={n} value={n}>
+                            {n} {n === 1 ? 'par' : 'pares'}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -524,7 +633,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </div>
                   )}
 
-                  {/* Evidencia fotográfica (dashed lavender box matching Image 1) */}
+                  {/* Evidencia fotográfica con permiso de cámara del dispositivo + galería */}
                   <div>
                     <label className="block text-sm font-bold text-[#000831] mb-1.5">
                       Evidencia fotográfica del estado inicial
@@ -536,37 +645,60 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           alt="Evidencia inicial del calzado"
                           className="h-52 w-full rounded-xl object-cover"
                         />
-                        <div className="mt-3 flex items-center justify-between gap-2">
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-[#000831]">
                             Foto cargada correctamente
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setPhotoDataUrl(undefined)}
-                            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Cambiar foto</span>
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setCameraModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 min-h-[38px] rounded-lg border border-[#109173]/30 bg-white px-3 text-xs font-semibold text-[#109173] hover:bg-[#E6F7F3] cursor-pointer"
+                            >
+                              <Camera className="h-3.5 w-3.5" />
+                              <span>Nueva foto</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPhotoDataUrl(undefined)}
+                              className="inline-flex items-center gap-1.5 min-h-[38px] rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Quitar</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center gap-2 min-h-[132px] rounded-2xl border-2 border-dashed border-[#5B21B6]/35 bg-[#EFEAFF]/65 px-4 py-6 text-center hover:bg-[#EFEAFF] transition-colors cursor-pointer">
-                        <Camera className="h-8 w-8 text-[#5B21B6]" />
-                        <span className="font-display text-sm font-bold text-[#5B21B6]">
-                          Agregar foto
-                        </span>
-                        <span className="text-xs text-slate-600">
-                          Toma una foto con tu cámara o elige de tu galería
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handlePhotoUpload}
-                          className="sr-only"
-                        />
-                      </label>
+                      <div className="rounded-2xl border-2 border-dashed border-[#5B21B6]/35 bg-[#EFEAFF]/65 p-5 text-center space-y-3">
+                        <Camera className="h-8 w-8 text-[#5B21B6] mx-auto" />
+                        <div>
+                          <div className="font-display text-sm font-bold text-[#5B21B6]">
+                            Agregar foto de tus tenis
+                          </div>
+                          <p className="mt-0.5 text-xs text-slate-600">
+                            Activa la cámara de tu dispositivo para tomar la foto o selecciona una de tu galería
+                          </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setCameraModalOpen(true)}
+                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B21B6] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#4C1D95] transition-colors cursor-pointer"
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span>Tomar foto con cámara</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => galleryInputRef.current?.click()}
+                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#5B21B6]/30 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+                          >
+                            <ImageIcon className="h-4 w-4 text-[#5B21B6]" />
+                            <span>Subir desde galería</span>
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -580,7 +712,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 </div>
               )}
 
-              {/* STEP 2: Elige la devolución */}
+              {/* STEP 2 */}
               {step === 2 && (
                 <div className="space-y-4">
                   <button
@@ -617,7 +749,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {deliveryMethod === 'pickup' && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
                       <label className="block text-sm font-bold text-[#000831] mb-1.5">
-                        Selecciona el punto o campus KicksXR
+                        Selecciona el punto KicksXR
                       </label>
                       <select
                         value={campusId}
@@ -723,7 +855,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 </div>
               )}
 
-              {/* STEP 3: Forma de pago */}
+              {/* STEP 3 */}
               {step === 3 && (
                 <div className="space-y-4">
                   <button
@@ -876,7 +1008,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 </div>
               )}
 
-              {/* STEP 4: Entrega tu bolsa */}
+              {/* STEP 4 */}
               {step === 4 && activeOrder && (
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -926,7 +1058,6 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </button>
                   </div>
 
-                  {/* Lavender Bag Code + Order QR Banner (matching Image 1) */}
                   <div className="rounded-2xl bg-[#EFEAFF] border border-[#5B21B6]/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-5">
                     <div className="flex items-center gap-4">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#5B21B6] shrink-0">
@@ -975,7 +1106,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 </div>
               )}
 
-              {/* STEP 5: Sigue tu pedido */}
+              {/* STEP 5 */}
               {step === 5 && activeOrder && (
                 <div className="space-y-6">
                   <div className="rounded-2xl bg-[#EFEAFF] p-5 flex flex-wrap items-center justify-between gap-4">
@@ -1025,7 +1156,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
               )}
             </div>
 
-            {/* Right Column: Live Order Summary & QR Card */}
+            {/* Right Column: Live Summary */}
             <div className="lg:col-span-5 xl:col-span-4 space-y-4">
               <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
                 <h2 className="font-display text-base font-bold text-[#000000]">
@@ -1066,36 +1197,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </span>
                   </div>
                 </div>
-
-                {activeOrder && step >= 4 && (
-                  <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Folio generado</span>
-                      <span className="font-mono font-bold text-[#000831]">
-                        {activeOrder.folio}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Bolsa asignada</span>
-                      <span className="font-mono font-bold text-[#5B21B6]">
-                        {activeOrder.bagCode}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Estatus de pago</span>
-                      <span className="font-bold text-[#109173]">
-                        {activeOrder.paymentStatus}
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {selectedCampus && (
                 <div className="rounded-2xl bg-[#000831] text-white p-5">
                   <div className="flex items-center gap-2 text-xs font-semibold text-[#E6F7F3]">
                     <Building2 className="h-4 w-4 text-[#109173]" />
-                    <span>Sede activa</span>
+                    <span>Punto seleccionado</span>
                   </div>
                   <div className="mt-1.5 font-display text-base font-bold">
                     {selectedCampus.name}
@@ -1110,22 +1218,25 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         </div>
       )}
 
-      {/* MODULE: SIGUE TU PEDIDO */}
+      {/* MODULE: RASTREAR PEDIDO (Active inside Cliente Role with Folio Search + QR Scanner + Own Orders) */}
       {activeTab === 'track' && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="font-display text-2xl font-extrabold text-[#000000]">
-                Sigue tu pedido
+                Rastrear pedido
               </h1>
               <p className="text-sm text-slate-600">
-                Actualización en vivo conectada al taller Kicks XR
+                Consulta tus pedidos en tiempo real o busca cualquier folio / código de bolsa
               </p>
             </div>
-            {orders.length > 1 && (
+            {orders.length > 0 && (
               <select
-                value={activeOrder?.id || ''}
-                onChange={(e) => setActiveOrderId(e.target.value)}
+                value={searchedTrack ? '' : activeOrder?.id || ''}
+                onChange={(e) => {
+                  setSearchedTrack(null);
+                  setActiveOrderId(e.target.value);
+                }}
                 className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono font-bold text-[#000831]"
               >
                 {orders.map((o) => (
@@ -1137,14 +1248,111 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             )}
           </div>
 
-          {!activeOrder ? (
+          {/* Search & QR Scan Bar inside Client Role */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleTrackSearch(folioQuery);
+            }}
+            className="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col sm:flex-row gap-2.5"
+          >
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={folioQuery}
+                onChange={(e) => setFolioQuery(e.target.value)}
+                placeholder="Buscar por Folio (ej. KXR-1042) o Bolsa (B-028)"
+                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm font-mono uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTrackScannerOpen(true)}
+                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#5B21B6]/30 bg-[#EFEAFF] px-4 text-sm font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>Escanear QR</span>
+              </button>
+              <button
+                type="submit"
+                className="min-h-[46px] flex-1 sm:flex-none rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                Rastrear
+              </button>
+            </div>
+          </form>
+
+          {trackSearchError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {trackSearchError}
+            </div>
+          )}
+
+          {searchedTrack ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-5 space-y-4">
+                <div className="rounded-2xl bg-[#EFEAFF] p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5B21B6]">
+                      <ShoppingBag className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-600">
+                        Folio consultado
+                      </div>
+                      <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
+                        {searchedTrack.folio}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-[#5B21B6]">
+                    {searchedTrack.bagCode}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-2.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Sede</span>
+                    <span className="font-semibold text-[#000831]">
+                      {searchedTrack.campusName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Servicio</span>
+                    <span className="font-semibold text-[#000831]">
+                      {searchedTrack.serviceName} ({searchedTrack.pairs}{' '}
+                      {searchedTrack.pairs === 1 ? 'par' : 'pares'})
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Pago</span>
+                    <span className="font-bold text-[#109173]">
+                      {searchedTrack.paymentStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6">
+                <h2 className="font-display text-base font-bold text-[#000000] mb-4">
+                  Progreso en tiempo real
+                </h2>
+                <OrderTimeline
+                  currentStatus={searchedTrack.status}
+                  history={searchedTrack.history}
+                />
+              </div>
+            </div>
+          ) : !activeOrder ? (
             <div className="rounded-2xl bg-white border border-slate-200 p-10 text-center">
               <ShoppingBag className="h-10 w-10 text-slate-300 mx-auto mb-3" />
               <h2 className="font-display text-lg font-bold text-[#000831]">
                 Aún no tienes pedidos registrados
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Registra tus tenis para recibir tu Folio y Código de bolsa al instante.
+                Registra tus tenis o ingresa arriba un folio como KXR-1042 para ver el rastreo en vivo.
               </p>
               <button
                 type="button"
@@ -1361,12 +1569,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        setSearchedTrack(null);
                         setActiveOrderId(order.id);
                         setActiveTab('track');
                       }}
                       className="flex-1 min-h-[42px] rounded-xl bg-[#109173] text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
                     >
-                      Ver seguimiento
+                      Rastrear pedido
                     </button>
                     {order.status === 'Pendiente de depósito' && (
                       <button
@@ -1387,6 +1596,20 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* MODULE: NOTIFICACIONES */}
+      {activeTab === 'notifications' && (
+        <NotificationsCenter
+          notifications={notifications}
+          onMarkRead={handleMarkNotificationRead}
+          onMarkAllRead={handleMarkAllRead}
+          onPushAlert={onPushAlert}
+          onOpenFolio={(folio) => {
+            setActiveTab('track');
+            handleTrackSearch(folio);
+          }}
+        />
       )}
 
       {/* MODULE: MI PERFIL */}
@@ -1455,6 +1678,39 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           </form>
         </div>
       )}
+
+      {/* Camera Permission & Capture Modal */}
+      <CameraCaptureModal
+        open={cameraModalOpen}
+        onCapture={(dataUrl) => {
+          setPhotoDataUrl(dataUrl);
+          onPushAlert({
+            title: 'Fotografía capturada',
+            message: 'Tu foto de evidencia inicial se cargó correctamente.',
+            tone: 'success',
+          });
+        }}
+        onFallbackGallery={() => galleryInputRef.current?.click()}
+        onClose={() => setCameraModalOpen(false)}
+      />
+
+      {/* QR Scanner for Tracking inside Cliente */}
+      <QRScannerModal
+        open={trackScannerOpen}
+        title="Escanear QR de pedido"
+        subtitle="Escanea el código QR de tu pedido para ver su estatus en vivo"
+        placeholder="KXR-1042"
+        quickOptions={[
+          {label: 'Folio KXR-1042', sublabel: 'Bolsa B-028', value: 'KXR-1042'},
+          {label: 'Folio KXR-1043', sublabel: 'Bolsa B-029', value: 'KXR-1043'},
+          {label: 'Folio KXR-1041', sublabel: 'Bolsa B-027', value: 'KXR-1041'},
+        ]}
+        onScan={(val) => {
+          setTrackScannerOpen(false);
+          handleTrackSearch(val);
+        }}
+        onClose={() => setTrackScannerOpen(false)}
+      />
     </AppShell>
   );
 };

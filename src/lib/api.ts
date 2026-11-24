@@ -72,12 +72,6 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  campusQuickLogin: (body: {campusCode: string; name?: string; whatsapp?: string}) =>
-    request<{token: string; user: AuthUser; campus: Campus}>('/api/auth/client/campus', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
   updateClientProfile: (body: {name: string; whatsapp: string; address: string}) =>
     request<{user: AuthUser}>('/api/client/profile', {
       method: 'PATCH',
@@ -111,19 +105,32 @@ export const api = {
       body: JSON.stringify({dropoffMethod}),
     }),
 
+  markNotificationRead: (notificationId: string) =>
+    request<{ok: boolean}>(`/api/notifications/${encodeURIComponent(notificationId)}/read`, {
+      method: 'PATCH',
+    }),
+
+  markAllNotificationsRead: () =>
+    request<{ok: boolean}>('/api/notifications/read-all', {
+      method: 'POST',
+    }),
+
   // Admin auth
   getAdminStatus: () =>
-    request<{configured: boolean; usesEnvPasscode: boolean; adminEmailHint: string}>(
-      '/api/auth/admin/status',
-    ),
+    request<{
+      configured: boolean;
+      usesEnvPasscode: boolean;
+      supabaseConnected: boolean;
+      adminUsernameHint: string;
+    }>('/api/auth/admin/status'),
 
-  setupAdmin: (body: {name: string; email: string; password: string}) =>
+  setupAdmin: (body: {name: string; username: string; email?: string; password: string}) =>
     request<{token: string; user: AuthUser}>('/api/auth/admin/setup', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
-  loginAdmin: (body: {email: string; password: string}) =>
+  loginAdmin: (body: {username: string; password: string}) =>
     request<{token: string; user: AuthUser}>('/api/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -239,7 +246,14 @@ export const api = {
 };
 
 export function subscribeToRealtimeUpdates(
-  onUpdate: (event: {type: string; folio?: string; orderId?: string}) => void,
+  onUpdate: (event: {
+    type: string;
+    folio?: string;
+    orderId?: string;
+    status?: string;
+    title?: string;
+    message?: string;
+  }) => void,
 ): () => void {
   if (typeof window === 'undefined' || typeof EventSource === 'undefined') {
     return () => {};
