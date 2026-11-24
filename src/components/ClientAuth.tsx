@@ -115,7 +115,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-[#000831] hover:bg-slate-200/60 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-[#1A1E2A] hover:bg-slate-200/60 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Inicio</span>
@@ -126,7 +126,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
 
         <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8 shadow-xs">
           <div className="mb-6">
-            <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+            <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
               {generalTab === 'login'
                 ? 'Acceso de Cliente'
                 : 'Registro de Cliente'}
@@ -148,8 +148,8 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
               }}
               className={`flex-1 min-h-[42px] rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                 generalTab === 'login'
-                  ? 'bg-white text-[#000831] shadow-xs'
-                  : 'text-slate-600 hover:text-[#000831]'
+                  ? 'bg-white text-[#1A1E2A] shadow-xs'
+                  : 'text-slate-600 hover:text-[#1A1E2A]'
               }`}
             >
               Iniciar sesión
@@ -163,8 +163,8 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
               }}
               className={`flex-1 min-h-[42px] rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                 generalTab === 'register'
-                  ? 'bg-white text-[#000831] shadow-xs'
-                  : 'text-slate-600 hover:text-[#000831]'
+                  ? 'bg-white text-[#1A1E2A] shadow-xs'
+                  : 'text-slate-600 hover:text-[#1A1E2A]'
               }`}
             >
               Crear cuenta
@@ -182,7 +182,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                     setError(null);
                     setNeedsRegistration(false);
                   }}
-                  className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg bg-[#109173] px-3.5 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg bg-[#8BAF03] px-3.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   <span>Registrarme ahora con este usuario</span>
@@ -194,7 +194,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             {generalTab === 'register' && (
               <div>
-                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                   Nombre completo
                 </label>
                 <div className="relative">
@@ -205,14 +205,14 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Tu nombre completo"
-                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 {generalTab === 'login' ? 'Nombre de usuario' : 'Usuario'}
               </label>
               <div className="relative">
@@ -233,14 +233,14 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                       ? 'Ingresa tu usuario'
                       : 'Ej. juan.perez (sin espacios)'
                   }
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
               </div>
             </div>
 
             {generalTab === 'register' && (
               <div>
-                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                   Teléfono / WhatsApp
                 </label>
                 <div className="relative">
@@ -252,14 +252,14 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     placeholder="55 1234 5678"
-                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 Contraseña
               </label>
               <div className="relative">
@@ -278,13 +278,13 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                       ? 'Ingresa tu contraseña'
                       : 'Mínimo 6 caracteres'
                   }
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#000831] cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#1A1E2A] cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -298,7 +298,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             {generalTab === 'register' && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                  <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                     Dirección de entrega
                   </label>
                   <div className="relative">
@@ -309,7 +309,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Calle, número, colonia y código postal"
-                      className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                      className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                     />
                   </div>
                 </div>
@@ -318,13 +318,13 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <IdCard className="h-4 w-4 text-[#109173] shrink-0" />
-                      <label className="text-sm font-semibold text-[#000831]">
+                      <IdCard className="h-4 w-4 text-[#5E7800] shrink-0" />
+                      <label className="text-sm font-semibold text-[#1A1E2A]">
                         Identificación oficial (INE — México) *
                       </label>
                     </div>
                     {inePhotoDataUrl && (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#109173]">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#5E7800]">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         <span>Lista</span>
                       </span>
@@ -355,17 +355,17 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                         <button
                           type="button"
                           onClick={() => setIneCameraOpen(true)}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
                         >
-                          <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                          <Camera className="h-3.5 w-3.5 text-[#5E7800]" />
                           <span>Tomar otra</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => ineFileInputRef.current?.click()}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
                         >
-                          <ImageIcon className="h-3.5 w-3.5 text-[#5B21B6]" />
+                          <ImageIcon className="h-3.5 w-3.5 text-[#1A1E2A]" />
                           <span>Cambiar archivo</span>
                         </button>
                         <button
@@ -383,15 +383,15 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                       <button
                         type="button"
                         onClick={() => setIneCameraOpen(true)}
-                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs sm:text-sm font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#11141D] transition-colors cursor-pointer"
                       >
-                        <Camera className="h-4 w-4 text-[#109173]" />
+                        <Camera className="h-4 w-4 text-[#FCF61C]" />
                         <span>Tomar foto de INE</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => ineFileInputRef.current?.click()}
-                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                        className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                       >
                         <ImageIcon className="h-4 w-4" />
                         <span>Subir foto de INE</span>
@@ -405,7 +405,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 transition-colors cursor-pointer"
+              className="mt-2 w-full min-h-[48px] rounded-xl bg-[#8BAF03] px-6 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 transition-colors cursor-pointer"
             >
               {loading
                 ? 'Verificando...'
@@ -426,7 +426,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                     setError(null);
                     setNeedsRegistration(false);
                   }}
-                  className="font-bold text-[#109173] hover:underline cursor-pointer"
+                  className="font-bold text-[#5E7800] hover:underline cursor-pointer"
                 >
                   Regístrate aquí
                 </button>
@@ -441,7 +441,7 @@ export const ClientAuth: React.FC<ClientAuthProps> = ({
                     setError(null);
                     setNeedsRegistration(false);
                   }}
-                  className="font-bold text-[#109173] hover:underline cursor-pointer"
+                  className="font-bold text-[#5E7800] hover:underline cursor-pointer"
                 >
                   Iniciar sesión
                 </button>

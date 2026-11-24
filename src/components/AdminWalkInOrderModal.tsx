@@ -190,7 +190,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/70 p-3 sm:p-5 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/70 p-3 sm:p-5 backdrop-blur-xs"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -200,7 +200,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
         className="w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 bg-[#109173] px-5 py-4 text-white shrink-0">
+        <div className="flex items-center justify-between gap-3 bg-[#8BAF03] px-5 py-4 text-[#1A1E2A] shrink-0">
           <div className="flex items-center gap-2.5">
             <UserPlus className="h-5 w-5" />
             <div>
@@ -230,13 +230,13 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
 
           {clients.length > 0 && (
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Cliente registrado (opcional)
               </label>
               <select
                 value={selectedClientId}
                 onChange={(e) => handleSelectClient(e.target.value)}
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
               >
                 <option value="">— Cliente presencial nuevo —</option>
                 {clients.map((c) => (
@@ -250,7 +250,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Nombre del cliente *
               </label>
               <input
@@ -259,11 +259,11 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Ej. Carlos Méndez"
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm text-[#1A1E2A]"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 WhatsApp (10 dígitos) *
               </label>
               <input
@@ -272,14 +272,14 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={clientWhatsapp}
                 onChange={(e) => setClientWhatsapp(e.target.value)}
                 placeholder="55 1234 5678"
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm text-[#1A1E2A]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Servicio *
               </label>
               <select
@@ -288,7 +288,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                   setServiceId(e.target.value);
                   setAppliedDiscount(null);
                 }}
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
               >
                 {activeServices.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -298,7 +298,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Pares
               </label>
               <input
@@ -310,15 +310,15 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                   setPairs(Math.max(1, Math.min(10, Number(e.target.value) || 1)));
                   setAppliedDiscount(null);
                 }}
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold text-[#1A1E2A]"
               />
             </div>
           </div>
 
           {/* Folio personalizado + Costo estipulado por el Admin */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-[#109173]/25 bg-[#E6F7F3]/40 p-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-[#8BAF03]/25 bg-[#F3F8DE]/40 p-3.5">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Número de folio (opcional)
               </label>
               <input
@@ -326,14 +326,14 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={customFolio}
                 onChange={(e) => setCustomFolio(e.target.value.toUpperCase())}
                 placeholder={`Automático (KXR-${config?.nextOrderSeq ?? 1044})`}
-                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
               />
               <span className="mt-1 block text-[11px] text-slate-500">
                 Déjalo vacío para generar el folio consecutivo automático.
               </span>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Estipular costo del servicio ($ MXN)
               </label>
               <input
@@ -342,7 +342,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={customTotal}
                 onChange={(e) => setCustomTotal(e.target.value)}
                 placeholder={`Catálogo: $${calculatedTotal} MXN`}
-                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold text-[#109173] focus:border-[#109173] focus:outline-none"
+                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm font-bold text-[#5E7800] focus:border-[#8BAF03] focus:outline-none"
               />
               <span className="mt-1 block text-[11px] text-slate-500">
                 Escribe un monto para fijar precio especial a este servicio.
@@ -352,13 +352,13 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Sede / Punto
               </label>
               <select
                 value={campusId}
                 onChange={(e) => setCampusId(e.target.value)}
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
               >
                 {activeCampuses.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -369,7 +369,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Devolución
               </label>
               <select
@@ -377,7 +377,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 onChange={(e) =>
                   setDeliveryMethod(e.target.value as DeliveryMethod)
                 }
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
               >
                 <option value="pickup">Recoger en sede (sin costo)</option>
                 <option value="delivery">
@@ -389,7 +389,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
 
           {deliveryMethod === 'delivery' && (
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Dirección de entrega *
               </label>
               <input
@@ -398,7 +398,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 placeholder="Calle, número, colonia y referencias"
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm text-[#000831]"
+                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm text-[#1A1E2A]"
               />
             </div>
           )}
@@ -406,7 +406,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
           {/* Shoe photo + notes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Notas del calzado (opcional)
               </label>
               <textarea
@@ -414,11 +414,11 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={shoeNotes}
                 onChange={(e) => setShoeNotes(e.target.value)}
                 placeholder="Modelo, color, material delicado o manchas..."
-                className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-[#000831]"
+                className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-[#1A1E2A]"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Notas internas de taller (opcional)
               </label>
               <textarea
@@ -426,7 +426,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 placeholder="Indicaciones internas para limpieza..."
-                className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-[#000831]"
+                className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-[#1A1E2A]"
               />
             </div>
           </div>
@@ -446,7 +446,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                 </div>
               )}
               <div className="text-xs">
-                <div className="font-bold text-[#000831]">
+                <div className="font-bold text-[#1A1E2A]">
                   Fotografía inicial de los tenis
                 </div>
                 <div className="text-slate-500">
@@ -466,7 +466,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="min-h-[36px] inline-flex items-center gap-1.5 rounded-lg bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                className="min-h-[36px] inline-flex items-center gap-1.5 rounded-lg bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
               >
                 <Camera className="h-3.5 w-3.5" />
                 <span>{photoDataUrl ? 'Cambiar foto' : 'Tomar / subir foto'}</span>
@@ -486,7 +486,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
           {/* Coupon + Payment */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Cupón de descuento (opcional)
               </label>
               <div className="flex gap-1.5">
@@ -495,26 +495,26 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                   value={discountCode}
                   onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
                   placeholder="Ej. BIENVENIDO10"
-                  className="flex-1 min-h-[40px] rounded-xl border border-slate-300 px-3 font-mono text-xs uppercase text-[#000831]"
+                  className="flex-1 min-h-[40px] rounded-xl border border-slate-300 px-3 font-mono text-xs uppercase text-[#1A1E2A]"
                 />
                 <button
                   type="button"
                   onClick={handleApplyCoupon}
-                  className="min-h-[40px] inline-flex items-center gap-1 rounded-xl bg-[#EFEAFF] px-3 text-xs font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
+                  className="min-h-[40px] inline-flex items-center gap-1 rounded-xl bg-[#FCF61C]/25 px-3 text-xs font-bold text-[#1A1E2A] hover:bg-[#1A1E2A] hover:text-[#FCF61C] transition-colors cursor-pointer"
                 >
                   <Tag className="h-3.5 w-3.5" />
                   <span>Aplicar</span>
                 </button>
               </div>
               {appliedDiscount && (
-                <div className="mt-1 text-[11px] font-bold text-[#109173]">
+                <div className="mt-1 text-[11px] font-bold text-[#5E7800]">
                   Cupón {appliedDiscount.code} aplicado: -${appliedDiscount.amount} MXN
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#000831]">
+              <label className="block text-xs font-bold text-[#1A1E2A]">
                 Método de pago
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -525,7 +525,7 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                     onClick={() => setPaymentMethod(m)}
                     className={`min-h-[40px] rounded-xl border text-xs font-bold cursor-pointer ${
                       paymentMethod === m
-                        ? 'border-[#109173] bg-[#E6F7F3] text-[#109173]'
+                        ? 'border-[#8BAF03] bg-[#F3F8DE] text-[#8BAF03]'
                         : 'border-slate-300 bg-white text-slate-600'
                     }`}
                   >
@@ -533,12 +533,12 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
                   </button>
                 ))}
               </div>
-              <label className="flex items-center gap-2 text-xs font-semibold text-[#000831] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-semibold text-[#1A1E2A] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={markPaid}
                   onChange={(e) => setMarkPaid(e.target.checked)}
-                  className="h-4 w-4 accent-[#109173]"
+                  className="h-4 w-4 accent-[#8BAF03]"
                 />
                 <span>Marcar como pagado en mostrador</span>
               </label>
@@ -546,19 +546,19 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
           </div>
 
           {/* Total Summary */}
-          <div className="rounded-xl bg-[#000831] text-white p-4 flex items-center justify-between gap-3">
+          <div className="rounded-xl bg-[#1A1E2A] text-white p-4 flex items-center justify-between gap-3">
             <div className="text-xs text-white/80">
               <div>
                 Subtotal: ${subtotal} MXN
                 {discountAmount > 0 ? ` · Desc: -$${discountAmount}` : ''}
                 {shippingFee > 0 ? ` · Envío: +$${shippingFee}` : ''}
               </div>
-              <div className="mt-0.5 font-semibold text-[#E6F7F3]">
+              <div className="mt-0.5 font-semibold text-[#FCF61C]">
                 {markPaid ? 'Pago liquidado' : 'Pago pendiente'} · Se asigna folio y bolsa
                 automáticamente
               </div>
             </div>
-            <div className="font-mono text-2xl font-extrabold text-[#E6F7F3] tabular-nums shrink-0">
+            <div className="font-mono text-2xl font-extrabold text-[#FCF61C] tabular-nums shrink-0">
               ${totalAmount}
             </div>
           </div>
@@ -567,14 +567,14 @@ export const AdminWalkInOrderModal: React.FC<AdminWalkInOrderModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] cursor-pointer"
+              className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-[#109173] px-5 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-[#8BAF03] px-5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 cursor-pointer"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

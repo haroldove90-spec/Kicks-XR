@@ -126,7 +126,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/80 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/80 p-4 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
@@ -135,11 +135,11 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#109173]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3F8DE] text-[#5E7800]">
               <Camera className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-display text-lg font-extrabold text-[#000000]">
+              <h3 className="font-display text-lg font-extrabold text-[#1A1E2A]">
                 {title}
               </h3>
               <p className="text-xs text-slate-600">
@@ -157,7 +157,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           </button>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-2xl bg-[#000831] relative aspect-[4/3] flex items-center justify-center">
+        <div className="mt-4 overflow-hidden rounded-2xl bg-[#1A1E2A] relative aspect-[4/3] flex items-center justify-center">
           {previewUrl ? (
             <img
               src={previewUrl}
@@ -176,7 +176,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               />
               {status === 'requesting' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-                  <Camera className="h-9 w-9 text-[#109173] animate-pulse mb-2" />
+                  <Camera className="h-9 w-9 text-[#5E7800] animate-pulse mb-2" />
                   <p className="text-sm font-semibold">
                     Solicitando permiso de cámara al dispositivo...
                   </p>
@@ -204,7 +204,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <button
                 type="button"
                 onClick={() => startCamera(facingMode)}
-                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Tomar otra</span>
@@ -215,7 +215,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   onCapture(previewUrl);
                   onClose();
                 }}
-                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-4 text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
               >
                 <Check className="h-4 w-4" />
                 <span>Usar fotografía</span>
@@ -228,7 +228,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 onClick={() =>
                   setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'))
                 }
-                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
                 title="Cambiar cámara frontal / trasera"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -237,7 +237,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <button
                 type="button"
                 onClick={handleTakePhoto}
-                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
               >
                 <Camera className="h-4 w-4" />
                 <span>Tomar fotografía</span>
@@ -248,7 +248,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <button
                 type="button"
                 onClick={() => startCamera(facingMode)}
-                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
               >
                 <Camera className="h-4 w-4" />
                 <span>Reintentar permiso</span>
@@ -259,7 +259,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   onClose();
                   onFallbackGallery();
                 }}
-                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-4 text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                className="flex-1 min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
               >
                 <ImageIcon className="h-4 w-4" />
                 <span>Subir de galería</span>

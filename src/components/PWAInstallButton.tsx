@@ -60,10 +60,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     variant === 'sidebar'
       ? `flex w-full items-center ${
           collapsed ? 'justify-center px-2' : 'gap-3 px-3.5'
-        } min-h-[44px] rounded-xl border border-white/15 bg-white/5 text-sm font-medium text-white hover:bg-[#109173] hover:border-[#109173] transition-colors whitespace-nowrap shrink-0 cursor-pointer`
+        } min-h-[44px] rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-white hover:bg-[#8BAF03] hover:border-[#8BAF03] hover:text-[#1A1E2A] transition-colors whitespace-nowrap shrink-0 cursor-pointer`
       : variant === 'home'
-        ? 'inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-[#109173] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0B755C] shadow-sm transition-colors whitespace-nowrap shrink-0 cursor-pointer'
-        : 'inline-flex items-center gap-1.5 min-h-[40px] rounded-xl bg-[#109173] px-3.5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap shrink-0 cursor-pointer';
+        ? 'inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-[#1A1E2A] px-6 py-2.5 text-sm font-bold text-[#FCF61C] hover:bg-[#11141D] shadow-sm transition-colors whitespace-nowrap shrink-0 cursor-pointer'
+        : 'inline-flex items-center gap-1.5 min-h-[40px] rounded-xl bg-[#8BAF03] px-3.5 py-2 text-xs sm:text-sm font-extrabold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap shrink-0 cursor-pointer';
 
   // When embedded inside an iframe preview where browsers block beforeinstallprompt,
   // open the standalone app tab directly without showing any modal window.

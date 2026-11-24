@@ -21,7 +21,7 @@ export default defineConfig(() => {
             'Plataforma integral Kicks XR para registro, recolección, limpieza profesional y seguimiento en tiempo real de tenis.',
           lang: 'es-MX',
           dir: 'ltr',
-          theme_color: '#109173',
+          theme_color: '#1A1E2A',
           background_color: '#FFFFFF',
           display: 'standalone',
           display_override: ['standalone', 'minimal-ui'],

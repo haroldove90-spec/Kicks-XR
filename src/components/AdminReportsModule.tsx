@@ -219,7 +219,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+          <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
             Reportes y Corte de Caja
           </h1>
           <p className="text-sm text-slate-600">
@@ -230,7 +230,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
         <button
           type="button"
           onClick={handleExportCsv}
-          className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-[#109173] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+          className="min-h-[44px] inline-flex items-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
         >
           <Download className="h-4 w-4" />
           <span>Exportar Excel / CSV ({filteredOrders.length})</span>
@@ -256,7 +256,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                 onClick={() => setPreset(key)}
                 className={`min-h-[36px] rounded-xl px-3 text-xs font-bold transition-colors cursor-pointer ${
                   preset === key
-                    ? 'bg-[#000831] text-white'
+                    ? 'bg-[#1A1E2A] text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -270,7 +270,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
             <select
               value={campusId}
               onChange={(e) => setCampusId(e.target.value)}
-              className="min-h-[38px] rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831]"
+              className="min-h-[38px] rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A]"
             >
               <option value="all">Todas las sedes</option>
               {campuses.map((c) => (
@@ -285,7 +285,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
         {preset === 'custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Desde
               </label>
               <div className="relative">
@@ -294,12 +294,12 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full min-h-[40px] rounded-xl border border-slate-300 pl-9 pr-3 text-xs text-[#000831]"
+                  className="w-full min-h-[40px] rounded-xl border border-slate-300 pl-9 pr-3 text-xs text-[#1A1E2A]"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#000831] mb-1">
+              <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                 Hasta
               </label>
               <div className="relative">
@@ -308,7 +308,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full min-h-[40px] rounded-xl border border-slate-300 pl-9 pr-3 text-xs text-[#000831]"
+                  className="w-full min-h-[40px] rounded-xl border border-slate-300 pl-9 pr-3 text-xs text-[#1A1E2A]"
                 />
               </div>
             </div>
@@ -318,12 +318,12 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
 
       {/* KPI Cash Register Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#000831] text-white p-5">
+        <div className="rounded-2xl bg-[#1A1E2A] text-white p-5">
           <div className="flex items-center justify-between text-xs font-semibold text-white/75">
             <span>Ingresos cobrados (Caja)</span>
-            <TrendingUp className="h-4 w-4 text-[#109173]" />
+            <TrendingUp className="h-4 w-4 text-[#5E7800]" />
           </div>
-          <div className="mt-2 font-mono text-3xl font-extrabold text-[#E6F7F3] tabular-nums">
+          <div className="mt-2 font-mono text-3xl font-extrabold text-[#FCF61C] tabular-nums">
             ${summary.totalPaid}
           </div>
           <div className="mt-1.5 text-xs text-white/75 tabular-nums">
@@ -335,24 +335,24 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
         <div className="rounded-2xl bg-white border border-slate-200 p-5">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
             <span>Corte Efectivo vs. Tarjeta</span>
-            <Banknote className="h-4 w-4 text-[#109173]" />
+            <Banknote className="h-4 w-4 text-[#5E7800]" />
           </div>
           <div className="mt-2.5 space-y-1.5">
             <div className="flex items-center justify-between text-sm">
               <span className="inline-flex items-center gap-1.5 text-slate-600">
-                <Banknote className="h-4 w-4 text-[#109173]" />
+                <Banknote className="h-4 w-4 text-[#5E7800]" />
                 Efectivo
               </span>
-              <span className="font-mono font-extrabold text-[#000831] tabular-nums">
+              <span className="font-mono font-extrabold text-[#1A1E2A] tabular-nums">
                 ${summary.cashPaid} MXN
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="inline-flex items-center gap-1.5 text-slate-600">
-                <CreditCard className="h-4 w-4 text-[#5B21B6]" />
+                <CreditCard className="h-4 w-4 text-[#1A1E2A]" />
                 Tarjeta
               </span>
-              <span className="font-mono font-extrabold text-[#000831] tabular-nums">
+              <span className="font-mono font-extrabold text-[#1A1E2A] tabular-nums">
                 ${summary.cardPaid} MXN
               </span>
             </div>
@@ -362,9 +362,9 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
         <div className="rounded-2xl bg-white border border-slate-200 p-5">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
             <span>Volumen operativo</span>
-            <Package className="h-4 w-4 text-[#109173]" />
+            <Package className="h-4 w-4 text-[#5E7800]" />
           </div>
-          <div className="mt-2 font-mono text-3xl font-extrabold text-[#000831] tabular-nums">
+          <div className="mt-2 font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
             {summary.activeCount}
           </div>
           <div className="mt-1 text-xs text-slate-500">
@@ -378,7 +378,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
             <span>Satisfacción de clientes</span>
             <Star className="h-4 w-4 text-amber-500 fill-amber-400" />
           </div>
-          <div className="mt-2 font-mono text-3xl font-extrabold text-[#000831] tabular-nums">
+          <div className="mt-2 font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
             {summary.ratedOrders.length > 0 ? `${summary.avgRating} / 5` : '—'}
           </div>
           <div className="mt-1 text-xs text-slate-500">
@@ -392,8 +392,8 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
       {/* Breakdown by Service & Campus */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-          <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-            <BarChart3 className="h-5 w-5 text-[#109173]" />
+          <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+            <BarChart3 className="h-5 w-5 text-[#5E7800]" />
             <span>Servicios más solicitados</span>
           </div>
           {summary.byService.length === 0 ? (
@@ -406,13 +406,13 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                   className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 flex items-center justify-between gap-3"
                 >
                   <div>
-                    <div className="font-bold text-sm text-[#000831]">{svc.name}</div>
+                    <div className="font-bold text-sm text-[#1A1E2A]">{svc.name}</div>
                     <div className="text-xs text-slate-500">
                       {svc.orders} pedidos · {svc.pairs}{' '}
                       {svc.pairs === 1 ? 'par' : 'pares'}
                     </div>
                   </div>
-                  <div className="font-mono text-sm font-extrabold text-[#109173] tabular-nums">
+                  <div className="font-mono text-sm font-extrabold text-[#5E7800] tabular-nums">
                     ${svc.revenue} MXN
                   </div>
                 </div>
@@ -422,8 +422,8 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
         </div>
 
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-          <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-            <Building2 className="h-5 w-5 text-[#5B21B6]" />
+          <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+            <Building2 className="h-5 w-5 text-[#1A1E2A]" />
             <span>Desempeño por sede / punto</span>
           </div>
           {summary.byCampus.length === 0 ? (
@@ -436,13 +436,13 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                   className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 flex items-center justify-between gap-3"
                 >
                   <div>
-                    <div className="font-bold text-sm text-[#000831]">{c.name}</div>
+                    <div className="font-bold text-sm text-[#1A1E2A]">{c.name}</div>
                     <div className="text-xs text-slate-500">
                       {c.orders} pedidos · Por cobrar:{' '}
                       <span className="font-mono font-semibold">${c.pending}</span>
                     </div>
                   </div>
-                  <div className="font-mono text-sm font-extrabold text-[#000831] tabular-nums">
+                  <div className="font-mono text-sm font-extrabold text-[#1A1E2A] tabular-nums">
                     ${c.paid} cobrados
                   </div>
                 </div>
@@ -455,7 +455,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
       {/* Customer Ratings Feed */}
       <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
+          <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
             <Star className="h-5 w-5 text-amber-500 fill-amber-400" />
             <span>Calificaciones y reseñas de clientes</span>
           </div>
@@ -476,10 +476,10 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
                 key={o.id}
                 type="button"
                 onClick={() => onOpenOrderDetail(o)}
-                className="rounded-xl border border-slate-200 bg-slate-50/70 hover:border-[#109173] p-4 text-left transition-colors cursor-pointer space-y-1.5"
+                className="rounded-xl border border-slate-200 bg-slate-50/70 hover:border-[#8BAF03] p-4 text-left transition-colors cursor-pointer space-y-1.5"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-sm text-[#000831]">
+                  <span className="font-bold text-sm text-[#1A1E2A]">
                     {o.clientName}{' '}
                     <span className="font-mono text-xs font-normal text-slate-500">
                       · {o.folio}

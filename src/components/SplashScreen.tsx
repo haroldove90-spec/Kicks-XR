@@ -39,8 +39,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({onFinish}) => {
         }}
         className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 object-contain drop-shadow-sm"
       />
-      <div className="mt-8 h-1 w-32 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full w-full origin-left animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-[#109173]" />
+      <div className="mt-8 h-1.5 w-36 overflow-hidden rounded-full bg-[#1A1E2A]/10">
+        <div className="h-full w-full origin-left animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-[#8BAF03] to-[#FCF61C]" />
       </div>
     </div>
   );

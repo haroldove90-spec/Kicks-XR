@@ -44,7 +44,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-[#000831] hover:bg-slate-200/60 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-[#1A1E2A] hover:bg-slate-200/60 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Inicio</span>
@@ -55,11 +55,11 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
 
         <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8 shadow-xs">
           <div className="flex items-center gap-3.5 mb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#000831] text-white shrink-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1A1E2A] text-[#FCF61C] shrink-0">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="font-display text-xl font-extrabold text-[#000000]">
+              <h1 className="font-display text-xl font-extrabold text-[#1A1E2A]">
                 Acceso Administrador
               </h1>
               <p className="text-sm text-slate-600">
@@ -76,7 +76,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 Usuario
               </label>
               <div className="relative">
@@ -88,13 +88,13 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Ingresa tu usuario"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/25"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 Contraseña
               </label>
               <div className="relative">
@@ -106,13 +106,13 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Ingresa tu contraseña"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/25"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#000831] cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#1A1E2A] cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -126,7 +126,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 w-full min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 transition-colors cursor-pointer"
+              className="mt-2 w-full min-h-[48px] rounded-xl bg-[#8BAF03] px-6 text-sm font-extrabold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 transition-colors cursor-pointer"
             >
               {submitting ? 'Validando acceso...' : 'Ingresar al Panel'}
             </button>

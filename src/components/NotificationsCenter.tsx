@@ -116,7 +116,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+          <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
             Notificaciones
           </h1>
           <p className="text-sm text-slate-600">
@@ -130,7 +130,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             onClick={toggleSound}
             className={`inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border px-3.5 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
               soundOn
-                ? 'border-[#109173]/30 bg-[#E6F7F3] text-[#109173]'
+                ? 'border-[#8BAF03]/30 bg-[#F3F8DE] text-[#8BAF03]'
                 : 'border-slate-300 bg-white text-slate-600'
             }`}
           >
@@ -145,9 +145,9 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
           <button
             type="button"
             onClick={handleTestSound}
-            className="inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 transition-colors cursor-pointer"
           >
-            <BellRing className="h-4 w-4 text-[#109173]" />
+            <BellRing className="h-4 w-4 text-[#5E7800]" />
             <span>Probar sonido</span>
           </button>
 
@@ -155,9 +155,9 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             <button
               type="button"
               onClick={requestPushPermission}
-              className="inline-flex items-center gap-2 min-h-[42px] rounded-xl bg-[#000831] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#000000] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 min-h-[42px] rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#1A1E2A] transition-colors cursor-pointer"
             >
-              <BellRing className="h-4 w-4 text-[#109173]" />
+              <BellRing className="h-4 w-4 text-[#5E7800]" />
               <span>Activar alertas del dispositivo</span>
             </button>
           )}
@@ -165,9 +165,9 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             <button
               type="button"
               onClick={onMarkAllRead}
-              className="inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <CheckCheck className="h-4 w-4 text-[#109173]" />
+              <CheckCheck className="h-4 w-4 text-[#5E7800]" />
               <span>Marcar todas leídas</span>
             </button>
           )}
@@ -182,7 +182,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             onClick={() => setFilter('all')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               filter === 'all'
-                ? 'bg-white text-[#000831] shadow-xs'
+                ? 'bg-white text-[#1A1E2A] shadow-xs'
                 : 'text-slate-600'
             }`}
           >
@@ -193,7 +193,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             onClick={() => setFilter('unread')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               filter === 'unread'
-                ? 'bg-white text-[#000831] shadow-xs'
+                ? 'bg-white text-[#1A1E2A] shadow-xs'
                 : 'text-slate-600'
             }`}
           >
@@ -213,7 +213,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
         {visible.length === 0 ? (
           <div className="p-10 text-center">
             <Bell className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-[#000831]">
+            <p className="text-sm font-semibold text-[#1A1E2A]">
               {filter === 'unread'
                 ? 'No tienes notificaciones pendientes por leer.'
                 : 'Aún no hay notificaciones registradas.'}
@@ -224,22 +224,22 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             <div
               key={ntf.id}
               className={`p-4 sm:p-5 transition-colors ${
-                ntf.read ? 'bg-white' : 'bg-[#E6F7F3]/45'
+                ntf.read ? 'bg-white' : 'bg-[#F3F8DE]/45'
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-display text-sm font-extrabold text-[#000831]">
+                    <span className="font-display text-sm font-extrabold text-[#1A1E2A]">
                       {ntf.title}
                     </span>
                     {ntf.folio && (
-                      <span className="font-mono text-xs font-bold text-[#5B21B6]">
+                      <span className="font-mono text-xs font-bold text-[#1A1E2A]">
                         · {ntf.folio}
                       </span>
                     )}
                     {!ntf.read && (
-                      <span className="text-[11px] font-bold text-[#109173]">
+                      <span className="text-[11px] font-bold text-[#5E7800]">
                         · Nueva
                       </span>
                     )}
@@ -257,7 +257,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenFolio(ntf.folio!)}
-                      className="min-h-[36px] rounded-xl bg-[#109173] px-3 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="min-h-[36px] rounded-xl bg-[#8BAF03] px-3 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                     >
                       Ver pedido
                     </button>
@@ -267,7 +267,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
                       href={ntf.whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 min-h-[36px] rounded-xl border border-[#109173]/30 bg-[#E6F7F3] px-3 text-xs font-bold text-[#109173] hover:bg-[#109173] hover:text-white transition-colors"
+                      className="inline-flex items-center gap-1.5 min-h-[36px] rounded-xl border border-[#8BAF03]/30 bg-[#F3F8DE] px-3 text-xs font-bold text-[#5E7800] hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
                       <span>WhatsApp</span>
@@ -278,7 +278,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
                     <button
                       type="button"
                       onClick={() => onMarkRead(ntf.id)}
-                      className="inline-flex items-center gap-1 min-h-[36px] rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:text-[#000831] cursor-pointer"
+                      className="inline-flex items-center gap-1 min-h-[36px] rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:text-[#1A1E2A] cursor-pointer"
                     >
                       <Check className="h-3.5 w-3.5" />
                       <span>Leída</span>

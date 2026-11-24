@@ -48,16 +48,16 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
 <meta charset="utf-8" />
 <title>Comprobante Kicks XR · ${escapeHtml(order.folio)}</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #000831; margin: 0; padding: 24px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1A1E2A; margin: 0; padding: 24px; }
   .card { max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; }
-  .header { background: #000831; color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .header { background: #1A1E2A; color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
   .header h1 { margin: 0; font-size: 20px; }
-  .badge { background: #109173; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+  .badge { background: #FCF61C; color: #1A1E2A; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; }
   .body { padding: 24px; }
   .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; gap: 12px; }
   .label { color: #64748b; }
   .val { font-weight: 700; text-align: right; }
-  .total { font-size: 18px; color: #109173; font-weight: 800; border-bottom: none; padding-top: 12px; }
+  .total { font-size: 18px; color: #5E7800; font-weight: 800; border-bottom: none; padding-top: 12px; }
   .note { margin-top: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 13px; }
   .footer { text-align: center; padding: 14px 24px 20px; color: #64748b; font-size: 12px; border-top: 1px solid #f1f5f9; }
 </style>
@@ -79,7 +79,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
       <div class="row"><span class="label">Servicio</span><span class="val">${escapeHtml(order.serviceName)} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})</span></div>
       <div class="row"><span class="label">Devolución</span><span class="val">${order.deliveryMethod === 'delivery' ? `Domicilio: ${escapeHtml(order.deliveryAddress || '')}` : `Recoger en ${escapeHtml(order.campusName)}`}</span></div>
       <div class="row"><span class="label">Subtotal</span><span class="val">$${subtotal} MXN</span></div>
-      ${discount > 0 ? `<div class="row"><span class="label">Descuento (${escapeHtml(order.discountCode || 'Cupón')})</span><span class="val" style="color:#109173;">-$${discount} MXN</span></div>` : ''}
+      ${discount > 0 ? `<div class="row"><span class="label">Descuento (${escapeHtml(order.discountCode || 'Cupón')})</span><span class="val" style="color:#8BAF03;">-$${discount} MXN</span></div>` : ''}
       <div class="row"><span class="label">Envío</span><span class="val">${order.shippingFee > 0 ? `$${order.shippingFee} MXN` : 'Sin costo'}</span></div>
       <div class="row"><span class="label">Pago</span><span class="val">${order.paymentMethod === 'card' ? `Tarjeta${order.cardLast4 ? ` •••• ${escapeHtml(order.cardLast4)}` : ''}` : 'Efectivo'} · ${escapeHtml(order.paymentStatus)}</span></div>
       <div class="row total"><span>Total</span><span>$${order.totalAmount} MXN</span></div>
@@ -100,7 +100,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[55] flex items-center justify-center bg-[#000831]/75 p-3 sm:p-5 backdrop-blur-xs"
+      className="fixed inset-0 z-[55] flex items-center justify-center bg-[#1A1E2A]/75 p-3 sm:p-5 backdrop-blur-xs"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -111,7 +111,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Actions Bar */}
-        <div className="flex items-center justify-between gap-2 bg-[#000831] px-4 py-3 text-white shrink-0 print:hidden">
+        <div className="flex items-center justify-between gap-2 bg-[#1A1E2A] px-4 py-3 text-white shrink-0 print:hidden">
           <div className="font-display text-sm font-extrabold">
             Comprobante · {order.folio}
           </div>
@@ -119,7 +119,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
             <button
               type="button"
               onClick={handleDownloadHtmlReceipt}
-              className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-[#109173] hover:bg-[#0B755C] px-3 text-xs font-bold text-white transition-colors cursor-pointer"
+              className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-[#8BAF03] hover:bg-[#749402] px-3 text-xs font-bold text-[#1A1E2A] transition-colors cursor-pointer"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Descargar</span>
@@ -164,10 +164,10 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
               </div>
             </div>
             <div className="text-right">
-              <div className="font-mono text-lg font-extrabold text-[#000831]">
+              <div className="font-mono text-lg font-extrabold text-[#1A1E2A]">
                 {order.folio}
               </div>
-              <div className="font-mono text-xs font-bold text-[#5B21B6]">
+              <div className="font-mono text-xs font-bold text-[#1A1E2A]">
                 Bolsa {order.bagCode}
               </div>
             </div>
@@ -176,14 +176,14 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
           <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 rounded-xl p-3.5 border border-slate-200">
             <div>
               <div className="text-slate-500">Cliente</div>
-              <div className="font-bold text-[#000831] mt-0.5">{order.clientName}</div>
+              <div className="font-bold text-[#1A1E2A] mt-0.5">{order.clientName}</div>
               <div className="font-mono text-[11px] text-slate-600">
                 {order.clientWhatsapp}
               </div>
             </div>
             <div className="text-right">
               <div className="text-slate-500">Fecha de registro</div>
-              <div className="font-mono font-bold text-[#000831] mt-0.5">
+              <div className="font-mono font-bold text-[#1A1E2A] mt-0.5">
                 {new Date(order.createdAt).toLocaleDateString('es-MX')}
               </div>
               <div className="font-mono text-[11px] text-slate-600">
@@ -195,11 +195,11 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
             </div>
             <div>
               <div className="text-slate-500">Sede / Punto</div>
-              <div className="font-bold text-[#000831] mt-0.5">{order.campusName}</div>
+              <div className="font-bold text-[#1A1E2A] mt-0.5">{order.campusName}</div>
             </div>
             <div className="text-right">
               <div className="text-slate-500">Estatus</div>
-              <div className="font-bold text-[#109173] mt-0.5">{order.status}</div>
+              <div className="font-bold text-[#5E7800] mt-0.5">{order.status}</div>
             </div>
           </div>
 
@@ -208,12 +208,12 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
               <span className="text-slate-600">
                 {order.serviceName} ({order.pairs} × ${order.unitPrice})
               </span>
-              <span className="font-mono font-bold text-[#000831] tabular-nums">
+              <span className="font-mono font-bold text-[#1A1E2A] tabular-nums">
                 ${subtotal} MXN
               </span>
             </div>
             {discount > 0 && (
-              <div className="flex justify-between gap-2 text-[#109173]">
+              <div className="flex justify-between gap-2 text-[#5E7800]">
                 <span>Cupón {order.discountCode || 'Descuento'}</span>
                 <span className="font-mono font-bold tabular-nums">
                   -${discount} MXN
@@ -226,21 +226,21 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                   ? 'Envío a domicilio'
                   : 'Recoger en punto'}
               </span>
-              <span className="font-mono font-semibold text-[#000831] tabular-nums">
+              <span className="font-mono font-semibold text-[#1A1E2A] tabular-nums">
                 {order.shippingFee > 0 ? `$${order.shippingFee} MXN` : '$0 MXN'}
               </span>
             </div>
             <div className="flex justify-between gap-2 pt-2 border-t border-slate-100">
-              <span className="font-display font-extrabold text-[#000831]">
+              <span className="font-display font-extrabold text-[#1A1E2A]">
                 Total
               </span>
-              <span className="font-mono text-xl font-extrabold text-[#109173] tabular-nums">
+              <span className="font-mono text-xl font-extrabold text-[#5E7800] tabular-nums">
                 ${order.totalAmount} MXN
               </span>
             </div>
             <div className="flex justify-between gap-2 text-xs text-slate-600">
               <span>Forma y estado de pago</span>
-              <span className="font-bold text-[#000831]">
+              <span className="font-bold text-[#1A1E2A]">
                 {order.paymentMethod === 'card'
                   ? `Tarjeta${order.cardLast4 ? ` •••• ${order.cardLast4}` : ''}`
                   : 'Efectivo'}{' '}
@@ -251,14 +251,14 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
 
           {order.deliveryMethod === 'delivery' && order.deliveryAddress && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs">
-              <span className="font-bold text-[#000831]">Dirección de entrega: </span>
+              <span className="font-bold text-[#1A1E2A]">Dirección de entrega: </span>
               <span className="text-slate-700">{order.deliveryAddress}</span>
             </div>
           )}
 
           {order.shoeNotes && (
-            <div className="rounded-xl bg-[#E6F7F3]/50 border border-[#109173]/20 p-3 text-xs">
-              <span className="font-bold text-[#000831]">Notas del calzado: </span>
+            <div className="rounded-xl bg-[#F3F8DE]/50 border border-[#8BAF03]/20 p-3 text-xs">
+              <span className="font-bold text-[#1A1E2A]">Notas del calzado: </span>
               <span className="text-slate-700">{order.shoeNotes}</span>
             </div>
           )}
@@ -278,13 +278,13 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                 </div>
               )}
               {hasAfterPhoto && (
-                <div className="rounded-xl border border-[#109173]/30 p-2 text-center bg-[#E6F7F3]/30">
+                <div className="rounded-xl border border-[#8BAF03]/30 p-2 text-center bg-[#F3F8DE]/30">
                   <img
                     src={order.afterPhotoDataUrl}
                     alt="Foto terminada"
                     className="h-24 w-full object-contain rounded-lg bg-white"
                   />
-                  <div className="mt-1 text-[11px] font-bold text-[#109173]">
+                  <div className="mt-1 text-[11px] font-bold text-[#5E7800]">
                     Después
                   </div>
                 </div>
@@ -297,7 +297,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
               <QRCodeSVG
                 value={order.orderQrPayload || order.folio}
                 size={112}
-                fgColor="#000831"
+                fgColor="#1A1E2A"
               />
             </div>
             <p className="mt-2 text-[11px] text-slate-500 text-center">

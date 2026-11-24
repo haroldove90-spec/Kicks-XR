@@ -992,7 +992,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+                  <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
                     Panel Operativo Kicks XR
                   </h1>
                   <p className="text-sm text-slate-600">
@@ -1003,15 +1003,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('reports')}
-                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                   >
-                    <BarChart3 className="h-4 w-4 text-[#109173]" />
+                    <BarChart3 className="h-4 w-4 text-[#5E7800]" />
                     <span>Corte de caja y reportes</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setWalkInModalOpen(true)}
-                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl bg-[#109173] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>+ Pedido en mostrador</span>
@@ -1023,15 +1023,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('collections')}
-                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#109173] transition-colors cursor-pointer"
+                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#8BAF03] transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-semibold text-slate-500">
                     Recolecciones pendientes
                   </div>
-                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#000831] tabular-nums">
+                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
                     {metrics.pendingCollections}
                   </div>
-                  <div className="mt-1 text-xs font-semibold text-[#109173]">
+                  <div className="mt-1 text-xs font-semibold text-[#5E7800]">
                     Abrir lote de bolsas →
                   </div>
                 </button>
@@ -1039,12 +1039,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('orders')}
-                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#109173] transition-colors cursor-pointer"
+                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#8BAF03] transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-semibold text-slate-500">
                     En limpieza / Listos
                   </div>
-                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#109173] tabular-nums">
+                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#5E7800] tabular-nums">
                     {metrics.inCleaning + metrics.readyForDelivery}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
@@ -1055,12 +1055,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('incidents')}
-                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#5B21B6] transition-colors cursor-pointer"
+                  className="rounded-2xl bg-white border border-slate-200 p-5 text-left hover:border-[#8BAF03] transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-semibold text-slate-500">
                     Incidencias activas
                   </div>
-                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#5B21B6] tabular-nums">
+                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
                     {metrics.openIncidents}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
@@ -1078,12 +1078,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('reports')}
-                  className="rounded-2xl bg-[#000831] text-white p-5 text-left hover:bg-black transition-colors cursor-pointer"
+                  className="rounded-2xl bg-[#1A1E2A] text-white p-5 text-left hover:bg-[#11141D] transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-semibold text-white/70">
                     Ingresos cobrados
                   </div>
-                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#E6F7F3] tabular-nums">
+                  <div className="mt-2 font-mono text-3xl font-extrabold text-[#FCF61C] tabular-nums">
                     ${metrics.revenuePaid}
                   </div>
                   <div className="mt-1 text-[11px] text-white/75 tabular-nums">
@@ -1096,13 +1096,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-7 rounded-2xl bg-white border border-slate-200 p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display text-base font-bold text-[#000000]">
+                    <h2 className="font-display text-base font-bold text-[#1A1E2A]">
                       Pedidos recientes
                     </h2>
                     <button
                       type="button"
                       onClick={() => setActiveTab('orders')}
-                      className="text-xs font-bold text-[#109173] hover:underline cursor-pointer"
+                      className="text-xs font-bold text-[#5E7800] hover:underline cursor-pointer"
                     >
                       Ver todos
                     </button>
@@ -1154,15 +1154,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 )}
                               </td>
                               <td className="py-2.5 pr-3">
-                                <div className="font-mono font-bold text-[#000831]">
+                                <div className="font-mono font-bold text-[#1A1E2A]">
                                   {o.folio}
                                 </div>
-                                <div className="font-mono text-xs font-semibold text-[#5B21B6]">
+                                <div className="font-mono text-xs font-semibold text-[#1A1E2A]">
                                   {o.bagCode}
                                 </div>
                               </td>
                               <td className="py-2.5 pr-3 max-w-[175px]">
-                                <div className="font-semibold text-[#000831] truncate">
+                                <div className="font-semibold text-[#1A1E2A] truncate">
                                   {o.clientName}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate">
@@ -1170,11 +1170,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   {o.pairs === 1 ? 'par' : 'pares'}
                                 </div>
                               </td>
-                              <td className="py-2.5 pr-3 text-xs font-semibold text-[#109173]">
+                              <td className="py-2.5 pr-3 text-xs font-semibold text-[#5E7800]">
                                 {o.status}
                               </td>
                               <td className="py-2.5 text-right">
-                                <div className="font-mono font-bold tabular-nums text-[#000831]">
+                                <div className="font-mono font-bold tabular-nums text-[#1A1E2A]">
                                   ${o.totalAmount}
                                 </div>
                                 <button
@@ -1183,7 +1183,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     e.stopPropagation();
                                     setDetailOrderModal(o);
                                   }}
-                                  className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#109173] hover:underline cursor-pointer"
+                                  className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#5E7800] hover:underline cursor-pointer"
                                 >
                                   <Eye className="h-3 w-3" />
                                   <span>Detalle</span>
@@ -1199,13 +1199,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                 <div className="lg:col-span-5 rounded-2xl bg-white border border-slate-200 p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display text-base font-bold text-[#000000]">
+                    <h2 className="font-display text-base font-bold text-[#1A1E2A]">
                       Alertas recientes
                     </h2>
                     <button
                       type="button"
                       onClick={() => setActiveTab('notifications')}
-                      className="text-xs font-bold text-[#109173] hover:underline cursor-pointer"
+                      className="text-xs font-bold text-[#5E7800] hover:underline cursor-pointer"
                     >
                       Ver módulo
                     </button>
@@ -1222,7 +1222,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           className="rounded-xl bg-slate-50 p-3 text-xs space-y-1"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-[#000831]">{n.title}</span>
+                            <span className="font-bold text-[#1A1E2A]">{n.title}</span>
                             <span className="font-mono text-[11px] text-slate-400 tabular-nums">
                               {new Date(n.createdAt).toLocaleTimeString('es-MX', {
                                 hour: '2-digit',
@@ -1236,7 +1236,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               href={n.whatsappUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-bold text-[#109173] hover:underline"
+                              className="inline-flex items-center gap-1 font-bold text-[#5E7800] hover:underline"
                             >
                               <MessageSquare className="h-3 w-3" />
                               <span>Abrir en WhatsApp</span>
@@ -1256,8 +1256,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           {activeTab === 'collections' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
               <section className="xl:col-span-7 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
-                <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
+                <div className="flex items-center gap-3 rounded-xl bg-[#8BAF03] px-4 py-3 text-[#1A1E2A]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#5E7800] shrink-0">
                     1
                   </span>
                   <h2 className="font-display text-lg font-extrabold">
@@ -1267,13 +1267,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                       Sede / Punto
                     </label>
                     <select
                       value={filterCampus}
                       onChange={(e) => setFilterCampus(e.target.value)}
-                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
                     >
                       <option value="all">Todas las sedes</option>
                       {config?.campuses.map((c) => (
@@ -1285,7 +1285,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                       Fecha
                     </label>
                     <div className="relative">
@@ -1294,13 +1294,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         type="date"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
-                        className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-[#000831]"
+                        className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-[#1A1E2A]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                       Estado
                     </label>
                     <select
@@ -1310,7 +1310,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           e.target.value as 'all' | 'Pendiente' | 'Recolectado',
                         )
                       }
-                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
                     >
                       <option value="Pendiente">Pendiente</option>
                       <option value="Recolectado">Recolectado</option>
@@ -1322,7 +1322,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-[#000831]">
+                      <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-[#1A1E2A]">
                         <th className="py-2.5 px-3 rounded-l-lg">Foto</th>
                         <th className="py-2.5 px-3">Bolsa / Folio</th>
                         <th className="py-2.5 px-3">Cliente y servicio</th>
@@ -1372,8 +1372,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 )}
                               </td>
                               <td className="py-3 px-3">
-                                <div className="flex items-center gap-1.5 font-mono font-bold text-[#000831]">
-                                  <ShoppingBag className="h-4 w-4 text-[#000831] shrink-0" />
+                                <div className="flex items-center gap-1.5 font-mono font-bold text-[#1A1E2A]">
+                                  <ShoppingBag className="h-4 w-4 text-[#1A1E2A] shrink-0" />
                                   <span>{item.bagCode}</span>
                                 </div>
                                 <div className="font-mono text-xs font-semibold text-slate-500">
@@ -1381,20 +1381,20 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 </div>
                               </td>
                               <td className="py-3 px-3">
-                                <div className="font-bold text-xs text-[#000831]">
+                                <div className="font-bold text-xs text-[#1A1E2A]">
                                   {item.clientName}
                                 </div>
                                 <div className="text-xs text-slate-600">
                                   {item.serviceName} · {item.pairs}{' '}
                                   {item.pairs === 1 ? 'par' : 'pares'} ·{' '}
-                                  <span className="font-mono font-bold text-[#109173]">
+                                  <span className="font-mono font-bold text-[#5E7800]">
                                     ${item.totalAmount}
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-slate-500">
                                   {item.campusName}
                                   {item.assignedLockerCode && (
-                                    <span className="ml-1 font-mono font-semibold text-[#5B21B6]">
+                                    <span className="ml-1 font-mono font-semibold text-[#1A1E2A]">
                                       ({item.assignedLockerCode})
                                     </span>
                                   )}
@@ -1404,8 +1404,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 <span
                                   className={`inline-block rounded-lg px-2.5 py-1 text-xs font-bold ${
                                     item.collectionStatus === 'Recolectado'
-                                      ? 'bg-[#E6F7F3] text-[#109173]'
-                                      : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                      ? 'bg-[#F3F8DE] text-[#8BAF03]'
+                                      : 'bg-[#FCF61C] text-[#1A1E2A]'
                                   }`}
                                 >
                                   {item.collectionStatus}
@@ -1417,7 +1417,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     type="button"
                                     onClick={() => setDetailOrderModal(item)}
                                     title="Ver detalle completo y foto de tenis"
-                                    className="min-h-[38px] inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors whitespace-nowrap cursor-pointer"
+                                    className="min-h-[38px] inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors whitespace-nowrap cursor-pointer"
                                   >
                                     <Eye className="h-3.5 w-3.5" />
                                     <span className="hidden sm:inline">Detalle</span>
@@ -1431,7 +1431,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                         [item.bagCode]: true,
                                       }));
                                     }}
-                                    className="min-h-[38px] rounded-xl bg-[#109173] px-3 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap cursor-pointer"
+                                    className="min-h-[38px] rounded-xl bg-[#8BAF03] px-3 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap cursor-pointer"
                                   >
                                     Abrir recolección
                                   </button>
@@ -1447,8 +1447,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
               </section>
 
               <section className="xl:col-span-5 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
-                <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
+                <div className="flex items-center gap-3 rounded-xl bg-[#8BAF03] px-4 py-3 text-[#1A1E2A]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#5E7800] shrink-0">
                     2
                   </span>
                   <h2 className="font-display text-lg font-extrabold">
@@ -1457,7 +1457,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                  <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                     Código de bolsa
                   </label>
                   <form
@@ -1474,20 +1474,20 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         value={bagScanInput}
                         onChange={(e) => setBagScanInput(e.target.value)}
                         placeholder="B-028"
-                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-mono uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-mono uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => setScannerTarget('bag')}
-                      className="min-h-[44px] px-3.5 rounded-xl border border-[#5B21B6]/30 bg-[#EFEAFF] text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
+                      className="min-h-[44px] px-3.5 rounded-xl border border-[#8BAF03]/30 bg-[#FCF61C]/25 text-[#1A1E2A] hover:bg-[#1A1E2A] hover:text-[#FCF61C] transition-colors cursor-pointer"
                       title="Escanear código de bolsa"
                     >
                       <QrCode className="h-5 w-5" />
                     </button>
                     <button
                       type="submit"
-                      className="min-h-[44px] px-4 rounded-xl bg-[#000831] text-xs font-bold text-white hover:bg-[#000000] whitespace-nowrap cursor-pointer"
+                      className="min-h-[44px] px-4 rounded-xl bg-[#1A1E2A] text-xs font-bold text-white hover:bg-[#1A1E2A] whitespace-nowrap cursor-pointer"
                     >
                       Verificar
                     </button>
@@ -1518,7 +1518,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   [item.bagCode]: e.target.checked,
                                 }))
                               }
-                              className="h-5 w-5 rounded accent-[#109173] cursor-pointer shrink-0"
+                              className="h-5 w-5 rounded accent-[#8BAF03] cursor-pointer shrink-0"
                             />
                             {hasPhoto ? (
                               <button
@@ -1538,10 +1538,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 />
                               </button>
                             ) : (
-                              <ShoppingBag className="h-5 w-5 text-[#000831] shrink-0" />
+                              <ShoppingBag className="h-5 w-5 text-[#1A1E2A] shrink-0" />
                             )}
                             <div className="min-w-0">
-                              <div className="font-mono text-sm font-bold text-[#000831]">
+                              <div className="font-mono text-sm font-bold text-[#1A1E2A]">
                                 {item.bagCode}
                               </div>
                               <div className="text-xs text-slate-500 truncate">
@@ -1555,15 +1555,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               type="button"
                               onClick={() => setDetailOrderModal(item)}
                               title="Ver detalles del pedido"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <span
                               className={`rounded-lg px-2.5 py-1 text-xs font-bold whitespace-nowrap ${
                                 isChecked
-                                  ? 'bg-[#E6F7F3] text-[#109173]'
-                                  : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                  ? 'bg-[#F3F8DE] text-[#8BAF03]'
+                                  : 'bg-[#FCF61C] text-[#1A1E2A]'
                               }`}
                             >
                               {isChecked ? 'Verificada' : 'Faltante'}
@@ -1579,7 +1579,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   <button
                     type="button"
                     onClick={handleConfirmReception}
-                    className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-4 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                    className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                   >
                     <Check className="h-4 w-4" />
                     <span>Confirmar recepción</span>
@@ -1588,7 +1588,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   <button
                     type="button"
                     onClick={handleOpenIncidentFromCollection}
-                    className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#5B21B6] bg-white px-4 text-sm font-bold text-[#5B21B6] hover:bg-[#EFEAFF] transition-colors cursor-pointer"
+                    className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#8BAF03] bg-white px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#FCF61C]/25 transition-colors cursor-pointer"
                   >
                     <AlertTriangle className="h-4 w-4" />
                     <span>Registrar incidencia</span>
@@ -1605,9 +1605,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setWalkInModalOpen(true)}
-                  className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                  className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs font-bold text-white hover:bg-[#11141D] transition-colors cursor-pointer"
                 >
-                  <UserPlus className="h-4 w-4 text-[#109173]" />
+                  <UserPlus className="h-4 w-4 text-[#5E7800]" />
                   <span>+ Crear pedido rápido en mostrador</span>
                 </button>
 
@@ -1618,7 +1618,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     value={orderSearch}
                     onChange={(e) => setOrderSearch(e.target.value)}
                     placeholder="Buscar folio, bolsa, cliente o servicio..."
-                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                   />
                 </div>
 
@@ -1628,8 +1628,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     onClick={() => setOrderPhotoFilter('all')}
                     className={`min-h-[34px] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                       orderPhotoFilter === 'all'
-                        ? 'bg-white text-[#000831] shadow-xs'
-                        : 'text-slate-600 hover:text-[#000831]'
+                        ? 'bg-white text-[#1A1E2A] shadow-xs'
+                        : 'text-slate-600 hover:text-[#1A1E2A]'
                     }`}
                   >
                     Todos ({orders.length})
@@ -1639,8 +1639,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     onClick={() => setOrderPhotoFilter('with_photo')}
                     className={`min-h-[34px] inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                       orderPhotoFilter === 'with_photo'
-                        ? 'bg-white text-[#109173] shadow-xs'
-                        : 'text-slate-600 hover:text-[#000831]'
+                        ? 'bg-white text-[#8BAF03] shadow-xs'
+                        : 'text-slate-600 hover:text-[#1A1E2A]'
                     }`}
                   >
                     <Camera className="h-3.5 w-3.5" />
@@ -1664,7 +1664,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           onClick={() => setSelectedOrderId(o.id)}
                           className={`w-full rounded-xl border p-3 text-left transition-colors cursor-pointer flex items-center gap-3 ${
                             active
-                              ? 'border-[#109173] bg-[#E6F7F3]'
+                              ? 'border-[#8BAF03] bg-[#F3F8DE]'
                               : 'border-slate-200 bg-white hover:bg-slate-50'
                           }`}
                         >
@@ -1682,10 +1682,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-sm font-extrabold text-[#000831]">
+                              <span className="font-mono text-sm font-extrabold text-[#1A1E2A]">
                                 {o.folio}
                               </span>
-                              <span className="font-mono text-xs font-bold text-[#5B21B6]">
+                              <span className="font-mono text-xs font-bold text-[#1A1E2A]">
                                 {o.bagCode}
                               </span>
                             </div>
@@ -1693,7 +1693,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               {o.clientName} · {o.serviceName}
                             </div>
                             <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
-                              <span className="font-bold text-[#109173] truncate">
+                              <span className="font-bold text-[#5E7800] truncate">
                                 {o.status}
                               </span>
                               <span className="font-mono font-bold text-slate-600 tabular-nums shrink-0">
@@ -1710,9 +1710,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
               <div className="xl:col-span-8 space-y-6">
                 <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#8BAF03] px-4 py-3 text-[#1A1E2A]">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#5E7800] shrink-0">
                         3
                       </span>
                       <h2 className="font-display text-lg font-extrabold">
@@ -1754,7 +1754,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       <div className="grid grid-cols-1 lg:grid-cols-3 rounded-2xl border border-slate-200 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
                         {/* Folio editable por el Admin */}
                         <div className="p-4 flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#000831] shrink-0">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F3F8DE] text-[#1A1E2A] shrink-0">
                             <ShoppingBag className="h-6 w-6" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1772,7 +1772,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               type="text"
                               value={editFolio}
                               onChange={(e) => setEditFolio(e.target.value.toUpperCase())}
-                              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                             />
                             <div className="mt-0.5 text-[10px] text-slate-400">
                               Registrado{' '}
@@ -1790,7 +1790,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             type="text"
                             value={editBagCode}
                             onChange={(e) => setEditBagCode(e.target.value.toUpperCase())}
-                            className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#5B21B6] focus:border-[#109173] focus:outline-none"
+                            className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-lg font-extrabold uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                           />
                           <div className="mt-0.5 text-[11px] text-slate-500">
                             {selectedOrder.pairs}{' '}
@@ -1800,12 +1800,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         </div>
 
                         {/* Costo del servicio estipulado por el Admin */}
-                        <div className="p-4 flex flex-col justify-center bg-[#E6F7F3]/35">
-                          <div className="text-[11px] font-bold text-[#000831]">
+                        <div className="p-4 flex flex-col justify-center bg-[#F3F8DE]/35">
+                          <div className="text-[11px] font-bold text-[#1A1E2A]">
                             Costo del servicio ($ MXN)
                           </div>
                           <div className="mt-1 flex items-center gap-1.5">
-                            <span className="font-mono text-lg font-extrabold text-[#109173]">
+                            <span className="font-mono text-lg font-extrabold text-[#5E7800]">
                               $
                             </span>
                             <input
@@ -1813,7 +1813,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               min={0}
                               value={editTotalAmount}
                               onChange={(e) => setEditTotalAmount(e.target.value)}
-                              className="w-full rounded-lg border border-[#109173]/35 bg-white px-2.5 py-1 font-mono text-lg font-extrabold text-[#109173] tabular-nums focus:border-[#109173] focus:outline-none"
+                              className="w-full rounded-lg border border-[#8BAF03]/35 bg-white px-2.5 py-1 font-mono text-lg font-extrabold text-[#5E7800] tabular-nums focus:border-[#8BAF03] focus:outline-none"
                             />
                           </div>
                           <div className="mt-0.5 text-[10px] text-slate-500">
@@ -1827,8 +1827,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         {/* Photo Evidence Card: Antes + Después */}
                         <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col gap-3">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#000831]">
-                              <Camera className="h-4 w-4 text-[#109173]" />
+                            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
+                              <Camera className="h-4 w-4 text-[#5E7800]" />
                               <span>Evidencia: Antes y Después</span>
                             </div>
                           </div>
@@ -1851,16 +1851,16 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                       alt={`Antes ${selectedOrder.folio}`}
                                       className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                                     />
-                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#000831]/80 p-1 text-white">
+                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#1A1E2A]/80 p-1 text-white">
                                       <ZoomIn className="h-3 w-3" />
                                     </span>
                                   </button>
                                   <a
                                     href={selectedOrder.photoDataUrl}
                                     download={`${selectedOrder.folio}-antes.jpg`}
-                                    className="min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-[11px] font-bold text-[#000831] hover:bg-slate-50"
+                                    className="min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-[11px] font-bold text-[#1A1E2A] hover:bg-slate-50"
                                   >
-                                    <Download className="h-3 w-3 text-[#109173]" />
+                                    <Download className="h-3 w-3 text-[#5E7800]" />
                                     <span>Bajar</span>
                                   </a>
                                 </>
@@ -1874,7 +1874,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                             {/* DESPUÉS */}
                             <div className="flex flex-col gap-1.5">
-                              <div className="text-[10px] font-bold uppercase tracking-wider text-[#109173] flex items-center gap-1">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5E7800] flex items-center gap-1">
                                 <Sparkles className="h-3 w-3" />
                                 <span>Después (Taller)</span>
                               </div>
@@ -1891,14 +1891,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                         filename: `${selectedOrder.folio}-despues.jpg`,
                                       });
                                     }}
-                                    className="group relative h-36 w-full overflow-hidden rounded-xl border border-[#109173]/30 bg-white flex items-center justify-center cursor-pointer"
+                                    className="group relative h-36 w-full overflow-hidden rounded-xl border border-[#8BAF03]/30 bg-white flex items-center justify-center cursor-pointer"
                                   >
                                     <img
                                       src={editAfterPhoto}
                                       alt={`Después ${selectedOrder.folio}`}
                                       className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                                     />
-                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#109173]/90 p-1 text-white">
+                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#8BAF03] p-1 text-[#1A1E2A]">
                                       <ZoomIn className="h-3 w-3" />
                                     </span>
                                   </button>
@@ -1906,7 +1906,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => afterPhotoInputRef.current?.click()}
-                                      className="flex-1 min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-[#109173]/30 bg-[#E6F7F3] px-2 text-[11px] font-bold text-[#109173] cursor-pointer"
+                                      className="flex-1 min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-[#8BAF03]/30 bg-[#F3F8DE] px-2 text-[11px] font-bold text-[#5E7800] cursor-pointer"
                                     >
                                       <Camera className="h-3 w-3" />
                                       <span>Cambiar</span>
@@ -1925,7 +1925,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => afterPhotoInputRef.current?.click()}
-                                  className="h-36 rounded-xl border-2 border-dashed border-[#109173]/35 bg-[#E6F7F3]/40 hover:bg-[#E6F7F3] flex flex-col items-center justify-center text-[11px] font-bold text-[#109173] p-2 text-center transition-colors cursor-pointer"
+                                  className="h-36 rounded-xl border-2 border-dashed border-[#8BAF03]/35 bg-[#F3F8DE]/40 hover:bg-[#F3F8DE] flex flex-col items-center justify-center text-[11px] font-bold text-[#5E7800] p-2 text-center transition-colors cursor-pointer"
                                 >
                                   <Camera className="h-5 w-5 mb-1" />
                                   <span>Subir foto del Después</span>
@@ -1938,14 +1938,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         {/* Full Order & Service Breakdown Card */}
                         <div className="lg:col-span-7 rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3 text-sm">
                           <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
-                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#000831]">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
                               Detalles del pedido y servicio
                             </span>
                             <span
                               className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                                 selectedOrder.bagVerified
-                                  ? 'bg-[#E6F7F3] text-[#109173]'
-                                  : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                  ? 'bg-[#F3F8DE] text-[#8BAF03]'
+                                  : 'bg-[#FCF61C] text-[#1A1E2A]'
                               }`}
                             >
                               {selectedOrder.bagVerified
@@ -1957,7 +1957,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           <div className="space-y-2 text-xs sm:text-sm">
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Cliente</span>
-                              <span className="font-bold text-[#000831] text-right">
+                              <span className="font-bold text-[#1A1E2A] text-right">
                                 {selectedOrder.clientName}
                               </span>
                             </div>
@@ -1967,7 +1967,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 href={buildDirectWhatsappUrl(selectedOrder, editStatus)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 font-mono font-bold text-[#109173] hover:underline"
+                                className="inline-flex items-center gap-1 font-mono font-bold text-[#5E7800] hover:underline"
                               >
                                 <span>{selectedOrder.clientWhatsapp || '—'}</span>
                                 <ExternalLink className="h-3 w-3" />
@@ -1975,14 +1975,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             </div>
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Servicio</span>
-                              <span className="font-bold text-[#000831] text-right">
+                              <span className="font-bold text-[#1A1E2A] text-right">
                                 {selectedOrder.serviceName} ({selectedOrder.pairs}{' '}
                                 {selectedOrder.pairs === 1 ? 'par' : 'pares'})
                               </span>
                             </div>
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Desglose</span>
-                              <span className="font-mono font-semibold text-[#000831] tabular-nums text-right">
+                              <span className="font-mono font-semibold text-[#1A1E2A] tabular-nums text-right">
                                 ${selectedOrder.unitPrice} × {selectedOrder.pairs}
                                 {selectedOrder.shippingFee > 0
                                   ? ` + $${selectedOrder.shippingFee} envío`
@@ -1992,14 +1992,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   ? ` - $${selectedOrder.discountAmount} (${selectedOrder.discountCode || 'Cupón'})`
                                   : ''}{' '}
                                 ={' '}
-                                <strong className="text-[#109173]">
+                                <strong className="text-[#5E7800]">
                                   ${selectedOrder.totalAmount} MXN
                                 </strong>
                               </span>
                             </div>
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Pago</span>
-                              <span className="font-semibold text-[#000831] text-right">
+                              <span className="font-semibold text-[#1A1E2A] text-right">
                                 {selectedOrder.paymentMethod === 'card'
                                   ? `Tarjeta${selectedOrder.cardLast4 ? ` •••• ${selectedOrder.cardLast4}` : ''}`
                                   : 'Efectivo'}{' '}
@@ -2007,8 +2007,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 <strong
                                   className={
                                     selectedOrder.paymentStatus === 'Pagado'
-                                      ? 'text-[#109173]'
-                                      : 'text-[#5B21B6]'
+                                      ? 'text-[#8BAF03]'
+                                      : 'text-[#1A1E2A]'
                                   }
                                 >
                                   {selectedOrder.paymentStatus}
@@ -2017,7 +2017,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             </div>
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Sede / Depósito</span>
-                              <span className="font-semibold text-[#000831] text-right">
+                              <span className="font-semibold text-[#1A1E2A] text-right">
                                 {selectedOrder.campusName}
                                 {selectedOrder.dropoffMethod === 'locker'
                                   ? ` · Locker ${selectedOrder.assignedLockerCode || ''}`
@@ -2028,7 +2028,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             </div>
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Devolución</span>
-                              <span className="font-semibold text-[#000831] text-right">
+                              <span className="font-semibold text-[#1A1E2A] text-right">
                                 {selectedOrder.deliveryMethod === 'delivery'
                                   ? 'Entrega a domicilio'
                                   : `Recoger en ${selectedOrder.campusName}`}
@@ -2036,8 +2036,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             </div>
                             {selectedOrder.deliveryMethod === 'delivery' &&
                               selectedOrder.deliveryAddress && (
-                                <div className="rounded-lg bg-white border border-slate-200 p-2.5 text-xs text-[#000831] flex items-start gap-1.5">
-                                  <MapPin className="h-3.5 w-3.5 text-[#109173] shrink-0 mt-0.5" />
+                                <div className="rounded-lg bg-white border border-slate-200 p-2.5 text-xs text-[#1A1E2A] flex items-start gap-1.5">
+                                  <MapPin className="h-3.5 w-3.5 text-[#5E7800] shrink-0 mt-0.5" />
                                   <span>
                                     <strong>Dirección:</strong>{' '}
                                     {selectedOrder.deliveryAddress}
@@ -2045,10 +2045,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 </div>
                               )}
                             {selectedOrder.shoeNotes && (
-                              <div className="rounded-lg bg-[#EFEAFF]/70 border border-[#5B21B6]/20 p-2.5 text-xs text-[#000831] flex items-start gap-1.5">
-                                <FileText className="h-3.5 w-3.5 text-[#5B21B6] shrink-0 mt-0.5" />
+                              <div className="rounded-lg bg-[#FCF61C]/20 border border-[#8BAF03]/30 p-2.5 text-xs text-[#1A1E2A] flex items-start gap-1.5">
+                                <FileText className="h-3.5 w-3.5 text-[#1A1E2A] shrink-0 mt-0.5" />
                                 <span>
-                                  <strong className="text-[#5B21B6]">
+                                  <strong className="text-[#1A1E2A]">
                                     Notas del cliente:
                                   </strong>{' '}
                                   {selectedOrder.shoeNotes}
@@ -2056,7 +2056,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               </div>
                             )}
                             {selectedOrder.rating && (
-                              <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-[#000831] flex items-start justify-between gap-2">
+                              <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-[#1A1E2A] flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-1 font-bold text-amber-800">
                                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                                   <span>{selectedOrder.rating}/5</span>
@@ -2071,7 +2071,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             <div className="flex flex-wrap justify-between gap-2 pt-1.5 border-t border-slate-200/80 text-[11px] text-slate-500">
                               <span>
                                 Creado:{' '}
-                                <strong className="font-mono text-[#000831]">
+                                <strong className="font-mono text-[#1A1E2A]">
                                   {new Date(selectedOrder.createdAt).toLocaleString(
                                     'es-MX',
                                   )}
@@ -2079,7 +2079,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               </span>
                               <span>
                                 Actualizado:{' '}
-                                <strong className="font-mono text-[#000831]">
+                                <strong className="font-mono text-[#1A1E2A]">
                                   {new Date(selectedOrder.updatedAt).toLocaleString(
                                     'es-MX',
                                   )}
@@ -2105,7 +2105,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             onChange={(e) =>
                               setEditStatus(e.target.value as OrderStatus)
                             }
-                            className="w-full min-h-[44px] rounded-xl bg-[#E6F7F3] border border-[#109173]/30 px-3 text-sm font-bold text-[#000831] focus:border-[#109173] focus:outline-none disabled:opacity-60"
+                            className="w-full min-h-[44px] rounded-xl bg-[#F3F8DE] border border-[#8BAF03]/30 px-3 text-sm font-bold text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none disabled:opacity-60"
                           >
                             {ORDER_STATUSES.map((st) => (
                               <option key={st} value={st}>
@@ -2128,8 +2128,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             }
                             className={`w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors cursor-pointer ${
                               editPayment === 'Pagado'
-                                ? 'bg-[#E6F7F3] text-[#109173] border border-[#109173]/30'
-                                : 'bg-[#EFEAFF] text-[#5B21B6] border border-[#5B21B6]/25'
+                                ? 'bg-[#F3F8DE] text-[#8BAF03] border border-[#8BAF03]/30'
+                                : 'bg-[#FCF61C] text-[#1A1E2A] border border-[#1A1E2A]/25'
                             }`}
                           >
                             {editPayment === 'Pagado' ? (
@@ -2145,7 +2145,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       {/* Notas de actualización y notas internas de taller */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                          <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                             Nota del cambio (visible en historial del cliente)
                           </label>
                           <input
@@ -2153,11 +2153,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             value={editStatusNote}
                             onChange={(e) => setEditStatusNote(e.target.value)}
                             placeholder="Ej. Secado completado y sellado hidrofóbico aplicado"
-                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                          <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                             Notas internas de taller (solo Admin)
                           </label>
                           <input
@@ -2165,7 +2165,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             value={editAdminNotes}
                             onChange={(e) => setEditAdminNotes(e.target.value)}
                             placeholder="Ej. Usar cepillo suave en gamuza, plantilla suelta..."
-                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                           />
                         </div>
                       </div>
@@ -2175,7 +2175,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         <button
                           type="button"
                           onClick={handleUpdateOrder}
-                          className="flex-1 min-w-[180px] min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                          className="flex-1 min-w-[180px] min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                         >
                           <Pencil className="h-4 w-4" />
                           <span>Guardar actualización</span>
@@ -2185,9 +2185,9 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           href={buildDirectWhatsappUrl(selectedOrder, editStatus)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs sm:text-sm font-bold text-white hover:bg-black transition-colors"
+                          className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#11141D] transition-colors"
                         >
-                          <MessageSquare className="h-4 w-4 text-[#109173]" />
+                          <MessageSquare className="h-4 w-4 text-[#5E7800]" />
                           <span>Notificar por WhatsApp</span>
                           <ExternalLink className="h-3.5 w-3.5 opacity-75" />
                         </a>
@@ -2220,7 +2220,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               value={cancelReason}
                               onChange={(e) => setCancelReason(e.target.value)}
                               placeholder="Motivo de cancelación (opcional)"
-                              className="w-full min-h-[40px] rounded-lg border border-red-200 bg-white px-3 text-xs text-[#000831]"
+                              className="w-full min-h-[40px] rounded-lg border border-red-200 bg-white px-3 text-xs text-[#1A1E2A]"
                             />
                             <div className="flex justify-end gap-2">
                               <button
@@ -2246,7 +2246,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                       {/* Inline Order Timeline */}
                       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                        <div className="text-xs font-extrabold uppercase tracking-wider text-[#000831] mb-3">
+                        <div className="text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A] mb-3">
                           Historial y seguimiento del servicio
                         </div>
                         <OrderTimeline
@@ -2263,8 +2263,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 </section>
 
                 <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
-                  <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
+                  <div className="flex items-center gap-3 rounded-xl bg-[#8BAF03] px-4 py-3 text-[#1A1E2A]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#5E7800] shrink-0">
                       4
                     </span>
                     <h2 className="font-display text-lg font-extrabold">
@@ -2279,23 +2279,23 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         onClick={() => setDeliverMethod('pickup')}
                         className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
                           deliverMethod === 'pickup'
-                            ? 'border-[#109173] bg-[#E6F7F3]'
+                            ? 'border-[#8BAF03] bg-[#F3F8DE]'
                             : 'border-slate-200 bg-white'
                         }`}
                       >
                         <span
                           className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                             deliverMethod === 'pickup'
-                              ? 'border-[#109173]'
+                              ? 'border-[#8BAF03]'
                               : 'border-slate-300'
                           }`}
                         >
                           {deliverMethod === 'pickup' && (
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#109173]" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#8BAF03]" />
                           )}
                         </span>
-                        <Store className="h-5 w-5 text-[#000831]" />
-                        <span className="font-bold text-sm text-[#000831]">
+                        <Store className="h-5 w-5 text-[#1A1E2A]" />
+                        <span className="font-bold text-sm text-[#1A1E2A]">
                           Recogida en punto
                         </span>
                       </button>
@@ -2305,30 +2305,30 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         onClick={() => setDeliverMethod('delivery')}
                         className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
                           deliverMethod === 'delivery'
-                            ? 'border-[#109173] bg-[#E6F7F3]'
+                            ? 'border-[#8BAF03] bg-[#F3F8DE]'
                             : 'border-slate-200 bg-white'
                         }`}
                       >
                         <span
                           className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                             deliverMethod === 'delivery'
-                              ? 'border-[#109173]'
+                              ? 'border-[#8BAF03]'
                               : 'border-slate-300'
                           }`}
                         >
                           {deliverMethod === 'delivery' && (
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#109173]" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#8BAF03]" />
                           )}
                         </span>
-                        <Truck className="h-5 w-5 text-[#000831]" />
-                        <span className="font-bold text-sm text-[#000831]">
+                        <Truck className="h-5 w-5 text-[#1A1E2A]" />
+                        <span className="font-bold text-sm text-[#1A1E2A]">
                           Entrega a domicilio
                         </span>
                       </button>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                      <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                         Folio de confirmación
                       </label>
                       <div className="flex gap-2">
@@ -2337,12 +2337,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           value={deliverFolio}
                           onChange={(e) => setDeliverFolio(e.target.value)}
                           placeholder="Ej. KXR-1042"
-                          className="flex-1 min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 font-mono text-sm uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                          className="flex-1 min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 font-mono text-sm uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={() => setScannerTarget('delivery')}
-                          className="min-h-[46px] px-4 rounded-xl border border-[#5B21B6]/30 bg-[#EFEAFF] text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
+                          className="min-h-[46px] px-4 rounded-xl border border-[#8BAF03]/30 bg-[#FCF61C]/25 text-[#1A1E2A] hover:bg-[#1A1E2A] hover:text-[#FCF61C] transition-colors cursor-pointer"
                           title="Escanear QR de pedido"
                         >
                           <QrCode className="h-5 w-5" />
@@ -2360,7 +2360,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 setDeliverFolio(o.folio);
                                 setDeliverMethod(o.deliveryMethod);
                               }}
-                              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer"
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
                             >
                               {o.folio}
                             </button>
@@ -2377,19 +2377,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         onChange={handleDeliverAfterPhotoFile}
                         className="sr-only"
                       />
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[#109173]/40 bg-[#E6F7F3]/40 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[#8BAF03]/40 bg-[#F3F8DE]/40 p-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           {deliverAfterPhoto ? (
                             <img
                               src={deliverAfterPhoto}
                               alt="Evidencia final"
-                              className="h-12 w-12 rounded-lg object-cover border border-[#109173]/30 shrink-0"
+                              className="h-12 w-12 rounded-lg object-cover border border-[#8BAF03]/30 shrink-0"
                             />
                           ) : (
-                            <Camera className="h-5 w-5 text-[#109173] shrink-0" />
+                            <Camera className="h-5 w-5 text-[#5E7800] shrink-0" />
                           )}
                           <div className="text-xs">
-                            <div className="font-bold text-[#000831]">
+                            <div className="font-bold text-[#1A1E2A]">
                               Foto del calzado limpio (opcional)
                             </div>
                             <div className="text-slate-500">
@@ -2403,7 +2403,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           <button
                             type="button"
                             onClick={() => deliverAfterPhotoInputRef.current?.click()}
-                            className="min-h-[34px] rounded-lg bg-white border border-[#109173]/30 px-3 text-xs font-bold text-[#109173] hover:bg-[#E6F7F3] cursor-pointer"
+                            className="min-h-[34px] rounded-lg bg-white border border-[#8BAF03]/30 px-3 text-xs font-bold text-[#5E7800] hover:bg-[#F3F8DE] cursor-pointer"
                           >
                             {deliverAfterPhoto ? 'Cambiar' : 'Subir foto'}
                           </button>
@@ -2425,14 +2425,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         type="checkbox"
                         checked={deliverMarkPaid}
                         onChange={(e) => setDeliverMarkPaid(e.target.checked)}
-                        className="h-4 w-4 rounded accent-[#109173]"
+                        className="h-4 w-4 rounded accent-[#8BAF03]"
                       />
                       <span>Confirmar liquidación de pago (marcar como Pagado)</span>
                     </label>
 
                     <button
                       type="submit"
-                      className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                      className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-6 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                     >
                       <Check className="h-4 w-4" />
                       <span>Marcar como entregado</span>
@@ -2455,7 +2455,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           {/* MODULE 5: INCIDENCIAS */}
           {activeTab === 'incidents' && (
             <div className="space-y-6">
-              <div className="rounded-2xl bg-[#5B21B6] px-5 py-4 text-white flex items-center gap-3">
+              <div className="rounded-2xl bg-[#1A1E2A] px-5 py-4 text-[#FCF61C] flex items-center gap-3">
                 <AlertTriangle className="h-6 w-6 shrink-0" />
                 <div>
                   <h1 className="font-display text-lg font-extrabold">
@@ -2472,18 +2472,18 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   onSubmit={handleCreateIncident}
                   className="lg:col-span-5 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4"
                 >
-                  <h2 className="font-display text-base font-bold text-[#000000]">
+                  <h2 className="font-display text-base font-bold text-[#1A1E2A]">
                     Registrar nueva incidencia
                   </h2>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                       Tipo de incidencia
                     </label>
                     <select
                       value={incType}
                       onChange={(e) => setIncType(e.target.value as IncidentType)}
-                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831]"
+                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#1A1E2A]"
                     >
                       {INCIDENT_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -2495,7 +2495,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                      <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                         Código de bolsa
                       </label>
                       <input
@@ -2504,11 +2504,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         value={incBagCode}
                         onChange={(e) => setIncBagCode(e.target.value)}
                         placeholder="B-029"
-                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#000831]"
+                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#1A1E2A]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                      <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                         Folio (opcional)
                       </label>
                       <input
@@ -2516,19 +2516,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         value={incFolio}
                         onChange={(e) => setIncFolio(e.target.value)}
                         placeholder="KXR-1043"
-                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#000831]"
+                        className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#1A1E2A]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                       Sede / Punto
                     </label>
                     <select
                       value={incCampusId}
                       onChange={(e) => setIncCampusId(e.target.value)}
-                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#000831]"
+                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#1A1E2A]"
                     >
                       {config?.campuses.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -2539,7 +2539,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#000831] mb-1.5">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1.5">
                       Descripción operativa
                     </label>
                     <textarea
@@ -2547,13 +2547,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       value={incDesc}
                       onChange={(e) => setIncDesc(e.target.value)}
                       placeholder="Detalla qué ocurrió en locker, punto o taller..."
-                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-[#000831] focus:border-[#5B21B6] focus:outline-none"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full min-h-[48px] rounded-xl bg-[#5B21B6] px-5 text-sm font-bold text-white hover:bg-[#4C1D95] transition-colors cursor-pointer"
+                    className="w-full min-h-[48px] rounded-xl bg-[#1A1E2A] px-5 text-sm font-bold text-[#FCF61C] hover:bg-[#11141D] transition-colors cursor-pointer"
                   >
                     Registrar incidencia
                   </button>
@@ -2561,7 +2561,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                 <div className="lg:col-span-7 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="font-display text-base font-bold text-[#000000]">
+                    <h2 className="font-display text-base font-bold text-[#1A1E2A]">
                       Bandeja de resolución ({visibleIncidents.length})
                     </h2>
                     <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100">
@@ -2573,7 +2573,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             onClick={() => setIncFilter(st)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                               incFilter === st
-                                ? 'bg-white text-[#000831] shadow-xs'
+                                ? 'bg-white text-[#1A1E2A] shadow-xs'
                                 : 'text-slate-600'
                             }`}
                           >
@@ -2597,11 +2597,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-[#5B21B6]">
+                              <span className="font-bold text-sm text-[#1A1E2A]">
                                 {inc.type}
                               </span>
                               <span className="text-slate-300">·</span>
-                              <span className="font-mono text-sm font-bold text-[#000831]">
+                              <span className="font-mono text-sm font-bold text-[#1A1E2A]">
                                 Bolsa {inc.bagCode}
                               </span>
                               {inc.folio && (
@@ -2616,8 +2616,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             <span
                               className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
                                 inc.status === 'Resuelta'
-                                  ? 'bg-[#E6F7F3] text-[#109173]'
-                                  : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                  ? 'bg-[#F3F8DE] text-[#8BAF03]'
+                                  : 'bg-[#FCF61C] text-[#1A1E2A]'
                               }`}
                             >
                               {inc.status}
@@ -2638,7 +2638,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   onClick={() =>
                                     handleResolveIncident(inc.id, 'En revisión')
                                   }
-                                  className="min-h-[38px] rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:bg-slate-50 cursor-pointer"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
                                 >
                                   Pasar a revisión
                                 </button>
@@ -2652,7 +2652,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     'Resuelta por equipo operativo Kicks XR.',
                                   )
                                 }
-                                className="min-h-[38px] rounded-lg bg-[#109173] px-3.5 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                                className="min-h-[38px] rounded-lg bg-[#8BAF03] px-3.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                               >
                                 Marcar resuelta
                               </button>
@@ -2697,7 +2697,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+                  <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
                     Configuración operativa
                   </h1>
                   <p className="text-sm text-slate-600">
@@ -2708,10 +2708,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   type="button"
                   onClick={checkSupabaseHealth}
                   disabled={checkingSb}
-                  className="inline-flex items-center gap-2 min-h-[42px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 cursor-pointer disabled:opacity-60"
+                  className="inline-flex items-center gap-2 min-h-[42px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer disabled:opacity-60"
                 >
                   <RefreshCw
-                    className={`h-4 w-4 text-[#109173] ${checkingSb ? 'animate-spin' : ''}`}
+                    className={`h-4 w-4 text-[#8BAF03] ${checkingSb ? 'animate-spin' : ''}`}
                   />
                   <span>Verificar tablas Supabase</span>
                 </button>
@@ -2722,13 +2722,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <div
                   className={`rounded-2xl border p-5 space-y-3 ${
                     sbHealth.connected
-                      ? 'border-[#109173]/30 bg-[#E6F7F3]/50'
+                      ? 'border-[#8BAF03]/30 bg-[#F3F8DE]/50'
                       : 'border-amber-200 bg-amber-50/70'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 font-display text-sm font-extrabold text-[#000831]">
-                      <Database className="h-4 w-4 text-[#109173]" />
+                    <div className="flex items-center gap-2 font-display text-sm font-extrabold text-[#1A1E2A]">
+                      <Database className="h-4 w-4 text-[#5E7800]" />
                       <span>
                         {sbHealth.connected
                           ? 'Supabase conectado y las 10 tablas están operativas'
@@ -2747,12 +2747,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         key={table}
                         className="rounded-lg bg-white border border-slate-200 px-2.5 py-2 flex items-center justify-between gap-1.5 text-xs"
                       >
-                        <span className="font-mono text-[11px] text-[#000831] truncate">
+                        <span className="font-mono text-[11px] text-[#1A1E2A] truncate">
                           {table.replace('kicksxr_', '')}
                         </span>
                         <span
                           className={`font-bold shrink-0 ${
-                            ok ? 'text-[#109173]' : 'text-amber-600'
+                            ok ? 'text-[#8BAF03]' : 'text-amber-600'
                           }`}
                         >
                           {ok ? 'OK' : 'Pend.'}
@@ -2765,8 +2765,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
-                  <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-                    <Building2 className="h-5 w-5 text-[#109173]" />
+                  <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+                    <Building2 className="h-5 w-5 text-[#5E7800]" />
                     <span>Sedes y puntos KicksXR</span>
                   </div>
 
@@ -2786,7 +2786,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   value={editCampusName}
                                   onChange={(e) => setEditCampusName(e.target.value)}
                                   placeholder="Nombre de sede"
-                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#000831]"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#1A1E2A]"
                                 />
                                 <select
                                   value={editCampusType}
@@ -2795,7 +2795,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                       e.target.value as 'university' | 'point',
                                     )
                                   }
-                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#1A1E2A]"
                                 >
                                   <option value="point">Punto físico KicksXR</option>
                                   <option value="university">Sede universitaria</option>
@@ -2806,7 +2806,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 value={editCampusAddress}
                                 onChange={(e) => setEditCampusAddress(e.target.value)}
                                 placeholder="Dirección"
-                                className="w-full min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                                className="w-full min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#1A1E2A]"
                               />
                               <div className="flex justify-end gap-2">
                                 <button
@@ -2819,7 +2819,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSaveCampusEdit(c.id)}
-                                  className="min-h-[32px] rounded-lg bg-[#109173] px-3 text-xs font-bold text-white cursor-pointer"
+                                  className="min-h-[32px] rounded-lg bg-[#8BAF03] px-3 text-xs font-bold text-[#1A1E2A] cursor-pointer"
                                 >
                                   Guardar sede
                                 </button>
@@ -2828,7 +2828,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           ) : (
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="font-bold text-sm text-[#000831]">
+                                <div className="font-bold text-sm text-[#1A1E2A]">
                                   {c.name}{' '}
                                   <span className="font-mono text-xs font-normal text-slate-500">
                                     ({c.code})
@@ -2848,14 +2848,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     setEditCampusType(c.type);
                                   }}
                                   title="Editar sede"
-                                  className="min-h-[34px] inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                                  className="min-h-[34px] inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] cursor-pointer"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setQrCampusModal(c)}
-                                  className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-[#EFEAFF] px-2.5 text-xs font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
+                                  className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-[#FCF61C]/25 px-2.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#1A1E2A] hover:text-[#FCF61C] transition-colors cursor-pointer"
                                 >
                                   <QrCode className="h-3.5 w-3.5" />
                                   <span>QR</span>
@@ -2868,7 +2868,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   }}
                                   className={`min-h-[34px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
                                     c.active
-                                      ? 'bg-[#E6F7F3] text-[#109173]'
+                                      ? 'bg-[#F3F8DE] text-[#8BAF03]'
                                       : 'bg-slate-100 text-slate-500'
                                   }`}
                                 >
@@ -2886,7 +2886,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     onSubmit={handleAddCampus}
                     className="pt-3 border-t border-slate-100 space-y-2.5"
                   >
-                    <div className="text-xs font-bold text-[#000831]">
+                    <div className="text-xs font-bold text-[#1A1E2A]">
                       Agregar nueva sede
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -2919,7 +2919,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       />
                       <button
                         type="submit"
-                        className="min-h-[42px] inline-flex items-center gap-1 rounded-xl bg-[#109173] px-4 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                        className="min-h-[42px] inline-flex items-center gap-1 rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                       >
                         <Plus className="h-4 w-4" />
                         <span>Agregar</span>
@@ -2930,8 +2930,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-                      <Banknote className="h-5 w-5 text-[#109173]" />
+                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+                      <Banknote className="h-5 w-5 text-[#5E7800]" />
                       <span>Servicios y precios</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2941,12 +2941,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         min={0}
                         value={shippingFeeInput}
                         onChange={(e) => setShippingFeeInput(e.target.value)}
-                        className="w-20 min-h-[36px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#000831]"
+                        className="w-20 min-h-[36px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#1A1E2A]"
                       />
                       <button
                         type="button"
                         onClick={handleSaveShipping}
-                        className="min-h-[36px] rounded-lg bg-[#000831] px-2.5 text-xs font-bold text-white cursor-pointer"
+                        className="min-h-[36px] rounded-lg bg-[#1A1E2A] px-2.5 text-xs font-bold text-white cursor-pointer"
                       >
                         Guardar
                       </button>
@@ -2969,7 +2969,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   value={editServiceName}
                                   onChange={(e) => setEditServiceName(e.target.value)}
                                   placeholder="Nombre del servicio"
-                                  className="sm:col-span-2 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#000831]"
+                                  className="sm:col-span-2 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#1A1E2A]"
                                 />
                                 <input
                                   type="number"
@@ -2977,7 +2977,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   value={editServicePrice}
                                   onChange={(e) => setEditServicePrice(e.target.value)}
                                   placeholder="Precio $"
-                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 font-mono text-xs font-bold text-[#000831]"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 font-mono text-xs font-bold text-[#1A1E2A]"
                                 />
                               </div>
                               <div className="flex gap-2">
@@ -2986,7 +2986,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   value={editServiceDesc}
                                   onChange={(e) => setEditServiceDesc(e.target.value)}
                                   placeholder="Descripción"
-                                  className="flex-1 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                                  className="flex-1 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#1A1E2A]"
                                 />
                                 <input
                                   type="number"
@@ -2994,7 +2994,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   value={editServiceHours}
                                   onChange={(e) => setEditServiceHours(e.target.value)}
                                   title="Horas estimadas"
-                                  className="w-20 min-h-[38px] rounded-lg border border-slate-300 px-2 font-mono text-xs text-[#000831]"
+                                  className="w-20 min-h-[38px] rounded-lg border border-slate-300 px-2 font-mono text-xs text-[#1A1E2A]"
                                 />
                               </div>
                               <div className="flex justify-end gap-2">
@@ -3008,7 +3008,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSaveServiceEdit(svc.id)}
-                                  className="min-h-[32px] rounded-lg bg-[#109173] px-3 text-xs font-bold text-white cursor-pointer"
+                                  className="min-h-[32px] rounded-lg bg-[#8BAF03] px-3 text-xs font-bold text-[#1A1E2A] cursor-pointer"
                                 >
                                   Guardar servicio
                                 </button>
@@ -3017,7 +3017,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           ) : (
                             <div className="flex items-center justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="font-bold text-sm text-[#000831]">
+                                <div className="font-bold text-sm text-[#1A1E2A]">
                                   {svc.name}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate">
@@ -3025,7 +3025,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="font-mono text-sm font-extrabold text-[#109173] tabular-nums mr-1">
+                                <span className="font-mono text-sm font-extrabold text-[#5E7800] tabular-nums mr-1">
                                   ${svc.price}
                                 </span>
                                 <button
@@ -3038,7 +3038,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                     setEditServiceHours(String(svc.turnaroundHours));
                                   }}
                                   title="Editar servicio y precio"
-                                  className="min-h-[34px] inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                                  className="min-h-[34px] inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] cursor-pointer"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
@@ -3052,7 +3052,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   }}
                                   className={`min-h-[34px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
                                     svc.active
-                                      ? 'bg-[#E6F7F3] text-[#109173]'
+                                      ? 'bg-[#F3F8DE] text-[#8BAF03]'
                                       : 'bg-slate-100 text-slate-500'
                                   }`}
                                 >
@@ -3070,7 +3070,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     onSubmit={handleAddService}
                     className="pt-3 border-t border-slate-100 space-y-2.5"
                   >
-                    <div className="text-xs font-bold text-[#000831]">
+                    <div className="text-xs font-bold text-[#1A1E2A]">
                       Nuevo servicio
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -3110,7 +3110,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       />
                       <button
                         type="submit"
-                        className="min-h-[42px] rounded-xl bg-[#109173] px-4 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                        className="min-h-[42px] rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                       >
                         Agregar
                       </button>
@@ -3121,8 +3121,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 {/* Cupones y promociones */}
                 <div className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-                      <Tag className="h-5 w-5 text-[#109173]" />
+                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+                      <Tag className="h-5 w-5 text-[#5E7800]" />
                       <span>Cupones y promociones</span>
                     </div>
                     <span className="text-xs text-slate-500">
@@ -3138,10 +3138,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-extrabold text-[#000831]">
+                            <span className="font-mono text-sm font-extrabold text-[#1A1E2A]">
                               {c.code}
                             </span>
-                            <span className="rounded-md bg-[#E6F7F3] px-2 py-0.5 font-mono text-xs font-bold text-[#109173]">
+                            <span className="rounded-md bg-[#F3F8DE] px-2 py-0.5 font-mono text-xs font-bold text-[#5E7800]">
                               {c.discountType === 'percent'
                                 ? `${c.value}% OFF`
                                 : `-$${c.value}`}
@@ -3161,7 +3161,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             }}
                             className={`min-h-[32px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
                               c.active
-                                ? 'bg-[#E6F7F3] text-[#109173]'
+                                ? 'bg-[#F3F8DE] text-[#8BAF03]'
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
@@ -3220,7 +3220,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     />
                     <button
                       type="submit"
-                      className="sm:col-span-2 min-h-[42px] rounded-xl bg-[#109173] px-4 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="sm:col-span-2 min-h-[42px] rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                     >
                       Crear cupón
                     </button>
@@ -3229,8 +3229,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                 <div className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
-                      <Layers className="h-5 w-5 text-[#5B21B6]" />
+                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
+                      <Layers className="h-5 w-5 text-[#1A1E2A]" />
                       <span>Lockers autoservicio y numeración de folios / bolsas</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -3241,7 +3241,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           min={1}
                           value={nextOrderSeqInput}
                           onChange={(e) => setNextOrderSeqInput(e.target.value)}
-                          className="w-20 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#000831]"
+                          className="w-20 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#1A1E2A]"
                         />
                       </label>
                       <label className="inline-flex items-center gap-1.5 text-slate-600">
@@ -3251,13 +3251,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           min={1}
                           value={nextBagSeqInput}
                           onChange={(e) => setNextBagSeqInput(e.target.value)}
-                          className="w-16 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#5B21B6]"
+                          className="w-16 min-h-[34px] rounded-lg border border-slate-300 px-2 font-mono text-xs font-bold text-[#1A1E2A]"
                         />
                       </label>
                       <button
                         type="button"
                         onClick={handleSaveSequences}
-                        className="min-h-[34px] rounded-lg bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                        className="min-h-[34px] rounded-lg bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
                       >
                         Guardar numeración
                       </button>
@@ -3281,14 +3281,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           }}
                           className={`rounded-xl border p-3 text-left transition-colors cursor-pointer ${
                             lk.status === 'disponible'
-                              ? 'border-[#109173]/30 bg-[#E6F7F3]'
+                              ? 'border-[#8BAF03]/30 bg-[#F3F8DE]'
                               : lk.status === 'ocupado'
-                                ? 'border-[#5B21B6]/30 bg-[#EFEAFF]'
+                                ? 'border-[#1A1E2A]/30 bg-[#FCF61C]'
                                 : 'border-slate-300 bg-slate-100'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-sm font-extrabold text-[#000831]">
+                            <span className="font-mono text-sm font-extrabold text-[#1A1E2A]">
                               {lk.code}
                             </span>
                             <Lock className="h-3.5 w-3.5 text-slate-500" />
@@ -3296,7 +3296,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           <div className="mt-1 text-[11px] text-slate-600 truncate">
                             {campus?.name}
                           </div>
-                          <div className="mt-1 text-[11px] font-bold text-[#000831]">
+                          <div className="mt-1 text-[11px] font-bold text-[#1A1E2A]">
                             {lk.status === 'ocupado' && lk.currentBagCode
                               ? `Bolsa ${lk.currentBagCode}`
                               : lk.status}
@@ -3331,7 +3331,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     </select>
                     <button
                       type="submit"
-                      className="min-h-[42px] rounded-xl bg-[#109173] px-5 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="min-h-[42px] rounded-xl bg-[#8BAF03] px-5 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                     >
                       Agregar locker
                     </button>
@@ -3378,29 +3378,29 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       {/* Sede QR Modal */}
       {qrCampusModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/65 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/65 p-4 backdrop-blur-xs"
           onClick={() => setQrCampusModal(null)}
         >
           <div
             className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-display text-lg font-extrabold text-[#000000]">
+            <h3 className="font-display text-lg font-extrabold text-[#1A1E2A]">
               QR de Sede Kicks XR
             </h3>
             <p className="mt-1 text-sm text-slate-600">{qrCampusModal.name}</p>
-            <div className="mt-5 inline-flex flex-col items-center rounded-2xl bg-[#EFEAFF] p-5 border border-[#5B21B6]/20">
+            <div className="mt-5 inline-flex flex-col items-center rounded-2xl bg-[#FCF61C]/25 p-5 border border-[#8BAF03]/20">
               <div className="rounded-xl bg-white p-3">
-                <QRCodeSVG value={qrCampusModal.code} size={180} fgColor="#000831" />
+                <QRCodeSVG value={qrCampusModal.code} size={180} fgColor="#1A1E2A" />
               </div>
-              <span className="mt-3 font-mono text-sm font-extrabold text-[#5B21B6]">
+              <span className="mt-3 font-mono text-sm font-extrabold text-[#1A1E2A]">
                 {qrCampusModal.code}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setQrCampusModal(null)}
-              className="mt-5 w-full min-h-[44px] rounded-xl bg-[#109173] text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+              className="mt-5 w-full min-h-[44px] rounded-xl bg-[#8BAF03] text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
             >
               Cerrar
             </button>
@@ -3500,7 +3500,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
               <a
                 href={lightboxPhoto.url}
                 download={lightboxPhoto.filename}
-                className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#109173] hover:bg-[#0B755C] px-3 text-xs font-bold text-white transition-colors"
+                className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#8BAF03] hover:bg-[#749402] px-3 text-xs font-bold text-[#1A1E2A] transition-colors"
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Descargar</span>

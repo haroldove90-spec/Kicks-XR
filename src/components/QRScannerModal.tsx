@@ -118,7 +118,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/70 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/70 p-4 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
@@ -127,11 +127,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFEAFF] text-[#5B21B6]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C]/25 text-[#1A1E2A]">
               <QrCode className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-display text-lg font-bold text-[#000000]">
+              <h3 className="font-display text-lg font-bold text-[#1A1E2A]">
                 {title}
               </h3>
               {subtitle && (
@@ -149,7 +149,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           </button>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-xl bg-[#000831] relative aspect-video flex items-center justify-center">
+        <div className="mt-5 overflow-hidden rounded-xl bg-[#1A1E2A] relative aspect-video flex items-center justify-center">
           <video
             ref={videoRef}
             muted
@@ -158,12 +158,12 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           />
           {cameraActive && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="h-44 w-44 rounded-2xl border-2 border-[#109173] shadow-[0_0_0_9999px_rgba(0,8,49,0.45)]" />
+              <div className="h-44 w-44 rounded-2xl border-2 border-[#8BAF03] shadow-[0_0_0_9999px_rgba(26,30,42,0.45)]" />
             </div>
           )}
           {!cameraActive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-              <Camera className="h-8 w-8 text-[#109173] mb-2" />
+              <Camera className="h-8 w-8 text-[#5E7800] mb-2" />
               <p className="text-sm font-medium">
                 {cameraError || 'Activando cámara para escanear QR...'}
               </p>
@@ -182,10 +182,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => onScan(opt.value)}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-[#109173]/30 bg-[#E6F7F3] px-3.5 py-3 text-left hover:bg-[#109173] hover:text-white transition-colors group cursor-pointer"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-[#8BAF03]/30 bg-[#F3F8DE] px-3.5 py-3 text-left hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors group cursor-pointer"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-[#000831] group-hover:text-white">
+                    <div className="text-sm font-semibold truncate text-[#1A1E2A] group-hover:text-white">
                       {opt.label}
                     </div>
                     {opt.sublabel && (
@@ -194,7 +194,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                       </div>
                     )}
                   </div>
-                  <Check className="h-4 w-4 shrink-0 text-[#109173] group-hover:text-white" />
+                  <Check className="h-4 w-4 shrink-0 text-[#5E7800] group-hover:text-white" />
                 </button>
               ))}
             </div>
@@ -207,11 +207,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#000831] placeholder:text-slate-400 focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+            className="flex-1 min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#1A1E2A] placeholder:text-slate-400 focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
           />
           <button
             type="submit"
-            className="min-h-[44px] rounded-xl bg-[#109173] px-5 text-sm font-semibold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-[44px] rounded-xl bg-[#8BAF03] px-5 text-sm font-semibold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Validar
           </button>

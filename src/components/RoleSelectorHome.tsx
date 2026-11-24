@@ -20,15 +20,15 @@ const ROLE_CARDS: Array<{
     id: 'client',
     label: 'Cliente',
     icon: User,
-    accentBg: 'bg-[#E6F7F3]',
-    accentColor: 'text-[#109173]',
+    accentBg: 'bg-[#8BAF03]',
+    accentColor: 'text-[#1A1E2A]',
   },
   {
     id: 'admin',
     label: 'Administrador',
     icon: ShieldCheck,
-    accentBg: 'bg-[#000831]/10',
-    accentColor: 'text-[#000831]',
+    accentBg: 'bg-[#1A1E2A]',
+    accentColor: 'text-[#FCF61C]',
   },
 ];
 
@@ -48,14 +48,14 @@ export const RoleSelectorHome: React.FC<RoleSelectorHomeProps> = ({onSelect}) =>
                 key={card.id}
                 type="button"
                 onClick={() => onSelect(card.id)}
-                className="group flex flex-col items-center justify-center gap-4 min-h-[176px] sm:min-h-[210px] rounded-2xl bg-white border border-slate-200 px-4 py-6 text-center transition-all duration-150 hover:border-[#109173] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#109173] cursor-pointer"
+                className="group flex flex-col items-center justify-center gap-4 min-h-[176px] sm:min-h-[210px] rounded-2xl bg-white border border-slate-200 px-4 py-6 text-center transition-all duration-150 hover:border-[#8BAF03] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8BAF03] cursor-pointer"
               >
                 <div
                   className={`flex h-16 w-16 items-center justify-center rounded-2xl ${card.accentBg} ${card.accentColor} transition-transform duration-150 group-hover:scale-105`}
                 >
                   <Icon className="h-8 w-8" />
                 </div>
-                <span className="font-display text-base sm:text-lg font-bold text-[#000000] leading-snug">
+                <span className="font-display text-base sm:text-lg font-bold text-[#1A1E2A] leading-snug">
                   {card.label}
                 </span>
               </button>

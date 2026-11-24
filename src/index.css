@@ -4,19 +4,20 @@
   --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-kicks-teal: #109173;
-  --color-kicks-teal-dark: #0B755C;
-  --color-kicks-teal-soft: #E6F7F3;
-  --color-kicks-navy: #000831;
-  --color-kicks-black: #000000;
-  --color-kicks-lavender: #EFEAFF;
-  --color-kicks-violet: #5B21B6;
+  --color-kicks-dark: #1A1E2A;
+  --color-kicks-dark-deep: #11141D;
+  --color-kicks-lime: #8BAF03;
+  --color-kicks-lime-dark: #749402;
+  --color-kicks-lime-ink: #5E7800;
+  --color-kicks-lime-soft: #F3F8DE;
+  --color-kicks-volt: #FCF61C;
+  --color-kicks-volt-soft: #FEFCE8;
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
-    color: #000831;
+    color: #1A1E2A;
     background-color: #F8FAFC;
     -webkit-tap-highlight-color: transparent;
   }
@@ -57,12 +58,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 8, 49, 0.16);
+  background: rgba(26, 30, 42, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 145, 115, 0.45);
+  background: rgba(139, 175, 3, 0.65);
 }
 
 @media (prefers-reduced-motion: reduce) {

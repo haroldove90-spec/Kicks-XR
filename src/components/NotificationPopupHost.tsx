@@ -53,34 +53,34 @@ export const NotificationPopupHost: React.FC<NotificationPopupHostProps> = ({
         const tone = alert.tone || 'info';
         const icon =
           tone === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 text-[#109173] shrink-0" />
+            <CheckCircle2 className="h-5 w-5 text-[#5E7800] shrink-0" />
           ) : tone === 'warning' ? (
-            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
           ) : tone === 'error' ? (
-            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
           ) : (
-            <Bell className="h-5 w-5 text-[#109173] shrink-0" />
+            <Bell className="h-5 w-5 text-[#5E7800] shrink-0" />
           );
 
         return (
           <div
             key={alert.id}
             role="status"
-            className="pointer-events-auto rounded-2xl bg-white border border-slate-200 shadow-[0_14px_40px_rgba(0,8,49,0.18)] p-4 text-[#000831] transition-all"
+            className="pointer-events-auto rounded-2xl bg-white border border-slate-200 shadow-[0_14px_40px_rgba(26,30,42,0.18)] p-4 text-[#1A1E2A] transition-all"
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F7F3] shrink-0">
-                {icon || <Info className="h-5 w-5 text-[#109173]" />}
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F3F8DE] shrink-0">
+                {icon || <Info className="h-5 w-5 text-[#5E7800]" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-display text-sm font-extrabold text-[#000000] leading-snug">
+                  <h4 className="font-display text-sm font-extrabold text-[#1A1E2A] leading-snug">
                     {alert.title}
                   </h4>
                   <button
                     type="button"
                     onClick={() => onDismiss(alert.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#000831] cursor-pointer shrink-0 -mr-1 -mt-1"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1A1E2A] cursor-pointer shrink-0 -mr-1 -mt-1"
                     aria-label="Cerrar notificación"
                   >
                     <X className="h-4 w-4" />
@@ -99,7 +99,7 @@ export const NotificationPopupHost: React.FC<NotificationPopupHostProps> = ({
                           alert.onAction?.();
                           onDismiss(alert.id);
                         }}
-                        className="min-h-[32px] rounded-lg bg-[#109173] px-3 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                        className="min-h-[32px] rounded-lg bg-[#8BAF03] px-3 text-xs font-extrabold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                       >
                         {alert.actionLabel}
                       </button>
@@ -109,7 +109,7 @@ export const NotificationPopupHost: React.FC<NotificationPopupHostProps> = ({
                         href={alert.whatsappUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 min-h-[32px] rounded-lg border border-[#109173]/30 bg-[#E6F7F3] px-2.5 text-xs font-bold text-[#109173] hover:bg-[#109173] hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1 min-h-[32px] rounded-lg border border-[#8BAF03]/45 bg-[#F3F8DE] px-2.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#8BAF03] transition-colors"
                       >
                         <MessageSquare className="h-3.5 w-3.5" />
                         <span>WhatsApp</span>

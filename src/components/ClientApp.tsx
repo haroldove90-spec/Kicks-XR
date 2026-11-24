@@ -632,14 +632,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep((s) => (s - 1) as WizardStep)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-[#000831] hover:bg-slate-50 cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
                   aria-label="Paso anterior"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
               )}
               <div>
-                <h1 className="font-display text-lg sm:text-xl font-extrabold text-[#000000]">
+                <h1 className="font-display text-lg sm:text-xl font-extrabold text-[#1A1E2A]">
                   {step === 1 && 'Registra tus tenis'}
                   {step === 2 && 'Elige la devolución'}
                   {step === 3 && 'Forma de pago'}
@@ -658,9 +658,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   key={s}
                   className={`h-2 rounded-full transition-all ${
                     s === step
-                      ? 'w-8 bg-[#109173]'
+                      ? 'w-8 bg-[#8BAF03]'
                       : s < step
-                        ? 'w-3 bg-[#109173]/50'
+                        ? 'w-3 bg-[#8BAF03]/50'
                         : 'w-3 bg-slate-200'
                   }`}
                 />
@@ -681,7 +681,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                         Nombre
                       </label>
                       <div className="relative">
@@ -691,13 +691,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           value={clientName}
                           onChange={(e) => setClientName(e.target.value)}
                           placeholder="Tu nombre"
-                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                         WhatsApp
                       </label>
                       <div className="relative">
@@ -707,7 +707,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           value={clientWhatsapp}
                           onChange={(e) => setClientWhatsapp(e.target.value)}
                           placeholder="55 1234 5678"
-                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                         />
                       </div>
                     </div>
@@ -715,13 +715,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                         Pares
                       </label>
                       <select
                         value={pairs}
                         onChange={(e) => setPairs(Number(e.target.value))}
-                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                       >
                         {[1, 2, 3, 4, 5, 6].map((n) => (
                           <option key={n} value={n}>
@@ -732,13 +732,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                         Servicio
                       </label>
                       <select
                         value={serviceId}
                         onChange={(e) => setServiceId(e.target.value)}
-                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                       >
                         {config.services.map((svc) => (
                           <option key={svc.id} value={svc.id}>
@@ -751,9 +751,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   {selectedService && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-start gap-3">
-                      <Sparkles className="h-4 w-4 text-[#109173] mt-0.5 shrink-0" />
+                      <Sparkles className="h-4 w-4 text-[#5E7800] mt-0.5 shrink-0" />
                       <div className="text-xs text-slate-600">
-                        <span className="font-bold text-[#000831]">
+                        <span className="font-bold text-[#1A1E2A]">
                           {selectedService.name}
                         </span>{' '}
                         · {selectedService.description} (Entrega estimada:{' '}
@@ -764,25 +764,25 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   {/* Evidencia fotográfica con permiso de cámara del dispositivo + galería */}
                   <div>
-                    <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                    <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                       Evidencia fotográfica del estado inicial
                     </label>
                     {photoDataUrl ? (
-                      <div className="relative overflow-hidden rounded-2xl border border-[#5B21B6]/25 bg-[#EFEAFF]/40 p-3">
+                      <div className="relative overflow-hidden rounded-2xl border border-[#8BAF03]/30 bg-[#FCF61C]/15 p-3">
                         <img
                           src={photoDataUrl}
                           alt="Evidencia inicial del calzado"
                           className="h-52 w-full rounded-xl object-cover"
                         />
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-[#000831]">
+                          <span className="text-xs font-semibold text-[#1A1E2A]">
                             Foto cargada correctamente
                           </span>
                           <div className="flex gap-2">
                             <button
                               type="button"
                               onClick={() => setCameraModalOpen(true)}
-                              className="inline-flex items-center gap-1.5 min-h-[38px] rounded-lg border border-[#109173]/30 bg-white px-3 text-xs font-semibold text-[#109173] hover:bg-[#E6F7F3] cursor-pointer"
+                              className="inline-flex items-center gap-1.5 min-h-[38px] rounded-lg border border-[#8BAF03]/30 bg-white px-3 text-xs font-semibold text-[#5E7800] hover:bg-[#F3F8DE] cursor-pointer"
                             >
                               <Camera className="h-3.5 w-3.5" />
                               <span>Nueva foto</span>
@@ -799,10 +799,10 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-2xl border-2 border-dashed border-[#5B21B6]/35 bg-[#EFEAFF]/65 p-5 text-center space-y-3">
-                        <Camera className="h-8 w-8 text-[#5B21B6] mx-auto" />
+                      <div className="rounded-2xl border-2 border-dashed border-[#8BAF03]/40 bg-[#FCF61C]/15 p-5 text-center space-y-3">
+                        <Camera className="h-8 w-8 text-[#1A1E2A] mx-auto" />
                         <div>
-                          <div className="font-display text-sm font-bold text-[#5B21B6]">
+                          <div className="font-display text-sm font-bold text-[#1A1E2A]">
                             Agregar foto de tus tenis
                           </div>
                           <p className="mt-0.5 text-xs text-slate-600">
@@ -813,7 +813,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           <button
                             type="button"
                             onClick={() => setCameraModalOpen(true)}
-                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B21B6] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#4C1D95] transition-colors cursor-pointer"
+                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-[#FCF61C] hover:bg-[#11141D] transition-colors cursor-pointer"
                           >
                             <Camera className="h-4 w-4" />
                             <span>Tomar foto con cámara</span>
@@ -821,9 +821,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           <button
                             type="button"
                             onClick={() => galleryInputRef.current?.click()}
-                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#5B21B6]/30 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#8BAF03]/30 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 transition-colors cursor-pointer"
                           >
-                            <ImageIcon className="h-4 w-4 text-[#5B21B6]" />
+                            <ImageIcon className="h-4 w-4 text-[#1A1E2A]" />
                             <span>Subir desde galería</span>
                           </button>
                         </div>
@@ -833,7 +833,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   {/* Notas del calzado (opcional) */}
                   <div>
-                    <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                    <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                       Notas del calzado y observaciones (opcional)
                     </label>
                     <textarea
@@ -841,14 +841,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       value={shoeNotes}
                       onChange={(e) => setShoeNotes(e.target.value)}
                       placeholder="Ej. Jordan 1 blanco, gamuza delicada en punta, mancha en talón derecho..."
-                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                     />
                   </div>
 
                   <button
                     type="button"
                     onClick={handleStep1Next}
-                    className="w-full min-h-[50px] rounded-xl bg-[#109173] px-6 text-base font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                    className="w-full min-h-[50px] rounded-xl bg-[#8BAF03] px-6 text-base font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                   >
                     Continuar
                   </button>
@@ -863,24 +863,24 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     onClick={() => setDeliveryMethod('pickup')}
                     className={`w-full flex items-center gap-4 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                       deliveryMethod === 'pickup'
-                        ? 'border-[#109173] bg-[#E6F7F3]'
+                        ? 'border-[#8BAF03] bg-[#F3F8DE]'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                         deliveryMethod === 'pickup'
-                          ? 'border-[#109173]'
+                          ? 'border-[#8BAF03]'
                           : 'border-slate-300'
                       }`}
                     >
                       {deliveryMethod === 'pickup' && (
-                        <span className="h-3 w-3 rounded-full bg-[#109173]" />
+                        <span className="h-3 w-3 rounded-full bg-[#8BAF03]" />
                       )}
                     </span>
-                    <Store className="h-7 w-7 text-[#5B21B6] shrink-0" />
+                    <Store className="h-7 w-7 text-[#1A1E2A] shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-display text-base font-extrabold text-[#000000]">
+                      <div className="font-display text-base font-extrabold text-[#1A1E2A]">
                         Recoger en el punto
                       </div>
                       <div className="text-sm text-slate-600">
@@ -891,13 +891,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   {deliveryMethod === 'pickup' && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                      <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                         Selecciona el punto KicksXR
                       </label>
                       <select
                         value={campusId}
                         onChange={(e) => setCampusId(e.target.value)}
-                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#000831] focus:border-[#109173] focus:outline-none"
+                        className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                       >
                         {config.campuses.map((c) => (
                           <option key={c.id} value={c.id}>
@@ -908,7 +908,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       {selectedCampus && (
                         <p className="mt-2 text-xs text-slate-600">
                           Lockers autoservicio disponibles en esta sede:{' '}
-                          <strong className="font-mono text-[#109173]">
+                          <strong className="font-mono text-[#5E7800]">
                             {config.availableLockersByCampus[selectedCampus.id] ?? 0}
                           </strong>
                         </p>
@@ -921,28 +921,28 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     onClick={() => setDeliveryMethod('delivery')}
                     className={`w-full flex items-center gap-4 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                       deliveryMethod === 'delivery'
-                        ? 'border-[#109173] bg-[#E6F7F3]'
+                        ? 'border-[#8BAF03] bg-[#F3F8DE]'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                         deliveryMethod === 'delivery'
-                          ? 'border-[#109173]'
+                          ? 'border-[#8BAF03]'
                           : 'border-slate-300'
                       }`}
                     >
                       {deliveryMethod === 'delivery' && (
-                        <span className="h-3 w-3 rounded-full bg-[#109173]" />
+                        <span className="h-3 w-3 rounded-full bg-[#8BAF03]" />
                       )}
                     </span>
-                    <Truck className="h-7 w-7 text-[#5B21B6] shrink-0" />
+                    <Truck className="h-7 w-7 text-[#1A1E2A] shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-display text-base font-extrabold text-[#000000]">
+                        <span className="font-display text-base font-extrabold text-[#1A1E2A]">
                           Entrega a domicilio
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#109173] tabular-nums">
+                        <span className="font-mono text-xs font-bold text-[#5E7800] tabular-nums">
                           +${config.shippingFee} MXN
                         </span>
                       </div>
@@ -955,7 +955,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {deliveryMethod === 'delivery' && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
                       <div>
-                        <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                        <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                           Dirección de entrega
                         </label>
                         <div className="relative">
@@ -965,7 +965,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                             value={deliveryAddress}
                             onChange={(e) => setDeliveryAddress(e.target.value)}
                             placeholder="Calle, número exterior/interior, colonia, CP"
-                            className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                            className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                           />
                         </div>
                       </div>
@@ -976,7 +976,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         <select
                           value={campusId}
                           onChange={(e) => setCampusId(e.target.value)}
-                          className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#000831]"
+                          className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A]"
                         >
                           {config.campuses.map((c) => (
                             <option key={c.id} value={c.id}>
@@ -991,7 +991,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   <button
                     type="button"
                     onClick={handleStep2Next}
-                    className="w-full min-h-[50px] rounded-xl bg-[#109173] px-6 text-base font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                    className="w-full min-h-[50px] rounded-xl bg-[#8BAF03] px-6 text-base font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                   >
                     Continuar
                   </button>
@@ -1006,24 +1006,24 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     onClick={() => setPaymentMethod('cash')}
                     className={`w-full flex items-center gap-4 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                       paymentMethod === 'cash'
-                        ? 'border-[#109173] bg-[#E6F7F3]'
+                        ? 'border-[#8BAF03] bg-[#F3F8DE]'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                         paymentMethod === 'cash'
-                          ? 'border-[#109173]'
+                          ? 'border-[#8BAF03]'
                           : 'border-slate-300'
                       }`}
                     >
                       {paymentMethod === 'cash' && (
-                        <span className="h-3 w-3 rounded-full bg-[#109173]" />
+                        <span className="h-3 w-3 rounded-full bg-[#8BAF03]" />
                       )}
                     </span>
-                    <Banknote className="h-7 w-7 text-[#5B21B6] shrink-0" />
+                    <Banknote className="h-7 w-7 text-[#1A1E2A] shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-display text-lg font-extrabold text-[#000000]">
+                      <div className="font-display text-lg font-extrabold text-[#1A1E2A]">
                         Efectivo
                       </div>
                       <div className="text-sm text-slate-600">
@@ -1037,24 +1037,24 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     onClick={() => setPaymentMethod('card')}
                     className={`w-full flex items-center gap-4 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                       paymentMethod === 'card'
-                        ? 'border-[#109173] bg-[#E6F7F3]'
+                        ? 'border-[#8BAF03] bg-[#F3F8DE]'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                         paymentMethod === 'card'
-                          ? 'border-[#109173]'
+                          ? 'border-[#8BAF03]'
                           : 'border-slate-300'
                       }`}
                     >
                       {paymentMethod === 'card' && (
-                        <span className="h-3 w-3 rounded-full bg-[#109173]" />
+                        <span className="h-3 w-3 rounded-full bg-[#8BAF03]" />
                       )}
                     </span>
-                    <CreditCard className="h-7 w-7 text-[#5B21B6] shrink-0" />
+                    <CreditCard className="h-7 w-7 text-[#1A1E2A] shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-display text-lg font-extrabold text-[#000000]">
+                      <div className="font-display text-lg font-extrabold text-[#1A1E2A]">
                         Tarjeta
                       </div>
                       <div className="text-sm text-slate-600">
@@ -1067,13 +1067,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 sm:p-5 space-y-3.5">
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                         <span className="inline-flex items-center gap-1.5">
-                          <Lock className="h-3.5 w-3.5 text-[#109173]" />
+                          <Lock className="h-3.5 w-3.5 text-[#5E7800]" />
                           Pasarela de pago en línea
                         </span>
                         <span>Visa · Mastercard · AMEX</span>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-[#000831] mb-1">
+                        <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                           Titular de la tarjeta
                         </label>
                         <input
@@ -1081,11 +1081,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           value={cardHolder}
                           onChange={(e) => setCardHolder(e.target.value)}
                           placeholder="Nombre como aparece en la tarjeta"
-                          className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#000831]"
+                          className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-[#1A1E2A]"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-[#000831] mb-1">
+                        <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                           Número de tarjeta
                         </label>
                         <input
@@ -1102,12 +1102,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                             )
                           }
                           placeholder="4242 4242 4242 4242"
-                          className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#000831]"
+                          className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#1A1E2A]"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                          <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                             Vencimiento
                           </label>
                           <input
@@ -1116,11 +1116,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                             value={cardExpiry}
                             onChange={(e) => setCardExpiry(e.target.value)}
                             placeholder="12/28"
-                            className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#000831]"
+                            className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#1A1E2A]"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                          <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
                             CVV
                           </label>
                           <input
@@ -1131,7 +1131,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                               setCardCvv(e.target.value.replace(/\D/g, ''))
                             }
                             placeholder="123"
-                            className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#000831]"
+                            className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono text-[#1A1E2A]"
                           />
                         </div>
                       </div>
@@ -1140,17 +1140,17 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                   {/* Cupón de descuento */}
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#000831]">
-                      <Tag className="h-3.5 w-3.5 text-[#109173]" />
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
+                      <Tag className="h-3.5 w-3.5 text-[#5E7800]" />
                       <span>¿Tienes un cupón de descuento?</span>
                     </div>
                     {appliedCoupon ? (
-                      <div className="flex items-center justify-between gap-2 rounded-xl border border-[#109173]/30 bg-[#E6F7F3] px-3.5 py-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-[#8BAF03]/30 bg-[#F3F8DE] px-3.5 py-2.5 text-xs">
                         <div>
-                          <span className="font-mono font-extrabold text-[#109173]">
+                          <span className="font-mono font-extrabold text-[#5E7800]">
                             {appliedCoupon.code}
                           </span>{' '}
-                          <span className="text-[#000831] font-semibold">
+                          <span className="text-[#1A1E2A] font-semibold">
                             (-${appliedDiscount} MXN)
                           </span>
                           {appliedCoupon.description && (
@@ -1180,13 +1180,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                             setCouponInput(e.target.value.toUpperCase())
                           }
                           placeholder="Ej. BIENVENIDO10"
-                          className="flex-1 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                          className="flex-1 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                         />
                         <button
                           type="button"
                           disabled={validatingCoupon || !couponInput.trim()}
                           onClick={handleApplyCoupon}
-                          className="min-h-[42px] rounded-xl bg-[#000831] px-4 text-xs font-bold text-white hover:bg-black disabled:opacity-50 transition-colors cursor-pointer"
+                          className="min-h-[42px] rounded-xl bg-[#1A1E2A] px-4 text-xs font-bold text-white hover:bg-[#11141D] disabled:opacity-50 transition-colors cursor-pointer"
                         >
                           {validatingCoupon ? 'Validando...' : 'Aplicar'}
                         </button>
@@ -1203,7 +1203,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     type="button"
                     disabled={submitting}
                     onClick={handleConfirmOrder}
-                    className="w-full min-h-[50px] rounded-xl bg-[#109173] px-6 text-base font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 transition-colors cursor-pointer"
+                    className="w-full min-h-[50px] rounded-xl bg-[#8BAF03] px-6 text-base font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 transition-colors cursor-pointer"
                   >
                     {submitting
                       ? 'Confirmando pedido...'
@@ -1221,13 +1221,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       onClick={() => setDropoffMethod('staff')}
                       className={`flex items-start gap-3.5 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                         dropoffMethod === 'staff'
-                          ? 'border-[#109173] bg-[#E6F7F3]'
+                          ? 'border-[#8BAF03] bg-[#F3F8DE]'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
-                      <UserCheck className="h-7 w-7 text-[#5B21B6] shrink-0 mt-0.5" />
+                      <UserCheck className="h-7 w-7 text-[#1A1E2A] shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-display text-base font-extrabold text-[#000000]">
+                        <div className="font-display text-base font-extrabold text-[#1A1E2A]">
                           Con personal
                         </div>
                         <p className="mt-1 text-sm text-slate-600 leading-snug">
@@ -1241,20 +1241,20 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       onClick={() => setDropoffMethod('locker')}
                       className={`flex items-start gap-3.5 rounded-2xl p-5 text-left border-2 transition-all cursor-pointer ${
                         dropoffMethod === 'locker'
-                          ? 'border-[#109173] bg-[#E6F7F3]'
+                          ? 'border-[#8BAF03] bg-[#F3F8DE]'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
-                      <Package className="h-7 w-7 text-[#5B21B6] shrink-0 mt-0.5" />
+                      <Package className="h-7 w-7 text-[#1A1E2A] shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-display text-base font-extrabold text-[#000000]">
+                        <div className="font-display text-base font-extrabold text-[#1A1E2A]">
                           Autoservicio
                         </div>
                         <p className="mt-1 text-sm text-slate-600 leading-snug">
                           Deposita tu bolsa en el locker de KicksXR con tu código de bolsa.
                         </p>
                         {activeOrder.assignedLockerCode && (
-                          <p className="mt-2 font-mono text-xs font-bold text-[#109173]">
+                          <p className="mt-2 font-mono text-xs font-bold text-[#5E7800]">
                             Locker sugerido: {activeOrder.assignedLockerCode}
                           </p>
                         )}
@@ -1262,21 +1262,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </button>
                   </div>
 
-                  <div className="rounded-2xl bg-[#EFEAFF] border border-[#5B21B6]/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-5">
+                  <div className="rounded-2xl bg-[#FCF61C]/25 border border-[#8BAF03]/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-5">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#5B21B6] shrink-0">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#1A1E2A] shrink-0">
                         <ShoppingBag className="h-7 w-7" />
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-slate-600">
                           Código de bolsa asignado
                         </div>
-                        <div className="font-mono text-3xl font-extrabold text-[#000831] tabular-nums">
+                        <div className="font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
                           {activeOrder.bagCode}
                         </div>
                         <div className="mt-0.5 text-xs text-slate-600">
                           Folio:{' '}
-                          <strong className="font-mono text-[#000831]">
+                          <strong className="font-mono text-[#1A1E2A]">
                             {activeOrder.folio}
                           </strong>{' '}
                           · {activeOrder.campusName}
@@ -1288,10 +1288,10 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       <QRCodeSVG
                         value={activeOrder.orderQrPayload}
                         size={112}
-                        fgColor="#000831"
+                        fgColor="#1A1E2A"
                         level="M"
                       />
-                      <span className="mt-1.5 font-mono text-[11px] font-bold text-[#5B21B6]">
+                      <span className="mt-1.5 font-mono text-[11px] font-bold text-[#1A1E2A]">
                         QR de pedido
                       </span>
                     </div>
@@ -1301,7 +1301,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     type="button"
                     disabled={submitting}
                     onClick={handleReportDeposit}
-                    className="w-full min-h-[50px] rounded-xl bg-[#109173] px-6 text-base font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 transition-colors cursor-pointer"
+                    className="w-full min-h-[50px] rounded-xl bg-[#8BAF03] px-6 text-base font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 transition-colors cursor-pointer"
                   >
                     {submitting
                       ? 'Registrando depósito...'
@@ -1313,23 +1313,23 @@ export const ClientApp: React.FC<ClientAppProps> = ({
               {/* STEP 5 */}
               {step === 5 && activeOrder && (
                 <div className="space-y-6">
-                  <div className="rounded-2xl bg-[#EFEAFF] p-5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="rounded-2xl bg-[#FCF61C]/25 p-5 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5B21B6]">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#1A1E2A]">
                         <ShoppingBag className="h-6 w-6" />
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-slate-600">
                           Folio
                         </div>
-                        <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
+                        <div className="font-mono text-2xl font-extrabold text-[#1A1E2A] tabular-nums">
                           {activeOrder.folio}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-slate-600">Código de bolsa</div>
-                      <div className="font-mono text-lg font-bold text-[#5B21B6]">
+                      <div className="font-mono text-lg font-bold text-[#1A1E2A]">
                         {activeOrder.bagCode}
                       </div>
                     </div>
@@ -1344,22 +1344,22 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     <button
                       type="button"
                       onClick={startNewOrder}
-                      className="min-h-[46px] flex-1 rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                      className="min-h-[46px] flex-1 rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                     >
                       Registrar otro par
                     </button>
                     <button
                       type="button"
                       onClick={() => setReceiptOrder(activeOrder)}
-                      className="min-h-[46px] inline-flex items-center gap-1.5 rounded-xl bg-[#000831] px-4 text-sm font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                      className="min-h-[46px] inline-flex items-center gap-1.5 rounded-xl bg-[#1A1E2A] px-4 text-sm font-bold text-white hover:bg-[#11141D] transition-colors cursor-pointer"
                     >
-                      <Receipt className="h-4 w-4 text-[#109173]" />
+                      <Receipt className="h-4 w-4 text-[#FCF61C]" />
                       <span>Comprobante</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('orders')}
-                      className="min-h-[46px] rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="min-h-[46px] rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-[#1A1E2A] hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Ver mis pedidos
                     </button>
@@ -1371,26 +1371,26 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             {/* Right Column: Live Summary */}
             <div className="lg:col-span-5 xl:col-span-4 space-y-4">
               <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-                <h2 className="font-display text-base font-bold text-[#000000]">
+                <h2 className="font-display text-base font-bold text-[#1A1E2A]">
                   Resumen del servicio
                 </h2>
                 <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-500">Servicio</span>
-                    <span className="font-semibold text-[#000831] text-right">
+                    <span className="font-semibold text-[#1A1E2A] text-right">
                       {selectedService?.name}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-500">Cantidad</span>
-                    <span className="font-semibold text-[#000831] tabular-nums">
+                    <span className="font-semibold text-[#1A1E2A] tabular-nums">
                       {pairs} {pairs === 1 ? 'par' : 'pares'} × $
                       {selectedService?.price || 0}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-500">Devolución</span>
-                    <span className="font-semibold text-[#000831] text-right">
+                    <span className="font-semibold text-[#1A1E2A] text-right">
                       {deliveryMethod === 'delivery'
                         ? `Domicilio (+$${config.shippingFee})`
                         : selectedCampus?.name || 'Punto KicksXR'}
@@ -1398,12 +1398,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-500">Pago</span>
-                    <span className="font-semibold text-[#000831]">
+                    <span className="font-semibold text-[#1A1E2A]">
                       {paymentMethod === 'card' ? 'Tarjeta en línea' : 'Efectivo'}
                     </span>
                   </div>
                   {appliedCoupon && appliedDiscount > 0 && (
-                    <div className="flex justify-between gap-2 text-[#109173]">
+                    <div className="flex justify-between gap-2 text-[#5E7800]">
                       <span className="font-semibold">
                         Cupón ({appliedCoupon.code})
                       </span>
@@ -1413,8 +1413,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </div>
                   )}
                   <div className="pt-3 border-t border-slate-100 flex items-baseline justify-between">
-                    <span className="font-bold text-[#000831]">Total</span>
-                    <span className="font-mono text-2xl font-extrabold text-[#109173] tabular-nums">
+                    <span className="font-bold text-[#1A1E2A]">Total</span>
+                    <span className="font-mono text-2xl font-extrabold text-[#5E7800] tabular-nums">
                       ${estimatedTotal} MXN
                     </span>
                   </div>
@@ -1422,9 +1422,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
               </div>
 
               {selectedCampus && (
-                <div className="rounded-2xl bg-[#000831] text-white p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#E6F7F3]">
-                    <Building2 className="h-4 w-4 text-[#109173]" />
+                <div className="rounded-2xl bg-[#1A1E2A] text-white p-5">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#FCF61C]">
+                    <Building2 className="h-4 w-4 text-[#FCF61C]" />
                     <span>Punto seleccionado</span>
                   </div>
                   <div className="mt-1.5 font-display text-base font-bold">
@@ -1445,7 +1445,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+              <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
                 Rastrear pedido
               </h1>
               <p className="text-sm text-slate-600">
@@ -1459,7 +1459,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   setSearchedTrack(null);
                   setActiveOrderId(e.target.value);
                 }}
-                className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono font-bold text-[#000831]"
+                className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-mono font-bold text-[#1A1E2A]"
               >
                 {orders.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -1485,21 +1485,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 value={folioQuery}
                 onChange={(e) => setFolioQuery(e.target.value)}
                 placeholder="Buscar por Folio (ej. KXR-1042) o Bolsa (B-028)"
-                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm font-mono uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm font-mono uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setTrackScannerOpen(true)}
-                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#5B21B6]/30 bg-[#EFEAFF] px-4 text-sm font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl border border-[#8BAF03]/30 bg-[#FCF61C]/25 px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#1A1E2A] hover:text-[#FCF61C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <QrCode className="h-4 w-4" />
                 <span>Escanear QR</span>
               </button>
               <button
                 type="submit"
-                className="min-h-[46px] flex-1 sm:flex-none rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="min-h-[46px] flex-1 sm:flex-none rounded-xl bg-[#8BAF03] px-6 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 Rastrear
               </button>
@@ -1515,21 +1515,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           {searchedTrack ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-5 space-y-4">
-                <div className="rounded-2xl bg-[#EFEAFF] p-5 flex items-center justify-between gap-4">
+                <div className="rounded-2xl bg-[#FCF61C]/25 p-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5B21B6]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#1A1E2A]">
                       <ShoppingBag className="h-6 w-6" />
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-slate-600">
                         Folio consultado
                       </div>
-                      <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
+                      <div className="font-mono text-2xl font-extrabold text-[#1A1E2A] tabular-nums">
                         {searchedTrack.folio}
                       </div>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-bold text-[#5B21B6]">
+                  <span className="font-mono text-sm font-bold text-[#1A1E2A]">
                     {searchedTrack.bagCode}
                   </span>
                 </div>
@@ -1537,20 +1537,20 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-2.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Sede</span>
-                    <span className="font-semibold text-[#000831]">
+                    <span className="font-semibold text-[#1A1E2A]">
                       {searchedTrack.campusName}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Servicio</span>
-                    <span className="font-semibold text-[#000831]">
+                    <span className="font-semibold text-[#1A1E2A]">
                       {searchedTrack.serviceName} ({searchedTrack.pairs}{' '}
                       {searchedTrack.pairs === 1 ? 'par' : 'pares'})
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Pago</span>
-                    <span className="font-bold text-[#109173]">
+                    <span className="font-bold text-[#5E7800]">
                       {searchedTrack.paymentStatus}
                     </span>
                   </div>
@@ -1558,7 +1558,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
               </div>
 
               <div className="lg:col-span-7 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6">
-                <h2 className="font-display text-base font-bold text-[#000000] mb-4">
+                <h2 className="font-display text-base font-bold text-[#1A1E2A] mb-4">
                   Progreso en tiempo real
                 </h2>
                 <OrderTimeline
@@ -1570,7 +1570,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           ) : !activeOrder ? (
             <div className="rounded-2xl bg-white border border-slate-200 p-10 text-center">
               <ShoppingBag className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-              <h2 className="font-display text-lg font-bold text-[#000831]">
+              <h2 className="font-display text-lg font-bold text-[#1A1E2A]">
                 Aún no tienes pedidos registrados
               </h2>
               <p className="mt-1 text-sm text-slate-500">
@@ -1579,7 +1579,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
               <button
                 type="button"
                 onClick={startNewOrder}
-                className="mt-5 min-h-[46px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                className="mt-5 min-h-[46px] rounded-xl bg-[#8BAF03] px-6 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
               >
                 Registrar mis tenis
               </button>
@@ -1587,16 +1587,16 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-5 space-y-4">
-                <div className="rounded-2xl bg-[#EFEAFF] p-5 flex items-center justify-between gap-4">
+                <div className="rounded-2xl bg-[#FCF61C]/25 p-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5B21B6]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#1A1E2A]">
                       <ShoppingBag className="h-6 w-6" />
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-slate-600">
                         Folio
                       </div>
-                      <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
+                      <div className="font-mono text-2xl font-extrabold text-[#1A1E2A] tabular-nums">
                         {activeOrder.folio}
                       </div>
                     </div>
@@ -1605,7 +1605,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     <QRCodeSVG
                       value={activeOrder.orderQrPayload}
                       size={72}
-                      fgColor="#000831"
+                      fgColor="#1A1E2A"
                     />
                   </div>
                 </div>
@@ -1613,31 +1613,31 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Código de bolsa</span>
-                    <span className="font-mono font-bold text-[#5B21B6]">
+                    <span className="font-mono font-bold text-[#1A1E2A]">
                       {activeOrder.bagCode}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Servicio</span>
-                    <span className="font-semibold text-[#000831]">
+                    <span className="font-semibold text-[#1A1E2A]">
                       {activeOrder.serviceName} ({activeOrder.pairs}{' '}
                       {activeOrder.pairs === 1 ? 'par' : 'pares'})
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Sede</span>
-                    <span className="font-semibold text-[#000831]">
+                    <span className="font-semibold text-[#1A1E2A]">
                       {activeOrder.campusName}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Total y Pago</span>
-                    <span className="font-mono font-bold text-[#000831] tabular-nums">
+                    <span className="font-mono font-bold text-[#1A1E2A] tabular-nums">
                       ${activeOrder.totalAmount} · {activeOrder.paymentStatus}
                     </span>
                   </div>
                   {activeOrder.discountAmount && activeOrder.discountAmount > 0 ? (
-                    <div className="flex justify-between text-xs text-[#109173]">
+                    <div className="flex justify-between text-xs text-[#5E7800]">
                       <span className="font-semibold">
                         Descuento ({activeOrder.discountCode || 'Cupón'})
                       </span>
@@ -1648,9 +1648,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   ) : null}
                   {activeOrder.shoeNotes && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-700 flex items-start gap-1.5">
-                      <FileText className="h-3.5 w-3.5 text-[#5B21B6] shrink-0 mt-0.5" />
+                      <FileText className="h-3.5 w-3.5 text-[#1A1E2A] shrink-0 mt-0.5" />
                       <span>
-                        <strong className="text-[#000831]">Tus notas:</strong>{' '}
+                        <strong className="text-[#1A1E2A]">Tus notas:</strong>{' '}
                         {activeOrder.shoeNotes}
                       </span>
                     </div>
@@ -1659,9 +1659,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   <button
                     type="button"
                     onClick={() => setReceiptOrder(activeOrder)}
-                    className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                    className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                   >
-                    <Receipt className="h-4 w-4 text-[#109173]" />
+                    <Receipt className="h-4 w-4 text-[#5E7800]" />
                     <span>Ver / Descargar comprobante</span>
                   </button>
 
@@ -1672,7 +1672,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         setStep(4);
                         setActiveTab('register');
                       }}
-                      className="w-full min-h-[44px] rounded-xl bg-[#109173] text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="w-full min-h-[44px] rounded-xl bg-[#8BAF03] text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                     >
                       Reportar depósito de bolsa
                     </button>
@@ -1681,7 +1681,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {(isSafePhotoDataUrl(activeOrder.photoDataUrl) ||
                     isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl)) && (
                     <div className="pt-2 space-y-2">
-                      <div className="text-xs font-bold text-[#000831]">
+                      <div className="text-xs font-bold text-[#1A1E2A]">
                         {isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl)
                           ? 'Comparativa: Antes y Después'
                           : 'Evidencia fotográfica inicial'}
@@ -1709,7 +1709,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                               alt={`Antes ${activeOrder.folio}`}
                               className="h-36 w-full object-cover group-hover:scale-105 transition-transform"
                             />
-                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#000831]/80 px-2 py-0.5 text-[10px] font-bold text-white">
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#1A1E2A]/80 px-2 py-0.5 text-[10px] font-bold text-white">
                               Antes
                             </span>
                           </button>
@@ -1723,14 +1723,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                                 label: `Después (Limpios) · ${activeOrder.folio}`,
                               })
                             }
-                            className="group relative overflow-hidden rounded-xl border border-[#109173]/40 cursor-pointer text-left"
+                            className="group relative overflow-hidden rounded-xl border border-[#8BAF03]/40 cursor-pointer text-left"
                           >
                             <img
                               src={activeOrder.afterPhotoDataUrl}
                               alt={`Después ${activeOrder.folio}`}
                               className="h-36 w-full object-cover group-hover:scale-105 transition-transform"
                             />
-                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#109173] px-2 py-0.5 text-[10px] font-bold text-white">
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#8BAF03] px-2 py-0.5 text-[10px] font-bold text-[#1A1E2A]">
                               Después ✨
                             </span>
                           </button>
@@ -1743,7 +1743,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
               <div className="lg:col-span-7 space-y-4">
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6">
-                  <h2 className="font-display text-base font-bold text-[#000000] mb-4">
+                  <h2 className="font-display text-base font-bold text-[#1A1E2A] mb-4">
                     Progreso en tiempo real
                   </h2>
                   <OrderTimeline
@@ -1758,7 +1758,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     {activeOrder.rating ? (
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-display text-sm font-extrabold text-[#000831]">
+                          <h3 className="font-display text-sm font-extrabold text-[#1A1E2A]">
                             Tu calificación del servicio
                           </h3>
                           <div className="flex items-center gap-0.5">
@@ -1783,7 +1783,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     ) : (
                       <div className="space-y-3">
                         <div>
-                          <h3 className="font-display text-sm font-extrabold text-[#000831]">
+                          <h3 className="font-display text-sm font-extrabold text-[#1A1E2A]">
                             ¿Qué te pareció la limpieza de tus tenis?
                           </h3>
                           <p className="text-xs text-slate-500">
@@ -1808,7 +1808,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                               />
                             </button>
                           ))}
-                          <span className="ml-2 text-xs font-bold text-[#000831]">
+                          <span className="ml-2 text-xs font-bold text-[#1A1E2A]">
                             {ratingStars}/5
                           </span>
                         </div>
@@ -1817,13 +1817,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           value={ratingComment}
                           onChange={(e) => setRatingComment(e.target.value)}
                           placeholder="Cuéntanos cómo quedaron tus tenis (opcional)..."
-                          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs sm:text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                         />
                         <button
                           type="button"
                           disabled={submittingRating}
                           onClick={() => handleSubmitRating(activeOrder.id)}
-                          className="min-h-[42px] rounded-xl bg-[#109173] px-5 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 cursor-pointer"
+                          className="min-h-[42px] rounded-xl bg-[#8BAF03] px-5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 cursor-pointer"
                         >
                           {submittingRating
                             ? 'Enviando...'
@@ -1836,7 +1836,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
                 {orderNotifications.length > 0 && (
                   <div className="rounded-2xl bg-white border border-slate-200 p-5">
-                    <h3 className="font-display text-sm font-bold text-[#000000] mb-3">
+                    <h3 className="font-display text-sm font-bold text-[#1A1E2A] mb-3">
                       Alertas WhatsApp del pedido
                     </h3>
                     <div className="space-y-2.5">
@@ -1846,7 +1846,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           className="rounded-xl bg-slate-50 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                         >
                           <div>
-                            <div className="font-bold text-[#000831]">{n.title}</div>
+                            <div className="font-bold text-[#1A1E2A]">{n.title}</div>
                             <p className="text-slate-600 mt-0.5">{n.message}</p>
                           </div>
                           {n.whatsappUrl && (
@@ -1854,7 +1854,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                               href={n.whatsappUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[#109173] font-bold shrink-0 hover:underline"
+                              className="inline-flex items-center gap-1 text-[#5E7800] font-bold shrink-0 hover:underline"
                             >
                               <MessageSquare className="h-3.5 w-3.5" />
                               <span>WhatsApp</span>
@@ -1876,13 +1876,13 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       {activeTab === 'orders' && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+            <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
               Mis pedidos
             </h1>
             <button
               type="button"
               onClick={startNewOrder}
-              className="inline-flex items-center gap-2 min-h-[44px] rounded-xl bg-[#109173] px-4 text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+              className="inline-flex items-center gap-2 min-h-[44px] rounded-xl bg-[#8BAF03] px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
             >
               <PlusCircle className="h-4 w-4" />
               <span>Nuevo pedido</span>
@@ -1903,12 +1903,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-mono text-lg font-extrabold text-[#000831] tabular-nums">
+                        <div className="font-mono text-lg font-extrabold text-[#1A1E2A] tabular-nums">
                           {order.folio}
                         </div>
                         <div className="text-xs text-slate-500">
                           Bolsa{' '}
-                          <span className="font-mono font-bold text-[#5B21B6]">
+                          <span className="font-mono font-bold text-[#1A1E2A]">
                             {order.bagCode}
                           </span>{' '}
                           · {order.campusName}
@@ -1917,12 +1917,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       <span
                         className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
                           order.status === 'Entregado'
-                            ? 'bg-[#E6F7F3] text-[#109173]'
+                            ? 'bg-[#F3F8DE] text-[#8BAF03]'
                             : order.status === 'Cancelado'
                               ? 'bg-red-100 text-red-700'
                               : order.status === 'En limpieza'
-                                ? 'bg-[#E6F7F3] text-[#000831]'
-                                : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                ? 'bg-[#F3F8DE] text-[#1A1E2A]'
+                                : 'bg-[#FCF61C] text-[#1A1E2A]'
                         }`}
                       >
                         {order.status}
@@ -1940,7 +1940,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                             ? 'Entrega a domicilio'
                             : 'Recoger en punto'}
                         </span>
-                        <span className="font-mono font-bold text-[#000831] tabular-nums">
+                        <span className="font-mono font-bold text-[#1A1E2A] tabular-nums">
                           ${order.totalAmount} · {order.paymentStatus}
                         </span>
                       </div>
@@ -1961,7 +1961,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         setActiveOrderId(order.id);
                         setActiveTab('track');
                       }}
-                      className="flex-1 min-h-[42px] rounded-xl bg-[#109173] text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="flex-1 min-h-[42px] rounded-xl bg-[#8BAF03] text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
                     >
                       Rastrear pedido
                     </button>
@@ -1969,7 +1969,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       type="button"
                       onClick={() => setReceiptOrder(order)}
                       title="Ver comprobante / ticket"
-                      className="min-h-[42px] inline-flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                      className="min-h-[42px] inline-flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] cursor-pointer"
                     >
                       <Receipt className="h-4 w-4" />
                     </button>
@@ -1981,7 +1981,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           setStep(4);
                           setActiveTab('register');
                         }}
-                        className="min-h-[42px] rounded-xl border border-[#5B21B6]/30 bg-[#EFEAFF] px-3 text-xs font-bold text-[#5B21B6] cursor-pointer"
+                        className="min-h-[42px] rounded-xl border border-[#8BAF03]/30 bg-[#FCF61C]/25 px-3 text-xs font-bold text-[#1A1E2A] cursor-pointer"
                       >
                         <QrCode className="h-4 w-4" />
                       </button>
@@ -2012,7 +2012,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       {activeTab === 'profile' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
-            <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+            <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
               Mi perfil
             </h1>
             <p className="mt-1 text-sm text-slate-600">
@@ -2020,7 +2020,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             </p>
 
             {profileSaved && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#E6F7F3] px-4 py-3 text-sm font-semibold text-[#109173]">
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#F3F8DE] px-4 py-3 text-sm font-semibold text-[#5E7800]">
                 <Check className="h-4 w-4" />
                 <span>Perfil actualizado correctamente.</span>
               </div>
@@ -2028,7 +2028,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
             <form onSubmit={handleProfileSave} className="mt-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   Nombre completo
                 </label>
                 <input
@@ -2036,12 +2036,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   required
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   WhatsApp
                 </label>
                 <input
@@ -2049,12 +2049,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   required
                   value={profileWhatsapp}
                   onChange={(e) => setProfileWhatsapp(e.target.value)}
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   Dirección de entrega predeterminada
                 </label>
                 <input
@@ -2062,18 +2062,18 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   value={profileAddress}
                   onChange={(e) => setProfileAddress(e.target.value)}
                   placeholder="Calle, número, colonia, CP"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-bold text-[#000831]">
-                    <IdCard className="h-4 w-4 text-[#109173]" />
+                  <label className="inline-flex items-center gap-2 text-sm font-bold text-[#1A1E2A]">
+                    <IdCard className="h-4 w-4 text-[#5E7800]" />
                     <span>Identificación oficial (INE)</span>
                   </label>
                   {isSafePhotoDataUrl(profileInePhoto) && (
-                    <span className="text-xs font-bold text-[#109173]">
+                    <span className="text-xs font-bold text-[#5E7800]">
                       Registrada
                     </span>
                   )}
@@ -2098,15 +2098,15 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   <button
                     type="button"
                     onClick={() => setProfileIneCameraOpen(true)}
-                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
                   >
-                    <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                    <Camera className="h-3.5 w-3.5 text-[#FCF61C]" />
                     <span>Tomar foto INE</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => profileIneInputRef.current?.click()}
-                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer"
+                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
                   >
                     <ImageIcon className="h-3.5 w-3.5" />
                     <span>Subir imagen</span>
@@ -2116,7 +2116,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
               <button
                 type="submit"
-                className="min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                className="min-h-[48px] rounded-xl bg-[#8BAF03] px-6 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
               >
                 Guardar cambios
               </button>
@@ -2126,11 +2126,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
           {/* Cambio de contraseña del cliente */}
           <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFEAFF] text-[#5B21B6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C]/25 text-[#1A1E2A]">
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display text-xl font-extrabold text-[#000000]">
+                <h2 className="font-display text-xl font-extrabold text-[#1A1E2A]">
                   Seguridad y contraseña
                 </h2>
                 <p className="text-xs text-slate-600">
@@ -2146,7 +2146,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             )}
 
             {passwordSaved && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#E6F7F3] px-4 py-3 text-sm font-semibold text-[#109173]">
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#F3F8DE] px-4 py-3 text-sm font-semibold text-[#5E7800]">
                 <Check className="h-4 w-4" />
                 <span>Contraseña actualizada correctamente.</span>
               </div>
@@ -2154,7 +2154,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
             <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   Contraseña actual
                 </label>
                 <input
@@ -2163,12 +2163,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Tu contraseña actual"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   Nueva contraseña
                 </label>
                 <input
@@ -2178,12 +2178,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Mínimo 4 caracteres"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
                   Confirmar nueva contraseña
                 </label>
                 <input
@@ -2193,14 +2193,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   placeholder="Repite la nueva contraseña"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={changingPassword}
-                className="min-h-[48px] rounded-xl bg-[#000831] px-6 text-sm font-bold text-white hover:bg-black disabled:opacity-60 transition-colors cursor-pointer"
+                className="min-h-[48px] rounded-xl bg-[#1A1E2A] px-6 text-sm font-bold text-white hover:bg-[#11141D] disabled:opacity-60 transition-colors cursor-pointer"
               >
                 {changingPassword ? 'Actualizando...' : 'Cambiar contraseña'}
               </button>

@@ -61,7 +61,7 @@ export class ErrorBoundary extends React.Component<
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="font-display text-xl font-extrabold text-[#000000]">
+            <h1 className="font-display text-xl font-extrabold text-[#1A1E2A]">
               No se pudo mostrar esta vista
             </h1>
             <p className="text-sm text-slate-600">
@@ -77,7 +77,7 @@ export class ErrorBoundary extends React.Component<
           <button
             type="button"
             onClick={this.handleRecover}
-            className="w-full min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+            className="w-full min-h-[46px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Limpiar caché y recargar</span>

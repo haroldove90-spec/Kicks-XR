@@ -18,8 +18,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   if (failed) {
     return (
       <span className="font-display text-2xl font-extrabold tracking-tight select-none whitespace-nowrap">
-        <span className="text-[#000831]">Kicks</span>
-        <span className="text-[#109173]">XR</span>
+        <span className="text-[#1A1E2A]">Kicks</span>
+        <span className="text-[#8BAF03]">XR</span>
       </span>
     );
   }

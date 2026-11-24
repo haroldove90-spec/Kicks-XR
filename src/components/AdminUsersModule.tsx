@@ -370,7 +370,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+          <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
             Clientes, Alumnos y Credenciales
           </h1>
           <p className="text-sm text-slate-600">
@@ -379,14 +379,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#000831]">
-            <IdCard className="h-4 w-4 text-[#109173]" />
+          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1E2A]">
+            <IdCard className="h-4 w-4 text-[#5E7800]" />
             <span>
               INE verificada: {clientsWithIneCount}/{clients.length}
             </span>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#000831]">
-            <Database className="h-4 w-4 text-[#109173]" />
+          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1E2A]">
+            <Database className="h-4 w-4 text-[#5E7800]" />
             <span>
               {supabaseConnected
                 ? 'Sincronizado con Supabase'
@@ -398,14 +398,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
 
       {/* Latest Created / Reset Credentials Card */}
       {latestCredentials && (
-        <div className="rounded-2xl border-2 border-[#109173] bg-[#E6F7F3]/50 p-5 sm:p-6 space-y-4">
+        <div className="rounded-2xl border-2 border-[#8BAF03] bg-[#F3F8DE]/50 p-5 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#109173] text-white shrink-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#8BAF03] text-[#1A1E2A] shrink-0">
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display text-lg font-extrabold text-[#000000]">
+                <h2 className="font-display text-lg font-extrabold text-[#1A1E2A]">
                   Credenciales listas para compartir
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-700">
@@ -419,7 +419,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             <button
               type="button"
               onClick={() => setLatestCredentials(null)}
-              className="text-xs font-bold text-slate-500 hover:text-[#000831] cursor-pointer"
+              className="text-xs font-bold text-slate-500 hover:text-[#1A1E2A] cursor-pointer"
             >
               Cerrar tarjeta
             </button>
@@ -430,7 +430,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Usuario
               </div>
-              <div className="mt-1 font-mono text-sm font-extrabold text-[#000831] break-all">
+              <div className="mt-1 font-mono text-sm font-extrabold text-[#1A1E2A] break-all">
                 {latestCredentials.identifier}
               </div>
             </div>
@@ -438,7 +438,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Contraseña asignada
               </div>
-              <div className="mt-1 font-mono text-sm font-extrabold text-[#109173] break-all">
+              <div className="mt-1 font-mono text-sm font-extrabold text-[#5E7800] break-all">
                 {latestCredentials.password}
               </div>
             </div>
@@ -446,7 +446,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Rol de acceso
               </div>
-              <div className="mt-1 text-sm font-extrabold text-[#000831]">
+              <div className="mt-1 text-sm font-extrabold text-[#1A1E2A]">
                 {latestCredentials.role === 'admin' ? 'Administrador' : 'Cliente'}
               </div>
             </div>
@@ -457,7 +457,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               href={latestCredentials.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors"
             >
               <MessageSquare className="h-4 w-4" />
               <span>Compartir credenciales por WhatsApp</span>
@@ -467,10 +467,10 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             <button
               type="button"
               onClick={handleCopyCredentials}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-[#1A1E2A] hover:bg-slate-50 transition-colors cursor-pointer"
             >
               {copied ? (
-                <Check className="h-4 w-4 text-[#109173]" />
+                <Check className="h-4 w-4 text-[#5E7800]" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -484,11 +484,11 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
         {/* Left: Create User Form */}
         <div className="xl:col-span-5 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6">
           <div className="flex items-center gap-2.5 mb-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#000831] text-white shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A1E2A] text-white shrink-0">
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-display text-lg font-extrabold text-[#000000]">
+              <h2 className="font-display text-lg font-extrabold text-[#1A1E2A]">
                 Registrar nuevo usuario
               </h2>
               <p className="text-xs text-slate-600">
@@ -506,11 +506,11 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               }}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                 createRole === 'client'
-                  ? 'bg-white text-[#000831] shadow-xs'
-                  : 'text-slate-600 hover:text-[#000831]'
+                  ? 'bg-white text-[#1A1E2A] shadow-xs'
+                  : 'text-slate-600 hover:text-[#1A1E2A]'
               }`}
             >
-              <UserCheck className="h-4 w-4 text-[#109173]" />
+              <UserCheck className="h-4 w-4 text-[#5E7800]" />
               <span>Cliente / Alumno</span>
             </button>
             <button
@@ -521,11 +521,11 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               }}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                 createRole === 'admin'
-                  ? 'bg-white text-[#000831] shadow-xs'
-                  : 'text-slate-600 hover:text-[#000831]'
+                  ? 'bg-white text-[#1A1E2A] shadow-xs'
+                  : 'text-slate-600 hover:text-[#1A1E2A]'
               }`}
             >
-              <ShieldCheck className="h-4 w-4 text-[#109173]" />
+              <ShieldCheck className="h-4 w-4 text-[#5E7800]" />
               <span>Administrador</span>
             </button>
           </div>
@@ -538,7 +538,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
 
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 Nombre completo
               </label>
               <div className="relative">
@@ -553,13 +553,13 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       ? 'Ej. Carlos Méndez'
                       : 'Ej. Ana López'
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 Usuario de acceso
               </label>
               <div className="relative">
@@ -573,14 +573,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   placeholder={
                     createRole === 'admin' ? 'Ej. admin_2' : 'Ej. ana.lopez'
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
               </div>
             </div>
 
             {createRole === 'admin' && (
               <div>
-                <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                   Correo (opcional)
                 </label>
                 <div className="relative">
@@ -590,14 +590,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="correo@kicksxr.com"
-                    className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                    className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                 {createRole === 'admin'
                   ? 'WhatsApp del admin (para enviar credenciales)'
                   : 'Teléfono / WhatsApp (notificaciones y envío de credenciales)'}
@@ -610,7 +610,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="55 1234 5678"
-                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
               </div>
             </div>
@@ -618,7 +618,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             {createRole === 'client' && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-[#000831] mb-1.5">
+                  <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
                     Dirección de entrega
                   </label>
                   <div className="relative">
@@ -629,7 +629,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Calle, número, colonia y CP"
-                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                     />
                   </div>
                 </div>
@@ -637,12 +637,12 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 {/* Optional INE capture when admin creates a client */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="inline-flex items-center gap-1.5 text-xs font-bold text-[#000831]">
-                      <IdCard className="h-4 w-4 text-[#109173]" />
+                    <label className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1A1E2A]">
+                      <IdCard className="h-4 w-4 text-[#5E7800]" />
                       <span>Identificación INE (opcional)</span>
                     </label>
                     {inePhotoDataUrl && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#109173]">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#5E7800]">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         <span>Adjunta</span>
                       </span>
@@ -666,9 +666,9 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setCameraTarget('create')}
-                          className="flex-1 min-h-[36px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] cursor-pointer"
+                          className="flex-1 min-h-[36px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] cursor-pointer"
                         >
-                          <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                          <Camera className="h-3.5 w-3.5 text-[#5E7800]" />
                           <span>Otra foto</span>
                         </button>
                         <button
@@ -686,15 +686,15 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       <button
                         type="button"
                         onClick={() => setCameraTarget('create')}
-                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black cursor-pointer"
+                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
                       >
-                        <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                        <Camera className="h-3.5 w-3.5 text-[#FCF61C]" />
                         <span>Cámara</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => createIneInputRef.current?.click()}
-                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer"
+                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
                       >
                         <ImageIcon className="h-3.5 w-3.5" />
                         <span>Subir INE</span>
@@ -707,13 +707,13 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-[#000831]">
+                <label className="block text-sm font-semibold text-[#1A1E2A]">
                   Contraseña asignada
                 </label>
                 <button
                   type="button"
                   onClick={() => setPassword(generateStrongPassword())}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#109173] hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#5E7800] hover:underline cursor-pointer"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Generar clave</span>
@@ -728,12 +728,12 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 font-mono text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-11 font-mono text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-[#000831] cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-[#1A1E2A] cursor-pointer"
                   aria-label="Mostrar u ocultar contraseña"
                 >
                   {showPassword ? (
@@ -748,7 +748,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="w-full min-h-[48px] rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 transition-colors cursor-pointer"
+              className="w-full min-h-[48px] rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 transition-colors cursor-pointer"
             >
               {submitting
                 ? 'Creando credenciales...'
@@ -768,7 +768,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 onClick={() => setDirectoryTab('clients')}
                 className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                   directoryTab === 'clients'
-                    ? 'bg-white text-[#000831] shadow-xs'
+                    ? 'bg-white text-[#1A1E2A] shadow-xs'
                     : 'text-slate-600'
                 }`}
               >
@@ -779,7 +779,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 onClick={() => setDirectoryTab('admins')}
                 className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                   directoryTab === 'admins'
-                    ? 'bg-white text-[#000831] shadow-xs'
+                    ? 'bg-white text-[#1A1E2A] shadow-xs'
                     : 'text-slate-600'
                 }`}
               >
@@ -794,7 +794,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar por nombre, usuario o teléfono..."
-                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-xs sm:text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
               />
             </div>
           </div>
@@ -822,15 +822,15 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-display text-sm font-extrabold text-[#000831]">
+                        <span className="font-display text-sm font-extrabold text-[#1A1E2A]">
                           {adm.name}
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#109173]">
+                        <span className="font-mono text-xs font-bold text-[#5E7800]">
                           @{adm.username}
                         </span>
                         <span
                           className={`text-[11px] font-bold ${
-                            adm.active ? 'text-[#109173]' : 'text-slate-400'
+                            adm.active ? 'text-[#8BAF03]' : 'text-slate-400'
                           }`}
                         >
                           · {adm.active ? 'Activo' : 'Inactivo'}
@@ -849,7 +849,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         onClick={() =>
                           handleResetPassword('admin', adm.id, adm.name)
                         }
-                        className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#109173]/30 bg-[#E6F7F3] px-3 text-xs font-bold text-[#109173] hover:bg-[#109173] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#8BAF03]/30 bg-[#F3F8DE] px-3 text-xs font-bold text-[#5E7800] hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
                         <span>Nueva clave + WA</span>
@@ -859,7 +859,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                           type="button"
                           disabled={busyUserId === adm.id}
                           onClick={() => handleToggleAdminActive(adm)}
-                          className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:text-[#000831] cursor-pointer disabled:opacity-50"
+                          className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:text-[#1A1E2A] cursor-pointer disabled:opacity-50"
                         >
                           {adm.active ? 'Desactivar' : 'Reactivar'}
                         </button>
@@ -874,7 +874,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               {filteredClients.length === 0 ? (
                 <div className="p-8 text-center">
                   <Users className="h-9 w-9 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-[#000831]">
+                  <p className="text-sm font-semibold text-[#1A1E2A]">
                     Aún no hay clientes o alumnos registrados.
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
@@ -900,7 +900,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                           }
                           className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
                             hasIne
-                              ? 'border-[#109173]/40 bg-white hover:border-[#109173]'
+                              ? 'border-[#8BAF03]/40 bg-white hover:border-[#8BAF03]'
                               : 'border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-slate-400'
                           }`}
                         >
@@ -922,18 +922,18 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-display text-sm font-extrabold text-[#000831]">
+                            <span className="font-display text-sm font-extrabold text-[#1A1E2A]">
                               {cli.name}
                             </span>
                             {cli.username && (
-                              <span className="font-mono text-xs font-bold text-[#109173]">
+                              <span className="font-mono text-xs font-bold text-[#5E7800]">
                                 @{cli.username}
                               </span>
                             )}
                             <span
                               className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
                                 hasIne
-                                  ? 'bg-[#E6F7F3] text-[#109173]'
+                                  ? 'bg-[#F3F8DE] text-[#8BAF03]'
                                   : 'bg-amber-50 text-amber-700'
                               }`}
                             >
@@ -958,9 +958,9 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedClientId(cli.id)}
-                          className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#000831]/20 bg-[#000831] px-3 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#1A1E2A]/20 bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] transition-colors cursor-pointer"
                         >
-                          <IdCard className="h-3.5 w-3.5 text-[#109173]" />
+                          <IdCard className="h-3.5 w-3.5 text-[#FCF61C]" />
                           <span>Ver ficha e INE</span>
                         </button>
                         <button
@@ -969,7 +969,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                           onClick={() =>
                             handleResetPassword('client', cli.id, cli.name)
                           }
-                          className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#109173]/30 bg-[#E6F7F3] px-3 text-xs font-bold text-[#109173] hover:bg-[#109173] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#8BAF03]/30 bg-[#F3F8DE] px-3 text-xs font-bold text-[#5E7800] hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                           <span>Nueva clave + WA</span>
@@ -987,7 +987,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
       {/* Client Registration Details & INE Modal */}
       {selectedClient && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#000831]/70 p-3 sm:p-5 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/70 p-3 sm:p-5 backdrop-blur-xs"
           onClick={() => setSelectedClientId(null)}
           role="dialog"
           aria-modal="true"
@@ -997,9 +997,9 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             className="w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 bg-[#000831] px-5 py-4 text-white shrink-0">
+            <div className="flex items-center justify-between gap-3 bg-[#1A1E2A] px-5 py-4 text-white shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#109173] text-white shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8BAF03] text-[#1A1E2A] shrink-0">
                   <IdCard className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
@@ -1028,7 +1028,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Nombre completo
                   </div>
-                  <div className="mt-1 text-sm font-extrabold text-[#000831]">
+                  <div className="mt-1 text-sm font-extrabold text-[#1A1E2A]">
                     {selectedClient.name}
                   </div>
                 </div>
@@ -1037,7 +1037,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Usuario de acceso
                   </div>
-                  <div className="mt-1 font-mono text-sm font-extrabold text-[#109173]">
+                  <div className="mt-1 font-mono text-sm font-extrabold text-[#5E7800]">
                     {selectedClient.username
                       ? `@${selectedClient.username}`
                       : 'Sin usuario asignado'}
@@ -1049,7 +1049,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                     Teléfono / WhatsApp
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-bold text-[#000831]">
+                    <span className="font-mono text-sm font-bold text-[#1A1E2A]">
                       {selectedClient.whatsapp}
                     </span>
                     <a
@@ -1060,7 +1060,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       }`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-[#109173] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-[#5E7800] hover:underline"
                     >
                       <span>WhatsApp</span>
                       <ExternalLink className="h-3 w-3" />
@@ -1072,8 +1072,8 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Fecha de registro
                   </div>
-                  <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#000831]">
-                    <Calendar className="h-4 w-4 text-[#5B21B6]" />
+                  <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#1A1E2A]">
+                    <Calendar className="h-4 w-4 text-[#1A1E2A]" />
                     <span>
                       {new Date(selectedClient.createdAt).toLocaleString('es-MX')}
                     </span>
@@ -1084,8 +1084,8 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Dirección de entrega registrada
                   </div>
-                  <div className="mt-1 flex items-start gap-2 text-sm font-semibold text-[#000831]">
-                    <MapPin className="h-4 w-4 text-[#109173] shrink-0 mt-0.5" />
+                  <div className="mt-1 flex items-start gap-2 text-sm font-semibold text-[#1A1E2A]">
+                    <MapPin className="h-4 w-4 text-[#5E7800] shrink-0 mt-0.5" />
                     <span>{selectedClient.address}</span>
                   </div>
                 </div>
@@ -1095,8 +1095,8 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <IdCard className="h-4 w-4 text-[#109173]" />
-                    <h4 className="font-display text-sm font-extrabold text-[#000831]">
+                    <IdCard className="h-4 w-4 text-[#5E7800]" />
+                    <h4 className="font-display text-sm font-extrabold text-[#1A1E2A]">
                       Identificación Oficial (INE — México)
                     </h4>
                   </div>
@@ -1114,18 +1114,18 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       type="button"
                       disabled={updatingDetailIne}
                       onClick={() => setCameraTarget('detail')}
-                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer disabled:opacity-50"
+                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer disabled:opacity-50"
                     >
-                      <Camera className="h-3.5 w-3.5 text-[#109173]" />
+                      <Camera className="h-3.5 w-3.5 text-[#5E7800]" />
                       <span>Tomar INE</span>
                     </button>
                     <button
                       type="button"
                       disabled={updatingDetailIne}
                       onClick={() => detailIneInputRef.current?.click()}
-                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] cursor-pointer disabled:opacity-50"
+                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer disabled:opacity-50"
                     >
-                      <ImageIcon className="h-3.5 w-3.5 text-[#5B21B6]" />
+                      <ImageIcon className="h-3.5 w-3.5 text-[#1A1E2A]" />
                       <span>
                         {updatingDetailIne ? 'Guardando...' : 'Subir / reemplazar'}
                       </span>
@@ -1151,7 +1151,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         alt={`Identificación INE de ${selectedClient.name}`}
                         className="max-h-72 w-full object-contain p-2"
                       />
-                      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg bg-[#000831]/85 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
+                      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg bg-[#1A1E2A]/85 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
                         <ZoomIn className="h-3.5 w-3.5" />
                         <span>Ampliar INE</span>
                       </span>
@@ -1161,7 +1161,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                       <a
                         href={selectedClient.inePhotoDataUrl}
                         download={`INE-${selectedClient.username || selectedClient.id}.jpg`}
-                        className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#109173] px-4 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors"
+                        className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors"
                       >
                         <Download className="h-3.5 w-3.5" />
                         <span>Descargar imagen de INE</span>
@@ -1171,7 +1171,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 ) : (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
                     <ImageOff className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-[#000831]">
+                    <p className="text-sm font-bold text-[#1A1E2A]">
                       Este cliente aún no tiene fotografía de INE registrada
                     </p>
                     <p className="mt-1 text-xs text-slate-500">

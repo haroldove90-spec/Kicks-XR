@@ -59,9 +59,9 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
               <div
                 className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
                   isCompleted
-                    ? 'border-[#109173] bg-[#109173] text-white'
+                    ? 'border-[#8BAF03] bg-[#8BAF03] text-[#1A1E2A]'
                     : isCurrent
-                      ? 'border-[#109173] bg-[#E6F7F3] text-[#109173]'
+                      ? 'border-[#8BAF03] bg-[#FCF61C]/40 text-[#1A1E2A]'
                       : 'border-slate-200 bg-white text-slate-300'
                 }`}
               >
@@ -76,7 +76,7 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
               {!isLast && (
                 <div
                   className={`w-0.5 h-8 my-0.5 ${
-                    isCompleted ? 'bg-[#109173]' : 'bg-slate-200'
+                    isCompleted ? 'bg-[#8BAF03]' : 'bg-slate-200'
                   }`}
                 />
               )}
@@ -85,9 +85,9 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
             <div
               className={`flex-1 rounded-xl px-3.5 py-2 -mt-0.5 transition-colors ${
                 isCurrent
-                  ? 'bg-[#E6F7F3] text-[#000831]'
+                  ? 'bg-[#F3F8DE] text-[#1A1E2A]'
                   : isCompleted
-                    ? 'text-[#000831]'
+                    ? 'text-[#1A1E2A]'
                     : 'text-slate-400'
               }`}
             >
