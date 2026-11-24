@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-kicks-teal: #109173;
+  --color-kicks-teal-dark: #0B755C;
+  --color-kicks-teal-soft: #E6F7F3;
+  --color-kicks-navy: #000831;
+  --color-kicks-black: #000000;
+  --color-kicks-lavender: #EFEAFF;
+  --color-kicks-violet: #5B21B6;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: #000831;
+    background-color: #F8FAFC;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Safe area helpers for mobile PWAs */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.bottom-bar-offset {
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  .bottom-bar-offset {
+    padding-bottom: 2rem;
+  }
+}
+
+/* Subtle smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 8, 49, 0.16);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 145, 115, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Kicks XR",
+  "description": "Plataforma integral y PWA para el registro, recolección, limpieza profesional y seguimiento en tiempo real de calzado deportivo Kicks XR.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
