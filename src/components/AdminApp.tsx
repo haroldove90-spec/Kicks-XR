@@ -5,14 +5,19 @@ import {
   Bell,
   Building2,
   Calendar,
+  Camera,
   Check,
   CheckCircle2,
   CreditCard,
   Database,
+  Download,
   ExternalLink,
+  Eye,
   Home,
+  ImageOff,
   Layers,
   Lock,
+  MapPin,
   MessageSquare,
   Package,
   Pencil,
@@ -22,10 +27,12 @@ import {
   Search,
   Settings,
   ShoppingBag,
-  Sparkles,
   Store,
   Truck,
   Users,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
@@ -45,9 +52,14 @@ import type {
   PopupAlert,
   SupabaseHealthStatus,
 } from '../types';
+import {
+  AdminOrderDetailModal,
+  isSafePhotoDataUrl,
+} from './AdminOrderDetailModal';
 import {AdminUsersModule} from './AdminUsersModule';
 import {AppShell, type NavModuleItem} from './AppShell';
 import {NotificationsCenter} from './NotificationsCenter';
+import {OrderTimeline} from './OrderTimeline';
 import {QRScannerModal} from './QRScannerModal';
 
 interface AdminAppProps {
@@ -108,11 +120,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
   // Module 3: Gestionar pedido
   const [orderSearch, setOrderSearch] = useState('');
+  const [orderPhotoFilter, setOrderPhotoFilter] = useState<'all' | 'with_photo'>('all');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [detailOrderModal, setDetailOrderModal] = useState<Order | null>(null);
   const [editStatus, setEditStatus] = useState<OrderStatus>('En limpieza');
   const [editPayment, setEditPayment] = useState<PaymentStatus>('Pago pendiente');
   const [editBagCode, setEditBagCode] = useState('');
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{
+    url: string;
+    title: string;
+    subtitle?: string;
+    filename: string;
+  } | null>(null);
+  const [lightboxZoomed, setLightboxZoomed] = useState(false);
 
   // Module 4: Confirmar devolución
   const [deliverMethod, setDeliverMethod] = useState<DeliveryMethod>('pickup');
@@ -253,17 +273,52 @@ export const AdminApp: React.FC<AdminAppProps> = ({
     [collectionBatch, checkedBags],
   );
 
+  const openPhotoLightbox = useCallback((order: Order) => {
+    if (!isSafePhotoDataUrl(order.photoDataUrl)) return;
+    setLightboxZoomed(false);
+    setLightboxPhoto({
+      url: order.photoDataUrl,
+      title: `Tenis · ${order.folio} (${order.bagCode})`,
+      subtitle: `${order.clientName} · ${order.serviceName} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})`,
+      filename: `${order.folio}-${order.bagCode}-tenis.jpg`,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxPhoto) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxPhoto(null);
+        setLightboxZoomed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [lightboxPhoto]);
+
+  const ordersWithPhotoCount = useMemo(
+    () => orders.filter((o) => isSafePhotoDataUrl(o.photoDataUrl)).length,
+    [orders],
+  );
+
   const filteredOrders = useMemo(() => {
     const q = orderSearch.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter(
-      (o) =>
+    return orders.filter((o) => {
+      if (orderPhotoFilter === 'with_photo' && !isSafePhotoDataUrl(o.photoDataUrl)) {
+        return false;
+      }
+      if (!q) return true;
+      return (
         (o.folio || '').toLowerCase().includes(q) ||
         (o.bagCode || '').toLowerCase().includes(q) ||
         (o.clientName || '').toLowerCase().includes(q) ||
-        (o.campusName || '').toLowerCase().includes(q),
-    );
-  }, [orders, orderSearch]);
+        (o.clientWhatsapp || '').toLowerCase().includes(q) ||
+        (o.serviceName || '').toLowerCase().includes(q) ||
+        (o.campusName || '').toLowerCase().includes(q) ||
+        (o.assignedLockerCode || '').toLowerCase().includes(q)
+      );
+    });
+  }, [orders, orderSearch, orderPhotoFilter]);
 
   const readyToDeliverOrders = useMemo(
     () => orders.filter((o) => o.status !== 'Entregado'),
@@ -738,40 +793,87 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     <table className="w-full text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 text-xs text-slate-500">
-                          <th className="py-2.5 pr-3 font-semibold">Folio</th>
-                          <th className="py-2.5 pr-3 font-semibold">Bolsa</th>
-                          <th className="py-2.5 pr-3 font-semibold">Cliente</th>
+                          <th className="py-2.5 pr-3 font-semibold">Foto</th>
+                          <th className="py-2.5 pr-3 font-semibold">Folio / Bolsa</th>
+                          <th className="py-2.5 pr-3 font-semibold">Cliente / Servicio</th>
                           <th className="py-2.5 pr-3 font-semibold">Estatus</th>
-                          <th className="py-2.5 text-right font-semibold">Total</th>
+                          <th className="py-2.5 text-right font-semibold">Total / Ver</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {orders.slice(0, 6).map((o) => (
-                          <tr
-                            key={o.id}
-                            onClick={() => {
-                              setSelectedOrderId(o.id);
-                              setActiveTab('orders');
-                            }}
-                            className="hover:bg-slate-50 cursor-pointer"
-                          >
-                            <td className="py-3 pr-3 font-mono font-bold text-[#000831]">
-                              {o.folio}
-                            </td>
-                            <td className="py-3 pr-3 font-mono font-semibold text-[#5B21B6]">
-                              {o.bagCode}
-                            </td>
-                            <td className="py-3 pr-3 truncate max-w-[140px]">
-                              {o.clientName}
-                            </td>
-                            <td className="py-3 pr-3 text-xs font-semibold text-[#109173]">
-                              {o.status}
-                            </td>
-                            <td className="py-3 text-right font-mono font-bold tabular-nums">
-                              ${o.totalAmount}
-                            </td>
-                          </tr>
-                        ))}
+                        {orders.slice(0, 6).map((o) => {
+                          const hasPhoto = isSafePhotoDataUrl(o.photoDataUrl);
+                          return (
+                            <tr
+                              key={o.id}
+                              onClick={() => setDetailOrderModal(o)}
+                              className="hover:bg-slate-50 cursor-pointer"
+                            >
+                              <td className="py-2.5 pr-3">
+                                {hasPhoto ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPhotoLightbox(o);
+                                    }}
+                                    title="Ver fotografía de tenis"
+                                    className="group relative h-11 w-11 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 block shrink-0 cursor-pointer"
+                                  >
+                                    <img
+                                      src={o.photoDataUrl}
+                                      alt={`Tenis ${o.folio}`}
+                                      className="h-full w-full object-cover group-hover:scale-110 transition-transform"
+                                    />
+                                  </button>
+                                ) : (
+                                  <div
+                                    title="Sin foto adjunta"
+                                    className="h-11 w-11 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300 shrink-0"
+                                  >
+                                    <ImageOff className="h-4 w-4" />
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2.5 pr-3">
+                                <div className="font-mono font-bold text-[#000831]">
+                                  {o.folio}
+                                </div>
+                                <div className="font-mono text-xs font-semibold text-[#5B21B6]">
+                                  {o.bagCode}
+                                </div>
+                              </td>
+                              <td className="py-2.5 pr-3 max-w-[175px]">
+                                <div className="font-semibold text-[#000831] truncate">
+                                  {o.clientName}
+                                </div>
+                                <div className="text-xs text-slate-500 truncate">
+                                  {o.serviceName} · {o.pairs}{' '}
+                                  {o.pairs === 1 ? 'par' : 'pares'}
+                                </div>
+                              </td>
+                              <td className="py-2.5 pr-3 text-xs font-semibold text-[#109173]">
+                                {o.status}
+                              </td>
+                              <td className="py-2.5 text-right">
+                                <div className="font-mono font-bold tabular-nums text-[#000831]">
+                                  ${o.totalAmount}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDetailOrderModal(o);
+                                  }}
+                                  className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#109173] hover:underline cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  <span>Detalle</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -903,11 +1005,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-[#000831]">
-                        <th className="py-2.5 px-3 rounded-l-lg">Bolsa</th>
-                        <th className="py-2.5 px-3">Pedido (Folio)</th>
-                        <th className="py-2.5 px-3">Sede</th>
+                        <th className="py-2.5 px-3 rounded-l-lg">Foto</th>
+                        <th className="py-2.5 px-3">Bolsa / Folio</th>
+                        <th className="py-2.5 px-3">Cliente y servicio</th>
                         <th className="py-2.5 px-3">Estado</th>
-                        <th className="py-2.5 px-3 text-right rounded-r-lg">Acción</th>
+                        <th className="py-2.5 px-3 text-right rounded-r-lg">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -921,53 +1023,105 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           </td>
                         </tr>
                       ) : (
-                        collectionBatch.map((item) => (
-                          <tr key={item.id} className="hover:bg-slate-50/80">
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-2 font-mono font-bold text-[#000831]">
-                                <ShoppingBag className="h-4 w-4 text-[#000831]" />
-                                <span>{item.bagCode}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-3 font-mono font-semibold text-[#000831]">
-                              {item.folio}
-                            </td>
-                            <td className="py-3 px-3 text-xs text-slate-600">
-                              {item.campusName}
-                              {item.assignedLockerCode && (
-                                <span className="ml-1 font-mono text-[#5B21B6]">
-                                  ({item.assignedLockerCode})
+                        collectionBatch.map((item) => {
+                          const hasPhoto = isSafePhotoDataUrl(item.photoDataUrl);
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50/80">
+                              <td className="py-3 px-3">
+                                {hasPhoto ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openPhotoLightbox(item)}
+                                    title="Ampliar fotografía de los tenis"
+                                    className="group relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 block shrink-0 cursor-pointer"
+                                  >
+                                    <img
+                                      src={item.photoDataUrl}
+                                      alt={`Tenis ${item.folio}`}
+                                      className="h-full w-full object-cover group-hover:scale-110 transition-transform"
+                                    />
+                                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 flex items-center justify-center transition-colors">
+                                      <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <div
+                                    title="Sin fotografía adjunta"
+                                    className="h-12 w-12 rounded-xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300 shrink-0"
+                                  >
+                                    <ImageOff className="h-4 w-4" />
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-1.5 font-mono font-bold text-[#000831]">
+                                  <ShoppingBag className="h-4 w-4 text-[#000831] shrink-0" />
+                                  <span>{item.bagCode}</span>
+                                </div>
+                                <div className="font-mono text-xs font-semibold text-slate-500">
+                                  {item.folio}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-xs text-[#000831]">
+                                  {item.clientName}
+                                </div>
+                                <div className="text-xs text-slate-600">
+                                  {item.serviceName} · {item.pairs}{' '}
+                                  {item.pairs === 1 ? 'par' : 'pares'} ·{' '}
+                                  <span className="font-mono font-bold text-[#109173]">
+                                    ${item.totalAmount}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {item.campusName}
+                                  {item.assignedLockerCode && (
+                                    <span className="ml-1 font-mono font-semibold text-[#5B21B6]">
+                                      ({item.assignedLockerCode})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span
+                                  className={`inline-block rounded-lg px-2.5 py-1 text-xs font-bold ${
+                                    item.collectionStatus === 'Recolectado'
+                                      ? 'bg-[#E6F7F3] text-[#109173]'
+                                      : 'bg-[#EFEAFF] text-[#5B21B6]'
+                                  }`}
+                                >
+                                  {item.collectionStatus}
                                 </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span
-                                className={`inline-block rounded-lg px-2.5 py-1 text-xs font-bold ${
-                                  item.collectionStatus === 'Recolectado'
-                                    ? 'bg-[#E6F7F3] text-[#109173]'
-                                    : 'bg-[#EFEAFF] text-[#5B21B6]'
-                                }`}
-                              >
-                                {item.collectionStatus}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBagScanInput(item.bagCode);
-                                  setCheckedBags((prev) => ({
-                                    ...prev,
-                                    [item.bagCode]: true,
-                                  }));
-                                }}
-                                className="min-h-[38px] rounded-xl bg-[#109173] px-3.5 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap cursor-pointer"
-                              >
-                                Abrir recolección
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <div className="inline-flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setDetailOrderModal(item)}
+                                    title="Ver detalle completo y foto de tenis"
+                                    className="min-h-[38px] inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors whitespace-nowrap cursor-pointer"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span className="hidden sm:inline">Detalle</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBagScanInput(item.bagCode);
+                                      setCheckedBags((prev) => ({
+                                        ...prev,
+                                        [item.bagCode]: true,
+                                      }));
+                                    }}
+                                    className="min-h-[38px] rounded-xl bg-[#109173] px-3 text-xs font-bold text-white hover:bg-[#0B755C] transition-colors whitespace-nowrap cursor-pointer"
+                                  >
+                                    Abrir recolección
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1030,12 +1184,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   ) : (
                     pendingVerificationOrders.map((item) => {
                       const isChecked = Boolean(checkedBags[item.bagCode]);
+                      const hasPhoto = isSafePhotoDataUrl(item.photoDataUrl);
                       return (
-                        <label
+                        <div
                           key={item.id}
-                          className="flex items-center justify-between gap-3 p-3.5 hover:bg-slate-50 cursor-pointer"
+                          className="flex items-center justify-between gap-2.5 p-3.5 hover:bg-slate-50"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <label className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -1045,29 +1200,58 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   [item.bagCode]: e.target.checked,
                                 }))
                               }
-                              className="h-5 w-5 rounded accent-[#109173] cursor-pointer"
+                              className="h-5 w-5 rounded accent-[#109173] cursor-pointer shrink-0"
                             />
-                            <ShoppingBag className="h-5 w-5 text-[#000831] shrink-0" />
+                            {hasPhoto ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openPhotoLightbox(item);
+                                }}
+                                title="Ver foto de tenis"
+                                className="h-10 w-10 rounded-lg overflow-hidden border border-slate-200 shrink-0 cursor-pointer"
+                              >
+                                <img
+                                  src={item.photoDataUrl}
+                                  alt={`Tenis ${item.folio}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <ShoppingBag className="h-5 w-5 text-[#000831] shrink-0" />
+                            )}
                             <div className="min-w-0">
                               <div className="font-mono text-sm font-bold text-[#000831]">
                                 {item.bagCode}
                               </div>
                               <div className="text-xs text-slate-500 truncate">
-                                {item.folio} · {item.clientName}
+                                {item.folio} · {item.clientName} · {item.serviceName}
                               </div>
                             </div>
-                          </div>
+                          </label>
 
-                          <span
-                            className={`rounded-lg px-3 py-1 text-xs font-bold whitespace-nowrap shrink-0 ${
-                              isChecked
-                                ? 'bg-[#E6F7F3] text-[#109173]'
-                                : 'bg-[#EFEAFF] text-[#5B21B6]'
-                            }`}
-                          >
-                            {isChecked ? 'Bolsa verificada' : 'Bolsa faltante'}
-                          </span>
-                        </label>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setDetailOrderModal(item)}
+                              title="Ver detalles del pedido"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <span
+                              className={`rounded-lg px-2.5 py-1 text-xs font-bold whitespace-nowrap ${
+                                isChecked
+                                  ? 'bg-[#E6F7F3] text-[#109173]'
+                                  : 'bg-[#EFEAFF] text-[#5B21B6]'
+                              }`}
+                            >
+                              {isChecked ? 'Verificada' : 'Faltante'}
+                            </span>
+                          </div>
+                        </div>
                       );
                     })
                   )}
@@ -1106,57 +1290,118 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     type="text"
                     value={orderSearch}
                     onChange={(e) => setOrderSearch(e.target.value)}
-                    placeholder="Buscar folio, bolsa o cliente..."
+                    placeholder="Buscar folio, bolsa, cliente o servicio..."
                     className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
                   />
                 </div>
 
-                <div className="space-y-2 max-h-[620px] overflow-y-auto pr-1">
-                  {filteredOrders.map((o) => {
-                    const active = selectedOrder?.id === o.id;
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setSelectedOrderId(o.id)}
-                        className={`w-full rounded-xl border p-3.5 text-left transition-colors cursor-pointer ${
-                          active
-                            ? 'border-[#109173] bg-[#E6F7F3]'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-sm font-extrabold text-[#000831]">
-                            {o.folio}
-                          </span>
-                          <span className="font-mono text-xs font-bold text-[#5B21B6]">
-                            {o.bagCode}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-xs font-semibold text-slate-700 truncate">
-                          {o.clientName} · {o.serviceName}
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-[#109173]">{o.status}</span>
-                          <span className="font-mono text-slate-500 tabular-nums">
-                            {o.paymentStatus}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setOrderPhotoFilter('all')}
+                    className={`min-h-[34px] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      orderPhotoFilter === 'all'
+                        ? 'bg-white text-[#000831] shadow-xs'
+                        : 'text-slate-600 hover:text-[#000831]'
+                    }`}
+                  >
+                    Todos ({orders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderPhotoFilter('with_photo')}
+                    className={`min-h-[34px] inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      orderPhotoFilter === 'with_photo'
+                        ? 'bg-white text-[#109173] shadow-xs'
+                        : 'text-slate-600 hover:text-[#000831]'
+                    }`}
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    <span>Con foto ({ordersWithPhotoCount})</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
+                  {filteredOrders.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-slate-500">
+                      No hay pedidos que coincidan con la búsqueda.
+                    </div>
+                  ) : (
+                    filteredOrders.map((o) => {
+                      const active = selectedOrder?.id === o.id;
+                      const hasPhoto = isSafePhotoDataUrl(o.photoDataUrl);
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => setSelectedOrderId(o.id)}
+                          className={`w-full rounded-xl border p-3 text-left transition-colors cursor-pointer flex items-center gap-3 ${
+                            active
+                              ? 'border-[#109173] bg-[#E6F7F3]'
+                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          {hasPhoto ? (
+                            <img
+                              src={o.photoDataUrl}
+                              alt={`Tenis ${o.folio}`}
+                              className="h-12 w-12 rounded-lg object-cover border border-slate-200 shrink-0 bg-slate-100"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300 shrink-0">
+                              <ImageOff className="h-4 w-4" />
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-sm font-extrabold text-[#000831]">
+                                {o.folio}
+                              </span>
+                              <span className="font-mono text-xs font-bold text-[#5B21B6]">
+                                {o.bagCode}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-xs font-semibold text-slate-700 truncate">
+                              {o.clientName} · {o.serviceName}
+                            </div>
+                            <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+                              <span className="font-bold text-[#109173] truncate">
+                                {o.status}
+                              </span>
+                              <span className="font-mono font-bold text-slate-600 tabular-nums shrink-0">
+                                {o.pairs}p · ${o.totalAmount}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
               <div className="xl:col-span-8 space-y-6">
                 <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-5">
-                  <div className="flex items-center gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
-                      3
-                    </span>
-                    <h2 className="font-display text-lg font-extrabold">
-                      3. Gestionar pedido
-                    </h2>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#109173] px-4 py-3 text-white">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-display text-base font-extrabold text-[#109173] shrink-0">
+                        3
+                      </span>
+                      <h2 className="font-display text-lg font-extrabold">
+                        3. Gestionar pedido y detalles del servicio
+                      </h2>
+                    </div>
+                    {selectedOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setDetailOrderModal(selectedOrder)}
+                        className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 text-xs font-bold text-white transition-colors cursor-pointer"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Ficha completa y QR</span>
+                      </button>
+                    )}
                   </div>
 
                   {selectedOrder ? (
@@ -1168,7 +1413,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                           </div>
                           <div>
                             <div className="text-xs font-medium text-slate-500">
-                              Folio
+                              Folio · Registrado{' '}
+                              {new Date(selectedOrder.createdAt).toLocaleDateString('es-MX')}
                             </div>
                             <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
                               {selectedOrder.folio}
@@ -1193,73 +1439,202 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               {selectedOrder.pairs}{' '}
                               {selectedOrder.pairs === 1 ? 'par' : 'pares'}
                             </div>
-                            <div className="font-mono font-bold text-[#109173] tabular-nums">
+                            <div className="font-mono text-base font-extrabold text-[#109173] tabular-nums">
                               ${selectedOrder.totalAmount} MXN
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                        <div className="md:col-span-7 rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2 text-sm">
-                          <div className="flex justify-between gap-2">
-                            <span className="text-slate-500">Cliente</span>
-                            <span className="font-bold text-[#000831]">
-                              {selectedOrder.clientName}
-                            </span>
-                          </div>
-                          <div className="flex justify-between gap-2">
-                            <span className="text-slate-500">WhatsApp</span>
-                            <a
-                              href={`https://wa.me/52${(selectedOrder.clientWhatsapp || '').replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-mono font-bold text-[#109173] hover:underline"
-                            >
-                              <span>{selectedOrder.clientWhatsapp || '—'}</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </div>
-                          <div className="flex justify-between gap-2">
-                            <span className="text-slate-500">Servicio</span>
-                            <span className="font-semibold text-[#000831]">
-                              {selectedOrder.serviceName}
-                            </span>
-                          </div>
-                          <div className="flex justify-between gap-2">
-                            <span className="text-slate-500">Entrega</span>
-                            <span className="font-semibold text-[#000831] text-right">
-                              {selectedOrder.deliveryMethod === 'delivery'
-                                ? `Domicilio: ${selectedOrder.deliveryAddress}`
-                                : `Recoger en ${selectedOrder.campusName}`}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-5">
-                          {selectedOrder.photoDataUrl ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLightboxPhoto(selectedOrder.photoDataUrl || null)
-                              }
-                              className="group relative w-full overflow-hidden rounded-xl border border-slate-200 cursor-pointer"
-                            >
-                              <img
-                                src={selectedOrder.photoDataUrl}
-                                alt={`Evidencia ${selectedOrder.folio}`}
-                                className="h-36 w-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <span className="absolute bottom-2 right-2 rounded-lg bg-[#000831]/80 px-2 py-1 text-[11px] font-semibold text-white">
-                                Ampliar foto
+                      {/* Evidencia fotográfica + Detalles completos del pedido y servicio */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                        {/* Photo Evidence Card */}
+                        <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col">
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#000831]">
+                              <Camera className="h-4 w-4 text-[#109173]" />
+                              <span>Foto de los tenis</span>
+                            </div>
+                            {isSafePhotoDataUrl(selectedOrder.photoDataUrl) && (
+                              <span className="text-[11px] font-bold text-[#109173]">
+                                Adjunta
                               </span>
-                            </button>
+                            )}
+                          </div>
+
+                          {isSafePhotoDataUrl(selectedOrder.photoDataUrl) ? (
+                            <div className="flex-1 flex flex-col gap-2.5">
+                              <button
+                                type="button"
+                                onClick={() => openPhotoLightbox(selectedOrder)}
+                                className="group relative flex-1 min-h-[200px] max-h-[260px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center cursor-pointer"
+                              >
+                                <img
+                                  src={selectedOrder.photoDataUrl}
+                                  alt={`Evidencia de tenis ${selectedOrder.folio}`}
+                                  className="max-h-[256px] w-full object-contain group-hover:scale-[1.03] transition-transform"
+                                />
+                                <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-lg bg-[#000831]/85 px-2.5 py-1 text-[11px] font-bold text-white">
+                                  <ZoomIn className="h-3.5 w-3.5" />
+                                  <span>Ampliar</span>
+                                </span>
+                              </button>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openPhotoLightbox(selectedOrder)}
+                                  className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#000831] px-2.5 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                                >
+                                  <ZoomIn className="h-3.5 w-3.5" />
+                                  <span>Ver grande</span>
+                                </button>
+                                <a
+                                  href={selectedOrder.photoDataUrl}
+                                  download={`${selectedOrder.folio}-${selectedOrder.bagCode}-tenis.jpg`}
+                                  className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:bg-slate-50 transition-colors"
+                                >
+                                  <Download className="h-3.5 w-3.5 text-[#109173]" />
+                                  <span>Descargar</span>
+                                </a>
+                              </div>
+                            </div>
                           ) : (
-                            <div className="h-36 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-xs text-slate-500 p-4 text-center">
-                              <Sparkles className="h-5 w-5 text-slate-400 mb-1" />
-                              <span>Sin foto inicial adjunta en este folio</span>
+                            <div className="flex-1 min-h-[200px] rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-xs text-slate-500 p-4 text-center">
+                              <ImageOff className="h-7 w-7 text-slate-300 mb-2" />
+                              <span className="font-bold text-[#000831]">
+                                Sin foto inicial adjunta
+                              </span>
+                              <span className="mt-1 text-[11px] text-slate-500">
+                                El cliente no subió imagen de sus tenis en este folio.
+                              </span>
                             </div>
                           )}
+                        </div>
+
+                        {/* Full Order & Service Breakdown Card */}
+                        <div className="lg:col-span-7 rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3 text-sm">
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#000831]">
+                              Detalles del pedido y servicio
+                            </span>
+                            <span
+                              className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                                selectedOrder.bagVerified
+                                  ? 'bg-[#E6F7F3] text-[#109173]'
+                                  : 'bg-[#EFEAFF] text-[#5B21B6]'
+                              }`}
+                            >
+                              {selectedOrder.bagVerified
+                                ? 'Bolsa verificada'
+                                : `Recolección: ${selectedOrder.collectionStatus}`}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs sm:text-sm">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Cliente</span>
+                              <span className="font-bold text-[#000831] text-right">
+                                {selectedOrder.clientName}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">WhatsApp</span>
+                              <a
+                                href={`https://wa.me/52${(selectedOrder.clientWhatsapp || '').replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-mono font-bold text-[#109173] hover:underline"
+                              >
+                                <span>{selectedOrder.clientWhatsapp || '—'}</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Servicio</span>
+                              <span className="font-bold text-[#000831] text-right">
+                                {selectedOrder.serviceName} ({selectedOrder.pairs}{' '}
+                                {selectedOrder.pairs === 1 ? 'par' : 'pares'})
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Desglose</span>
+                              <span className="font-mono font-semibold text-[#000831] tabular-nums text-right">
+                                ${selectedOrder.unitPrice} × {selectedOrder.pairs}
+                                {selectedOrder.shippingFee > 0
+                                  ? ` + $${selectedOrder.shippingFee} envío`
+                                  : ''}{' '}
+                                ={' '}
+                                <strong className="text-[#109173]">
+                                  ${selectedOrder.totalAmount} MXN
+                                </strong>
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Pago</span>
+                              <span className="font-semibold text-[#000831] text-right">
+                                {selectedOrder.paymentMethod === 'card'
+                                  ? `Tarjeta${selectedOrder.cardLast4 ? ` •••• ${selectedOrder.cardLast4}` : ''}`
+                                  : 'Efectivo'}{' '}
+                                ·{' '}
+                                <strong
+                                  className={
+                                    selectedOrder.paymentStatus === 'Pagado'
+                                      ? 'text-[#109173]'
+                                      : 'text-[#5B21B6]'
+                                  }
+                                >
+                                  {selectedOrder.paymentStatus}
+                                </strong>
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Sede / Depósito</span>
+                              <span className="font-semibold text-[#000831] text-right">
+                                {selectedOrder.campusName}
+                                {selectedOrder.dropoffMethod === 'locker'
+                                  ? ` · Locker ${selectedOrder.assignedLockerCode || ''}`
+                                  : selectedOrder.dropoffMethod === 'staff'
+                                    ? ' · Con personal'
+                                    : ''}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-slate-500">Devolución</span>
+                              <span className="font-semibold text-[#000831] text-right">
+                                {selectedOrder.deliveryMethod === 'delivery'
+                                  ? 'Entrega a domicilio'
+                                  : `Recoger en ${selectedOrder.campusName}`}
+                              </span>
+                            </div>
+                            {selectedOrder.deliveryMethod === 'delivery' &&
+                              selectedOrder.deliveryAddress && (
+                                <div className="rounded-lg bg-white border border-slate-200 p-2.5 text-xs text-[#000831] flex items-start gap-1.5">
+                                  <MapPin className="h-3.5 w-3.5 text-[#109173] shrink-0 mt-0.5" />
+                                  <span>
+                                    <strong>Dirección:</strong>{' '}
+                                    {selectedOrder.deliveryAddress}
+                                  </span>
+                                </div>
+                              )}
+                            <div className="flex flex-wrap justify-between gap-2 pt-1.5 border-t border-slate-200/80 text-[11px] text-slate-500">
+                              <span>
+                                Creado:{' '}
+                                <strong className="font-mono text-[#000831]">
+                                  {new Date(selectedOrder.createdAt).toLocaleString(
+                                    'es-MX',
+                                  )}
+                                </strong>
+                              </span>
+                              <span>
+                                Actualizado:{' '}
+                                <strong className="font-mono text-[#000831]">
+                                  {new Date(selectedOrder.updatedAt).toLocaleString(
+                                    'es-MX',
+                                  )}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -1318,6 +1693,17 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         <Pencil className="h-4 w-4" />
                         <span>Actualizar estado</span>
                       </button>
+
+                      {/* Inline Order Timeline */}
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div className="text-xs font-extrabold uppercase tracking-wider text-[#000831] mb-3">
+                          Historial y seguimiento del servicio
+                        </div>
+                        <OrderTimeline
+                          currentStatus={selectedOrder.status}
+                          history={selectedOrder.history}
+                        />
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-500">
@@ -2141,17 +2527,112 @@ export const AdminApp: React.FC<AdminAppProps> = ({
         </div>
       )}
 
-      {/* Photo Lightbox */}
+      {/* Order & Service Complete Detail Modal */}
+      <AdminOrderDetailModal
+        order={detailOrderModal}
+        onClose={() => setDetailOrderModal(null)}
+        onZoomPhoto={(payload) => {
+          setLightboxZoomed(false);
+          setLightboxPhoto(payload);
+        }}
+        onManageOrder={
+          activeTab !== 'orders'
+            ? (order) => {
+                setSelectedOrderId(order.id);
+                setActiveTab('orders');
+              }
+            : undefined
+        }
+      />
+
+      {/* Enhanced Full-Screen Sneaker Photo Lightbox */}
       {lightboxPhoto && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightboxPhoto(null)}
+          className="fixed inset-0 z-[60] flex flex-col bg-black/92 backdrop-blur-xs"
+          onClick={() => {
+            setLightboxPhoto(null);
+            setLightboxZoomed(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightboxPhoto.title}
         >
-          <img
-            src={lightboxPhoto}
-            alt="Evidencia fotográfica ampliada"
-            className="max-h-[85vh] max-w-full rounded-2xl object-contain"
-          />
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-3 bg-black/70 border-b border-white/10 text-white shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="min-w-0">
+              <div className="font-display text-sm sm:text-base font-extrabold truncate">
+                {lightboxPhoto.title}
+              </div>
+              {lightboxPhoto.subtitle && (
+                <div className="text-xs text-white/75 truncate">
+                  {lightboxPhoto.subtitle}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setLightboxZoomed((z) => !z)}
+                className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 text-xs font-bold text-white transition-colors cursor-pointer"
+              >
+                {lightboxZoomed ? (
+                  <>
+                    <ZoomOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ajustar</span>
+                  </>
+                ) : (
+                  <>
+                    <ZoomIn className="h-4 w-4" />
+                    <span className="hidden sm:inline">Acercar</span>
+                  </>
+                )}
+              </button>
+              <a
+                href={lightboxPhoto.url}
+                download={lightboxPhoto.filename}
+                className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#109173] hover:bg-[#0B755C] px-3 text-xs font-bold text-white transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Descargar</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setLightboxPhoto(null);
+                  setLightboxZoomed(false);
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
+                aria-label="Cerrar visor de fotografía"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="flex-1 overflow-auto flex items-center justify-center p-4"
+            onClick={() => {
+              setLightboxPhoto(null);
+              setLightboxZoomed(false);
+            }}
+          >
+            <img
+              src={lightboxPhoto.url}
+              alt={lightboxPhoto.title}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxZoomed((z) => !z);
+              }}
+              className={`rounded-xl shadow-2xl transition-all duration-200 ${
+                lightboxZoomed
+                  ? 'max-w-none w-[140%] sm:w-auto sm:max-h-none sm:scale-150 cursor-zoom-out'
+                  : 'max-h-[82vh] max-w-full object-contain cursor-zoom-in'
+              }`}
+            />
+          </div>
         </div>
       )}
     </AppShell>
