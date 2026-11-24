@@ -48,10 +48,35 @@ interface StoredAdmin {
   id: string;
   username: string;
   email?: string;
+  whatsapp?: string;
   name: string;
   passwordHash: string;
+  active?: boolean;
   createdAt: string;
 }
+
+const PRE_REGISTERED_ADMINS: StoredAdmin[] = [
+  {
+    id: 'adm-haroldo90',
+    username: 'haroldo90',
+    email: 'haroldo90@kicksxr.com',
+    name: 'Harold Anguiano',
+    passwordHash:
+      '0e6cf9ddd5648fa3c0dab0bc6e0318ca:4be5db02406dc8acfaecf05572a32ae7b70bf76c55a0b93d8e1a7c53b6282586d3605ca9e2578d1d625ac830baec338b99fc7ce747d52b1c5cfc41cccd0dc656',
+    active: true,
+    createdAt: '2025-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'adm-admin1',
+    username: 'admin_1',
+    email: 'admin_1@kicksxr.com',
+    name: 'Administrador 1',
+    passwordHash:
+      '5f9024aa6e59695b4157757f5c24711c:a57ef8566d32d1808f69522395e491ff9e2dfe4ac841a5d2719f5d96ca3a229a0dc053bebd9776dfc8627e2e12bf493d6e231fed1f1ff69b583ed6b2ce1583ff',
+    active: true,
+    createdAt: '2025-01-01T00:00:00.000Z',
+  },
+];
 
 interface StoredClient {
   id: string;
@@ -416,7 +441,7 @@ function createInitialDb(): DatabaseState {
   ];
 
   return {
-    admins: [],
+    admins: PRE_REGISTERED_ADMINS.map((a) => ({...a})),
     clients: [],
     campuses,
     services,
@@ -428,6 +453,24 @@ function createInitialDb(): DatabaseState {
     incidents,
     notifications,
   };
+}
+
+function ensurePreRegisteredAdmins(state: DatabaseState): boolean {
+  let changed = false;
+  if (!Array.isArray(state.admins)) {
+    state.admins = [];
+    changed = true;
+  }
+  for (const preset of PRE_REGISTERED_ADMINS) {
+    const exists = state.admins.some(
+      (a) => a.username.toLowerCase() === preset.username.toLowerCase(),
+    );
+    if (!exists) {
+      state.admins.push({...preset});
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function loadDb(): DatabaseState {
@@ -449,8 +492,12 @@ function loadDb(): DatabaseState {
             email: parsed.admin.email,
             name: parsed.admin.name,
             passwordHash: parsed.admin.passwordHash,
+            active: true,
             createdAt: parsed.admin.createdAt,
           });
+        }
+        if (ensurePreRegisteredAdmins(parsed)) {
+          saveDb(parsed);
         }
         return parsed;
       }
@@ -476,6 +523,182 @@ function saveDb(state: DatabaseState): void {
 }
 
 const db: DatabaseState = loadDb();
+
+function buildCredentialsPayload(params: {
+  req: Request;
+  role: UserRole;
+  name: string;
+  identifier: string;
+  password: string;
+  whatsapp?: string;
+}) {
+  const originHeader =
+    (typeof params.req.headers.origin === 'string' && params.req.headers.origin) ||
+    (process.env.APP_URL && process.env.APP_URL !== 'MY_APP_URL'
+      ? process.env.APP_URL
+      : `${params.req.protocol}://${params.req.get('host')}`);
+  const loginUrl = originHeader.replace(/\/+$/, '');
+  const roleLabel = params.role === 'admin' ? 'Administrador' : 'Cliente';
+  const idLabel = params.role === 'admin' ? 'Usuario' : 'WhatsApp';
+
+  const shareMessage = [
+    `¡Hola ${params.name}! Tus credenciales de acceso a Kicks XR (${roleLabel}) están listas:`,
+    ``,
+    `• Rol: ${roleLabel}`,
+    `• ${idLabel}: ${params.identifier}`,
+    `• Contraseña: ${params.password}`,
+    `• Acceso a la app: ${loginUrl}`,
+    ``,
+    `Ingresa seleccionando el perfil "${roleLabel}" en Kicks XR.`,
+  ].join('\n');
+
+  const cleanPhone = params.whatsapp ? normalizePhone(params.whatsapp) : '';
+  const waPhone = cleanPhone.length === 10 ? `52${cleanPhone}` : cleanPhone;
+  const whatsappUrl = waPhone
+    ? `https://wa.me/${waPhone}?text=${encodeURIComponent(shareMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+
+  return {
+    role: params.role,
+    name: params.name,
+    identifier: params.identifier,
+    password: params.password,
+    whatsapp: params.whatsapp,
+    loginUrl,
+    shareMessage,
+    whatsappUrl,
+  };
+}
+
+async function hydrateFromSupabase(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const [
+      sbAdmins,
+      sbClients,
+      sbCampuses,
+      sbServices,
+      sbLockers,
+      sbOrders,
+      sbIncidents,
+      sbNotifications,
+      sbSettings,
+    ] = await Promise.all([
+      supabaseStore.listAdmins(),
+      supabaseStore.listClients(),
+      supabaseStore.listCampuses(),
+      supabaseStore.listServices(),
+      supabaseStore.listLockers(),
+      supabaseStore.listOrders(),
+      supabaseStore.listIncidents(),
+      supabaseStore.listNotifications(),
+      supabaseStore.getSettings(),
+    ]);
+
+    let changed = false;
+
+    if (sbAdmins && sbAdmins.length > 0) {
+      for (const row of sbAdmins) {
+        const idx = db.admins.findIndex(
+          (a) =>
+            a.id === row.id ||
+            a.username.toLowerCase() === row.username.toLowerCase(),
+        );
+        const mapped: StoredAdmin = {
+          id: row.id,
+          username: row.username,
+          email: row.email || undefined,
+          whatsapp: row.whatsapp || undefined,
+          name: row.name,
+          passwordHash: row.password_hash,
+          active: row.active,
+          createdAt: row.created_at,
+        };
+        if (idx >= 0) db.admins[idx] = mapped;
+        else db.admins.push(mapped);
+        changed = true;
+      }
+    }
+
+    if (sbClients && sbClients.length > 0) {
+      for (const row of sbClients) {
+        const idx = db.clients.findIndex(
+          (c) =>
+            c.id === row.id ||
+            c.whatsappNormalized === row.whatsapp_normalized,
+        );
+        const mapped: StoredClient = {
+          id: row.id,
+          name: row.name,
+          whatsapp: row.whatsapp,
+          whatsappNormalized: row.whatsapp_normalized,
+          passwordHash: row.password_hash,
+          address: row.address,
+          userType: row.user_type || 'general',
+          createdAt: row.created_at,
+        };
+        if (idx >= 0) db.clients[idx] = mapped;
+        else db.clients.push(mapped);
+        changed = true;
+      }
+    }
+
+    if (sbCampuses && sbCampuses.length > 0) {
+      db.campuses = sbCampuses;
+      changed = true;
+    }
+    if (sbServices && sbServices.length > 0) {
+      db.services = sbServices;
+      changed = true;
+    }
+    if (sbLockers && sbLockers.length > 0) {
+      db.lockers = sbLockers;
+      changed = true;
+    }
+    if (sbOrders && sbOrders.length > 0) {
+      const merged = new Map<string, Order>();
+      for (const o of db.orders) merged.set(o.id, o);
+      for (const o of sbOrders) merged.set(o.id, o);
+      db.orders = Array.from(merged.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      changed = true;
+    }
+    if (sbIncidents && sbIncidents.length > 0) {
+      const merged = new Map<string, Incident>();
+      for (const i of db.incidents) merged.set(i.id, i);
+      for (const i of sbIncidents) merged.set(i.id, i);
+      db.incidents = Array.from(merged.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      changed = true;
+    }
+    if (sbNotifications && sbNotifications.length > 0) {
+      const merged = new Map<string, NotificationLog>();
+      for (const n of db.notifications) merged.set(n.id, n);
+      for (const n of sbNotifications) merged.set(n.id, n);
+      db.notifications = Array.from(merged.values())
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, 200);
+      changed = true;
+    }
+    if (sbSettings) {
+      db.shippingFee = sbSettings.shipping_fee;
+      db.nextOrderSeq = Math.max(db.nextOrderSeq, sbSettings.next_order_seq);
+      db.nextBagSeq = Math.max(db.nextBagSeq, sbSettings.next_bag_seq);
+      changed = true;
+    }
+
+    if (changed) {
+      saveDb(db);
+    }
+  } catch (err) {
+    console.error('Supabase startup hydration warning:', err);
+  }
+}
 
 // SSE clients
 const sseClients = new Set<Response>();
@@ -811,8 +1034,17 @@ async function startServer() {
       }
     }
 
-    if (!client || !client.passwordHash || !verifyPassword(password, client.passwordHash)) {
-      res.status(401).json({error: 'WhatsApp o contraseña incorrectos.'});
+    if (!client) {
+      res.status(404).json({
+        code: 'NOT_REGISTERED',
+        error:
+          'Este número de WhatsApp aún no está registrado. Crea tu cuenta para ingresar.',
+      });
+      return;
+    }
+
+    if (!client.passwordHash || !verifyPassword(password, client.passwordHash)) {
+      res.status(401).json({error: 'Contraseña incorrecta. Verifica e intenta de nuevo.'});
       return;
     }
 
@@ -870,98 +1102,13 @@ async function startServer() {
     res.json({user: buildAuthUserFromClient(client)});
   });
 
-  // --- ADMIN AUTH (Supabase kicksxr_admins + local fallback + env override) ---
+  // --- ADMIN AUTH (Only pre-registered admins; public admin self-registration is disabled) ---
   app.get('/api/auth/admin/status', async (_req, res) => {
-    const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
-    const usesEnvPasscode = envPasscode.length > 0;
-    const sbConnected = isSupabaseConfigured();
-    let hasSbAdmins = false;
-    let firstUsername = db.admins[0]?.username || 'haroldo90';
-
-    if (sbConnected) {
-      const rows = await supabaseStore.listAdmins();
-      if (rows && rows.length > 0) {
-        hasSbAdmins = true;
-        firstUsername = rows[0].username;
-      }
-    }
-
-    const configured = usesEnvPasscode || hasSbAdmins || db.admins.length > 0;
     res.json({
-      configured,
-      usesEnvPasscode,
-      supabaseConnected: sbConnected,
-      adminUsernameHint: firstUsername,
-    });
-  });
-
-  app.post('/api/auth/admin/setup', async (req, res) => {
-    const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
-    const sbAdmins = isSupabaseConfigured()
-      ? await supabaseStore.listAdmins()
-      : null;
-
-    if (envPasscode.length > 0 || db.admins.length > 0 || (sbAdmins && sbAdmins.length > 0)) {
-      res.status(409).json({
-        error: 'El acceso de administrador ya está configurado. Inicia sesión con tu usuario y contraseña.',
-      });
-      return;
-    }
-
-    const username = sanitizeText(req.body?.username, 60).toLowerCase();
-    const email = sanitizeText(req.body?.email, 120).toLowerCase();
-    const name = sanitizeText(req.body?.name, 80) || 'Harold Anguiano';
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-
-    if (username.length < 3) {
-      res.status(400).json({error: 'Ingresa un nombre de usuario (ej. haroldo90).'});
-      return;
-    }
-    if (password.length < 6) {
-      res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
-      return;
-    }
-
-    const newAdmin: StoredAdmin = {
-      id: `adm-${crypto.randomUUID().slice(0, 8)}`,
-      username,
-      email: email || `${username}@kicksxr.com`,
-      name,
-      passwordHash: hashPassword(password),
-      createdAt: new Date().toISOString(),
-    };
-
-    db.admins.push(newAdmin);
-    saveDb(db);
-
-    if (isSupabaseConfigured()) {
-      await supabaseStore.upsertAdmin({
-        id: newAdmin.id,
-        name: newAdmin.name,
-        username: newAdmin.username,
-        email: newAdmin.email,
-        role: 'admin',
-        password_hash: newAdmin.passwordHash,
-        active: true,
-        created_at: newAdmin.createdAt,
-      });
-    }
-
-    const token = signToken({
-      sub: newAdmin.id,
-      role: 'admin',
-      name: newAdmin.name,
-      username: newAdmin.username,
-    });
-    res.status(201).json({
-      token,
-      user: {
-        id: newAdmin.id,
-        role: 'admin',
-        name: newAdmin.name,
-        username: newAdmin.username,
-        email: newAdmin.email,
-      } satisfies AuthUser,
+      configured: true,
+      usesEnvPasscode: Boolean((process.env.ADMIN_PASSCODE || '').trim()),
+      supabaseConnected: isSupabaseConfigured(),
+      adminUsernameHint: 'haroldo90',
     });
   });
 
@@ -973,42 +1120,15 @@ async function startServer() {
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     const envPasscode = (process.env.ADMIN_PASSCODE || '').trim();
 
-    if (!password) {
-      res.status(400).json({error: 'Ingresa tu contraseña de administrador.'});
+    if (!identifier || !password) {
+      res.status(400).json({error: 'Ingresa tu usuario y contraseña de administrador.'});
       return;
     }
 
-    // 1) Server-side ADMIN_PASSCODE override if configured in Secrets
-    if (envPasscode.length > 0 && constantTimeCompare(password, envPasscode)) {
-      const adminUsername = identifier || db.admins[0]?.username || 'haroldo90';
-      const adminName =
-        adminUsername === 'haroldo90'
-          ? 'Harold Anguiano'
-          : db.admins.find((a) => a.username === adminUsername)?.name ||
-            'Administrador KicksXR';
-      const token = signToken({
-        sub: `adm-${adminUsername}`,
-        role: 'admin',
-        name: adminName,
-        username: adminUsername,
-      });
-      res.json({
-        token,
-        user: {
-          id: `adm-${adminUsername}`,
-          role: 'admin',
-          name: adminName,
-          username: adminUsername,
-          email: `${adminUsername}@kicksxr.com`,
-        } satisfies AuthUser,
-      });
-      return;
-    }
-
-    // 2) Verify against Supabase kicksxr_admins if configured
-    if (isSupabaseConfigured() && identifier) {
+    // 1) Verify against Supabase kicksxr_admins if configured
+    if (isSupabaseConfigured()) {
       const sbAdmin = await supabaseStore.findAdminByIdentifier(identifier);
-      if (sbAdmin && verifyPassword(password, sbAdmin.password_hash)) {
+      if (sbAdmin && sbAdmin.active && verifyPassword(password, sbAdmin.password_hash)) {
         const token = signToken({
           sub: sbAdmin.id,
           role: 'admin',
@@ -1023,18 +1143,19 @@ async function startServer() {
             name: sbAdmin.name,
             username: sbAdmin.username,
             email: sbAdmin.email || undefined,
+            whatsapp: sbAdmin.whatsapp || undefined,
           } satisfies AuthUser,
         });
         return;
       }
     }
 
-    // 3) Verify against local server-side admins store
+    // 2) Verify against local server-side admins store (pre-registered + admin-created)
     const localAdmin = db.admins.find(
       (a) =>
-        !identifier ||
-        a.username.toLowerCase() === identifier ||
-        (a.email && a.email.toLowerCase() === identifier),
+        a.active !== false &&
+        (a.username.toLowerCase() === identifier ||
+          (a.email && a.email.toLowerCase() === identifier)),
     );
     if (localAdmin && verifyPassword(password, localAdmin.passwordHash)) {
       const token = signToken({
@@ -1051,19 +1172,42 @@ async function startServer() {
           name: localAdmin.name,
           username: localAdmin.username,
           email: localAdmin.email,
+          whatsapp: localAdmin.whatsapp,
         } satisfies AuthUser,
       });
       return;
     }
 
-    if (db.admins.length === 0 && !isSupabaseConfigured() && envPasscode.length === 0) {
-      res.status(400).json({
-        error: 'Primero configura tu usuario y contraseña de administrador.',
-      });
-      return;
+    // 3) Optional server-side ADMIN_PASSCODE override if configured
+    if (envPasscode.length > 0 && constantTimeCompare(password, envPasscode)) {
+      const matched = db.admins.find(
+        (a) => a.username.toLowerCase() === identifier,
+      );
+      if (matched) {
+        const token = signToken({
+          sub: matched.id,
+          role: 'admin',
+          name: matched.name,
+          username: matched.username,
+        });
+        res.json({
+          token,
+          user: {
+            id: matched.id,
+            role: 'admin',
+            name: matched.name,
+            username: matched.username,
+            email: matched.email,
+          } satisfies AuthUser,
+        });
+        return;
+      }
     }
 
-    res.status(401).json({error: 'Usuario o contraseña incorrectos.'});
+    res.status(401).json({
+      error:
+        'Usuario o contraseña incorrectos. Solo administradores registrados pueden acceder.',
+    });
   });
 
   // --- CLIENT ORDERS & NOTIFICATIONS (also accessible by Admin in Client View) ---
@@ -1272,6 +1416,12 @@ async function startServer() {
     db.orders.unshift(order);
     saveDb(db);
     void supabaseStore.upsertOrder(order);
+    void supabaseStore.upsertSettings({
+      id: 1,
+      shipping_fee: db.shippingFee,
+      next_order_seq: db.nextOrderSeq,
+      next_bag_seq: db.nextBagSeq,
+    });
 
     createNotification({
       orderId: order.id,
@@ -1856,9 +2006,409 @@ async function startServer() {
       db.shippingFee = Math.round(shippingFee);
     }
     saveDb(db);
+    void supabaseStore.upsertSettings({
+      id: 1,
+      shipping_fee: db.shippingFee,
+      next_order_seq: db.nextOrderSeq,
+      next_bag_seq: db.nextBagSeq,
+    });
     broadcastEvent({type: 'config'});
     res.json({shippingFee: db.shippingFee});
   });
+
+  // --- ADMIN USER MANAGEMENT (Register Admins & Clients + Share Credentials via WhatsApp) ---
+  app.get('/api/admin/users', requireAdmin, async (_req, res) => {
+    if (isSupabaseConfigured()) {
+      const [sbAdmins, sbClients] = await Promise.all([
+        supabaseStore.listAdmins(),
+        supabaseStore.listClients(),
+      ]);
+      if (sbAdmins && sbAdmins.length > 0) {
+        for (const row of sbAdmins) {
+          const idx = db.admins.findIndex(
+            (a) =>
+              a.id === row.id ||
+              a.username.toLowerCase() === row.username.toLowerCase(),
+          );
+          const mapped: StoredAdmin = {
+            id: row.id,
+            username: row.username,
+            email: row.email || undefined,
+            whatsapp: row.whatsapp || undefined,
+            name: row.name,
+            passwordHash: row.password_hash,
+            active: row.active,
+            createdAt: row.created_at,
+          };
+          if (idx >= 0) db.admins[idx] = mapped;
+          else db.admins.push(mapped);
+        }
+      }
+      if (sbClients && sbClients.length > 0) {
+        for (const row of sbClients) {
+          const idx = db.clients.findIndex(
+            (c) =>
+              c.id === row.id ||
+              c.whatsappNormalized === row.whatsapp_normalized,
+          );
+          const mapped: StoredClient = {
+            id: row.id,
+            name: row.name,
+            whatsapp: row.whatsapp,
+            whatsappNormalized: row.whatsapp_normalized,
+            passwordHash: row.password_hash,
+            address: row.address,
+            userType: row.user_type || 'general',
+            createdAt: row.created_at,
+          };
+          if (idx >= 0) db.clients[idx] = mapped;
+          else db.clients.push(mapped);
+        }
+      }
+      saveDb(db);
+    }
+
+    res.json({
+      admins: db.admins.map((a) => ({
+        id: a.id,
+        name: a.name,
+        username: a.username,
+        email: a.email,
+        whatsapp: a.whatsapp,
+        role: 'admin' as const,
+        active: a.active !== false,
+        createdAt: a.createdAt,
+      })),
+      clients: db.clients.map((c) => ({
+        id: c.id,
+        name: c.name,
+        whatsapp: c.whatsapp,
+        address: c.address,
+        userType: c.userType,
+        createdAt: c.createdAt,
+      })),
+      supabaseConnected: isSupabaseConfigured(),
+    });
+  });
+
+  app.post('/api/admin/users/admin', requireAdmin, async (req, res) => {
+    const name = sanitizeText(req.body?.name, 80);
+    const username = sanitizeText(req.body?.username, 50)
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
+    const email = sanitizeText(req.body?.email, 120).toLowerCase();
+    const whatsapp = sanitizeText(req.body?.whatsapp, 25);
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (name.length < 2) {
+      res.status(400).json({error: 'Ingresa el nombre completo del administrador.'});
+      return;
+    }
+    if (username.length < 3) {
+      res.status(400).json({
+        error: 'Ingresa un nombre de usuario válido (mínimo 3 caracteres, sin espacios).',
+      });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
+      return;
+    }
+
+    const existsLocal = db.admins.some(
+      (a) => a.username.toLowerCase() === username,
+    );
+    const existsSb = isSupabaseConfigured()
+      ? await supabaseStore.findAdminByIdentifier(username)
+      : null;
+
+    if (existsLocal || existsSb) {
+      res.status(409).json({
+        error: `El usuario "${username}" ya está registrado como administrador.`,
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const newAdmin: StoredAdmin = {
+      id: `adm-${crypto.randomUUID().slice(0, 8)}`,
+      name,
+      username,
+      email: email || `${username}@kicksxr.com`,
+      whatsapp: whatsapp || undefined,
+      passwordHash: hashPassword(password),
+      active: true,
+      createdAt: now,
+    };
+
+    db.admins.unshift(newAdmin);
+    saveDb(db);
+
+    const supabaseSynced = isSupabaseConfigured()
+      ? await supabaseStore.upsertAdmin({
+          id: newAdmin.id,
+          name: newAdmin.name,
+          username: newAdmin.username,
+          email: newAdmin.email,
+          whatsapp: newAdmin.whatsapp || null,
+          role: 'admin',
+          password_hash: newAdmin.passwordHash,
+          active: true,
+          created_at: newAdmin.createdAt,
+        })
+      : false;
+
+    const credentials = buildCredentialsPayload({
+      req,
+      role: 'admin',
+      name: newAdmin.name,
+      identifier: newAdmin.username,
+      password,
+      whatsapp: newAdmin.whatsapp,
+    });
+
+    res.status(201).json({
+      admin: {
+        id: newAdmin.id,
+        name: newAdmin.name,
+        username: newAdmin.username,
+        email: newAdmin.email,
+        whatsapp: newAdmin.whatsapp,
+        role: 'admin' as const,
+        active: true,
+        createdAt: newAdmin.createdAt,
+      },
+      credentials,
+      supabaseSynced,
+    });
+  });
+
+  app.patch('/api/admin/users/admin/:id', requireAdmin, async (req: AuthedRequest, res) => {
+    const admin = db.admins.find((a) => a.id === req.params.id);
+    if (!admin) {
+      res.status(404).json({error: 'Administrador no encontrado.'});
+      return;
+    }
+
+    if (typeof req.body?.active === 'boolean') {
+      if (req.auth?.sub === admin.id && !req.body.active) {
+        res.status(400).json({
+          error: 'No puedes desactivar tu propia cuenta mientras tienes sesión activa.',
+        });
+        return;
+      }
+      admin.active = req.body.active;
+    }
+
+    const whatsapp = sanitizeText(req.body?.whatsapp, 25);
+    if (whatsapp) admin.whatsapp = whatsapp;
+
+    const newPassword =
+      typeof req.body?.password === 'string' ? req.body.password : '';
+    let credentials = undefined;
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        res.status(400).json({error: 'La nueva contraseña debe tener al menos 6 caracteres.'});
+        return;
+      }
+      admin.passwordHash = hashPassword(newPassword);
+      credentials = buildCredentialsPayload({
+        req,
+        role: 'admin',
+        name: admin.name,
+        identifier: admin.username,
+        password: newPassword,
+        whatsapp: admin.whatsapp,
+      });
+    }
+
+    saveDb(db);
+    const supabaseSynced = isSupabaseConfigured()
+      ? await supabaseStore.upsertAdmin({
+          id: admin.id,
+          name: admin.name,
+          username: admin.username,
+          email: admin.email || `${admin.username}@kicksxr.com`,
+          whatsapp: admin.whatsapp || null,
+          role: 'admin',
+          password_hash: admin.passwordHash,
+          active: admin.active !== false,
+          created_at: admin.createdAt,
+        })
+      : false;
+
+    res.json({
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        username: admin.username,
+        email: admin.email,
+        whatsapp: admin.whatsapp,
+        role: 'admin' as const,
+        active: admin.active !== false,
+        createdAt: admin.createdAt,
+      },
+      credentials,
+      supabaseSynced,
+    });
+  });
+
+  app.post('/api/admin/users/client', requireAdmin, async (req, res) => {
+    const name = sanitizeText(req.body?.name, 80);
+    const whatsapp = sanitizeText(req.body?.whatsapp, 25);
+    const whatsappNormalized = normalizePhone(whatsapp);
+    const address = sanitizeText(req.body?.address, 220);
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (name.length < 2) {
+      res.status(400).json({error: 'Ingresa el nombre completo del cliente.'});
+      return;
+    }
+    if (whatsappNormalized.length < 10) {
+      res.status(400).json({error: 'Ingresa un número de WhatsApp válido (10 dígitos).'});
+      return;
+    }
+    if (address.length < 5) {
+      res.status(400).json({error: 'Ingresa la dirección de entrega del cliente.'});
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
+      return;
+    }
+
+    const existsLocal = db.clients.some(
+      (c) => c.whatsappNormalized === whatsappNormalized && c.passwordHash,
+    );
+    const existsSb = isSupabaseConfigured()
+      ? await supabaseStore.findClientByWhatsapp(whatsappNormalized)
+      : null;
+
+    if (existsLocal || existsSb) {
+      res.status(409).json({
+        error: 'Ya existe un cliente registrado con ese número de WhatsApp.',
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const passwordHash = hashPassword(password);
+    const newClient: StoredClient = {
+      id: `cli-${crypto.randomUUID().slice(0, 10)}`,
+      name,
+      whatsapp,
+      whatsappNormalized,
+      passwordHash,
+      address,
+      userType: 'general',
+      createdAt: now,
+    };
+
+    db.clients.unshift(newClient);
+    saveDb(db);
+
+    const supabaseSynced = isSupabaseConfigured()
+      ? await supabaseStore.upsertClient({
+          id: newClient.id,
+          name: newClient.name,
+          whatsapp: newClient.whatsapp,
+          whatsapp_normalized: newClient.whatsappNormalized,
+          password_hash: passwordHash,
+          address: newClient.address,
+          user_type: 'general',
+          created_at: newClient.createdAt,
+        })
+      : false;
+
+    const credentials = buildCredentialsPayload({
+      req,
+      role: 'client',
+      name: newClient.name,
+      identifier: newClient.whatsapp,
+      password,
+      whatsapp: newClient.whatsapp,
+    });
+
+    res.status(201).json({
+      client: {
+        id: newClient.id,
+        name: newClient.name,
+        whatsapp: newClient.whatsapp,
+        address: newClient.address,
+        userType: newClient.userType,
+        createdAt: newClient.createdAt,
+      },
+      credentials,
+      supabaseSynced,
+    });
+  });
+
+  app.patch('/api/admin/users/client/:id', requireAdmin, async (req, res) => {
+    const client = db.clients.find((c) => c.id === req.params.id);
+    if (!client) {
+      res.status(404).json({error: 'Cliente no encontrado.'});
+      return;
+    }
+
+    const name = sanitizeText(req.body?.name, 80);
+    const address = sanitizeText(req.body?.address, 220);
+    if (name.length >= 2) client.name = name;
+    if (address.length >= 5) client.address = address;
+
+    const newPassword =
+      typeof req.body?.password === 'string' ? req.body.password : '';
+    let credentials = undefined;
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        res.status(400).json({error: 'La nueva contraseña debe tener al menos 6 caracteres.'});
+        return;
+      }
+      client.passwordHash = hashPassword(newPassword);
+      credentials = buildCredentialsPayload({
+        req,
+        role: 'client',
+        name: client.name,
+        identifier: client.whatsapp,
+        password: newPassword,
+        whatsapp: client.whatsapp,
+      });
+    }
+
+    saveDb(db);
+    const supabaseSynced =
+      isSupabaseConfigured() && client.passwordHash
+        ? await supabaseStore.upsertClient({
+            id: client.id,
+            name: client.name,
+            whatsapp: client.whatsapp,
+            whatsapp_normalized: client.whatsappNormalized,
+            password_hash: client.passwordHash,
+            address: client.address,
+            user_type: client.userType,
+            created_at: client.createdAt,
+          })
+        : false;
+
+    res.json({
+      client: {
+        id: client.id,
+        name: client.name,
+        whatsapp: client.whatsapp,
+        address: client.address,
+        userType: client.userType,
+        createdAt: client.createdAt,
+      },
+      credentials,
+      supabaseSynced,
+    });
+  });
+
+  app.get('/api/admin/supabase/health', requireAdmin, async (_req, res) => {
+    const health = await supabaseStore.checkHealth();
+    res.json(health);
+  });
+
+  await hydrateFromSupabase();
 
   const httpServer = http.createServer(app);
 

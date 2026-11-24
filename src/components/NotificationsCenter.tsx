@@ -6,7 +6,14 @@ import {
   CheckCheck,
   ExternalLink,
   MessageSquare,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import {
+  isNotificationSoundEnabled,
+  playNotificationSound,
+  setNotificationSoundEnabled,
+} from '../lib/sound';
 import type {NotificationLog, PopupAlert} from '../types';
 import {triggerDeviceNotification} from './NotificationPopupHost';
 
@@ -26,6 +33,9 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
   onOpenFolio,
 }) => {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [soundOn, setSoundOn] = useState<boolean>(() =>
+    isNotificationSoundEnabled(),
+  );
   const [permissionState, setPermissionState] = useState<string>(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       return 'unsupported';
@@ -39,12 +49,33 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
       ? notifications.filter((n) => !n.read)
       : notifications;
 
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setNotificationSoundEnabled(next);
+    if (next) {
+      playNotificationSound('success');
+    }
+  };
+
+  const handleTestSound = () => {
+    setSoundOn(true);
+    setNotificationSoundEnabled(true);
+    playNotificationSound('success');
+    onPushAlert?.({
+      title: 'Sonido de alertas activo',
+      message:
+        'Escucharás esta alerta cada vez que cambie un estatus de servicio o llegue una nueva notificación.',
+      tone: 'success',
+    });
+  };
+
   const requestPushPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       onPushAlert?.({
         title: 'Notificaciones en pantalla activas',
         message:
-          'Este navegador no soporta notificaciones nativas del sistema, pero recibirás todos los popups en vivo dentro de Kicks XR.',
+          'Este navegador no soporta notificaciones nativas del sistema, pero recibirás todos los popups con sonido dentro de Kicks XR.',
         tone: 'info',
       });
       return;
@@ -61,21 +92,21 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
         onPushAlert?.({
           title: 'Permiso de notificaciones concedido',
           message:
-            'Recibirás alertas en tiempo real en tu dispositivo y popups dentro de Kicks XR.',
+            'Recibirás alertas sonoras y visuales en tiempo real en tu dispositivo y en Kicks XR.',
           tone: 'success',
         });
       } else {
         onPushAlert?.({
           title: 'Permiso de notificaciones no concedido',
           message:
-            'Puedes habilitarlo en los ajustes del navegador. Seguirás recibiendo popups en la app.',
+            'Puedes habilitarlo en los ajustes del navegador. Seguirás recibiendo popups con sonido en la app.',
           tone: 'warning',
         });
       }
     } catch {
       onPushAlert?.({
         title: 'No se pudo solicitar permiso',
-        message: 'Las alertas emergentes dentro de la app permanecen activas.',
+        message: 'Las alertas emergentes con sonido dentro de la app permanecen activas.',
         tone: 'warning',
       });
     }
@@ -89,11 +120,37 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
             Notificaciones
           </h1>
           <p className="text-sm text-slate-600">
-            Alertas en tiempo real sobre estatus de limpieza, recepción, incidencias y entregas
+            Alertas en tiempo real con sonido sobre estatus de limpieza, recepción, incidencias y entregas
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleSound}
+            className={`inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border px-3.5 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+              soundOn
+                ? 'border-[#109173]/30 bg-[#E6F7F3] text-[#109173]'
+                : 'border-slate-300 bg-white text-slate-600'
+            }`}
+          >
+            {soundOn ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
+            <span>{soundOn ? 'Sonido activo' : 'Silenciado'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleTestSound}
+            className="inline-flex items-center gap-1.5 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <BellRing className="h-4 w-4 text-[#109173]" />
+            <span>Probar sonido</span>
+          </button>
+
           {permissionState !== 'granted' && (
             <button
               type="button"
@@ -146,8 +203,8 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
 
         <span className="text-xs text-slate-500">
           {permissionState === 'granted'
-            ? 'Notificaciones del dispositivo activadas'
-            : 'Popups en vivo activos en toda la app'}
+            ? 'Notificaciones del dispositivo y sonido activados'
+            : 'Popups con sonido activos en toda la app'}
         </span>
       </div>
 

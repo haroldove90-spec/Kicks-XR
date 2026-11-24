@@ -1,7 +1,12 @@
 -- ============================================================================
--- Kicks XR — Esquema completo de base de datos para Supabase
+-- Kicks XR — Esquema completo y actualizado de base de datos para Supabase
 -- Proyecto: kicksxr@appdesign.appdesignproyectos.com's Project
 -- Project ID: ayzsvsbxhmbjegrzxlds
+-- ============================================================================
+-- Instrucciones:
+-- 1. Abre Supabase -> SQL Editor -> New query
+-- 2. Pega todo este script y presiona "Run"
+-- 3. Es 100% idempotente: puedes ejecutarlo de nuevo aunque ya existan tablas.
 -- ============================================================================
 
 -- 1. Administradores (contraseñas cifradas con scrypt salt:hash)
@@ -10,11 +15,16 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_admins (
   name TEXT NOT NULL,
   username TEXT NOT NULL UNIQUE,
   email TEXT UNIQUE,
+  whatsapp TEXT,
   role TEXT NOT NULL DEFAULT 'admin',
   password_hash TEXT NOT NULL,
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Compatibilidad si la tabla ya había sido creada previamente
+ALTER TABLE public.kicksxr_admins
+  ADD COLUMN IF NOT EXISTS whatsapp TEXT;
 
 -- 2. Clientes registrados
 CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
@@ -135,6 +145,33 @@ VALUES (1, 75, 1044, 30)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
+-- Permisos para PostgREST (permite guardar y consultar registros desde la app
+-- usando VITE_SUPABASE_ANON_KEY / publishable key sin bloqueos de permisos)
+-- ============================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON TABLE
+  public.kicksxr_admins,
+  public.kicksxr_clients,
+  public.kicksxr_campuses,
+  public.kicksxr_services,
+  public.kicksxr_lockers,
+  public.kicksxr_orders,
+  public.kicksxr_incidents,
+  public.kicksxr_notifications,
+  public.kicksxr_settings
+TO anon, authenticated, service_role;
+
+ALTER TABLE public.kicksxr_admins DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_campuses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_services DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_lockers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_incidents DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_settings DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
 -- Credenciales iniciales de Administrador (hash scrypt seguro)
 -- Usuarios creados:
 --   1) Nombre: Harold Anguiano | Usuario: haroldo90 | Rol: admin
@@ -196,8 +233,12 @@ VALUES
   ('lk-8', 'L-08', 'punto-roma', 'disponible')
 ON CONFLICT (id) DO NOTHING;
 
--- Índices recomendados
+-- Índices recomendados para consultas rápidas
 CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_client ON public.kicksxr_orders(client_id);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_status ON public.kicksxr_orders(status);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_notifications_order ON public.kicksxr_notifications(order_id);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_incidents_status ON public.kicksxr_incidents(status);
+CREATE INDEX IF NOT EXISTS idx_kicksxr_clients_whatsapp ON public.kicksxr_clients(whatsapp_normalized);
+
+-- Refrescar caché de esquema de PostgREST
+NOTIFY pgrst, 'reload schema';

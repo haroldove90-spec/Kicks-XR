@@ -3,11 +3,14 @@ import type {
   AdminDashboardMetrics,
   AuthUser,
   Campus,
+  CreatedCredentials,
   DeliveryMethod,
   DropoffMethod,
   Incident,
   IncidentStatus,
   IncidentType,
+  ManagedAdminUser,
+  ManagedClientUser,
   NotificationLog,
   Order,
   OrderStatus,
@@ -15,6 +18,7 @@ import type {
   PaymentStatus,
   PublicConfig,
   PublicOrderTrack,
+  SupabaseHealthStatus,
 } from '../types';
 
 // Keep Bearer token strictly in JS memory (never localStorage/sessionStorage)
@@ -26,6 +30,16 @@ export function setAuthToken(token: string | null) {
 
 export function getAuthToken(): string | null {
   return authToken;
+}
+
+export class ApiError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
 }
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -42,7 +56,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data?.error || `Error de comunicación (${res.status})`);
+    throw new ApiError(
+      data?.error || `Error de comunicación (${res.status})`,
+      res.status,
+      data?.code,
+    );
   }
 
   return data as T;
@@ -115,26 +133,80 @@ export const api = {
       method: 'POST',
     }),
 
-  // Admin auth
-  getAdminStatus: () =>
-    request<{
-      configured: boolean;
-      usesEnvPasscode: boolean;
-      supabaseConnected: boolean;
-      adminUsernameHint: string;
-    }>('/api/auth/admin/status'),
-
-  setupAdmin: (body: {name: string; username: string; email?: string; password: string}) =>
-    request<{token: string; user: AuthUser}>('/api/auth/admin/setup', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
+  // Admin auth (login only — no public admin registration)
   loginAdmin: (body: {username: string; password: string}) =>
     request<{token: string; user: AuthUser}>('/api/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  // Admin user management (create admins & clients + WhatsApp credentials)
+  getAdminUsers: () =>
+    request<{
+      admins: ManagedAdminUser[];
+      clients: ManagedClientUser[];
+      supabaseConnected: boolean;
+    }>('/api/admin/users'),
+
+  createAdminUser: (body: {
+    name: string;
+    username: string;
+    email?: string;
+    whatsapp?: string;
+    password: string;
+  }) =>
+    request<{
+      admin: ManagedAdminUser;
+      credentials: CreatedCredentials;
+      supabaseSynced: boolean;
+    }>('/api/admin/users/admin', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateAdminUser: (
+    id: string,
+    body: {active?: boolean; password?: string; whatsapp?: string},
+  ) =>
+    request<{
+      admin: ManagedAdminUser;
+      credentials?: CreatedCredentials;
+      supabaseSynced: boolean;
+    }>(`/api/admin/users/admin/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  createClientUser: (body: {
+    name: string;
+    whatsapp: string;
+    address: string;
+    password: string;
+  }) =>
+    request<{
+      client: ManagedClientUser;
+      credentials: CreatedCredentials;
+      supabaseSynced: boolean;
+    }>('/api/admin/users/client', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateClientUser: (
+    id: string,
+    body: {name?: string; address?: string; password?: string},
+  ) =>
+    request<{
+      client: ManagedClientUser;
+      credentials?: CreatedCredentials;
+      supabaseSynced: boolean;
+    }>(`/api/admin/users/client/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  getSupabaseHealth: () =>
+    request<SupabaseHealthStatus>('/api/admin/supabase/health'),
 
   // Admin operations
   getAdminOverview: () =>

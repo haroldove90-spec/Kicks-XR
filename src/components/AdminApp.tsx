@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
+  Database,
   ExternalLink,
   Home,
   Layers,
@@ -17,12 +18,14 @@ import {
   Pencil,
   Plus,
   QrCode,
+  RefreshCw,
   Search,
   Settings,
   ShoppingBag,
   Sparkles,
   Store,
   Truck,
+  Users,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
@@ -40,7 +43,9 @@ import type {
   OrderStatus,
   PaymentStatus,
   PopupAlert,
+  SupabaseHealthStatus,
 } from '../types';
+import {AdminUsersModule} from './AdminUsersModule';
 import {AppShell, type NavModuleItem} from './AppShell';
 import {NotificationsCenter} from './NotificationsCenter';
 import {QRScannerModal} from './QRScannerModal';
@@ -57,6 +62,7 @@ type AdminTab =
   | 'collections'
   | 'orders'
   | 'incidents'
+  | 'users'
   | 'notifications'
   | 'config';
 
@@ -135,6 +141,20 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [newLockerCode, setNewLockerCode] = useState('');
   const [newLockerCampus, setNewLockerCampus] = useState('');
   const [shippingFeeInput, setShippingFeeInput] = useState('75');
+  const [sbHealth, setSbHealth] = useState<SupabaseHealthStatus | null>(null);
+  const [checkingSb, setCheckingSb] = useState(false);
+
+  const checkSupabaseHealth = useCallback(async () => {
+    setCheckingSb(true);
+    try {
+      const status = await api.getSupabaseHealth();
+      setSbHealth(status);
+    } catch {
+      // ignore transient error
+    } finally {
+      setCheckingSb(false);
+    }
+  }, []);
 
   const fetchOverview = useCallback(async () => {
     try {
@@ -169,15 +189,25 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   }, [fetchOverview]);
 
   useEffect(() => {
+    if (activeTab === 'config' && !sbHealth) {
+      checkSupabaseHealth();
+    }
+  }, [activeTab, sbHealth, checkSupabaseHealth]);
+
+  useEffect(() => {
     return subscribeToRealtimeUpdates((ev) => {
       fetchOverview();
-      if (ev.title && ev.type === 'orders') {
+      if (ev.title && (ev.type === 'orders' || ev.type === 'incidents')) {
         onPushAlert({
           title: ev.title,
           message: ev.message || 'Actualización operativa en tiempo real.',
-          tone: 'info',
-          actionLabel: 'Ver notificaciones',
-          onAction: () => setActiveTab('notifications'),
+          tone: ev.type === 'incidents' ? 'warning' : 'info',
+          actionLabel:
+            ev.type === 'incidents' ? 'Ver incidencias' : 'Ver notificaciones',
+          onAction: () =>
+            setActiveTab(
+              ev.type === 'incidents' ? 'incidents' : 'notifications',
+            ),
         });
       }
     });
@@ -568,12 +598,18 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       badgeCount: metrics?.openIncidents || 0,
     },
     {
+      id: 'users',
+      label: 'Usuarios',
+      shortLabel: 'Usuarios',
+      icon: Users,
+    },
+    {
       id: 'notifications',
       label: 'Notificaciones',
       shortLabel: 'Alertas',
       icon: Bell,
       badgeCount: unreadNotifications,
-      hideOnMobileBar: true, // Accessible via Header Bell Icon on mobile to keep bottom bar spacious (5 items)
+      hideOnMobileBar: true, // Accessible via Header Bell Icon on mobile
     },
     {id: 'config', label: 'Configuración', shortLabel: 'Config.', icon: Settings},
   ];
@@ -1635,6 +1671,14 @@ export const AdminApp: React.FC<AdminAppProps> = ({
             </div>
           )}
 
+          {/* MODULE: USUARIOS Y CREDENCIALES */}
+          {activeTab === 'users' && (
+            <AdminUsersModule
+              currentAdminId={user.id}
+              onPushAlert={onPushAlert}
+            />
+          )}
+
           {/* MODULE: NOTIFICACIONES */}
           {activeTab === 'notifications' && (
             <NotificationsCenter
@@ -1655,14 +1699,73 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           {/* MODULE 6: CONFIGURACIÓN */}
           {activeTab === 'config' && config && (
             <div className="space-y-6">
-              <div>
-                <h1 className="font-display text-2xl font-extrabold text-[#000000]">
-                  Configuración operativa
-                </h1>
-                <p className="text-sm text-slate-600">
-                  Administra sedes, servicios, precios, lockers y estado de conexión con Supabase.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+                    Configuración operativa
+                  </h1>
+                  <p className="text-sm text-slate-600">
+                    Administra sedes, servicios, precios, lockers y conexión con Supabase.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={checkSupabaseHealth}
+                  disabled={checkingSb}
+                  className="inline-flex items-center gap-2 min-h-[42px] rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:bg-slate-50 cursor-pointer disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 text-[#109173] ${checkingSb ? 'animate-spin' : ''}`}
+                  />
+                  <span>Verificar tablas Supabase</span>
+                </button>
               </div>
+
+              {/* Supabase Table Status Card */}
+              {sbHealth && (
+                <div
+                  className={`rounded-2xl border p-5 space-y-3 ${
+                    sbHealth.connected
+                      ? 'border-[#109173]/30 bg-[#E6F7F3]/50'
+                      : 'border-amber-200 bg-amber-50/70'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-display text-sm font-extrabold text-[#000831]">
+                      <Database className="h-4 w-4 text-[#109173]" />
+                      <span>
+                        {sbHealth.connected
+                          ? 'Supabase conectado y las 9 tablas están operativas'
+                          : sbHealth.configured
+                            ? 'Claves de Supabase detectadas — ejecuta el SQL actualizado en Supabase'
+                            : 'Claves de Supabase no detectadas en el servidor'}
+                      </span>
+                    </div>
+                  </div>
+                  {sbHealth.error && (
+                    <p className="text-xs text-amber-800">{sbHealth.error}</p>
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {Object.entries(sbHealth.tables).map(([table, ok]) => (
+                      <div
+                        key={table}
+                        className="rounded-lg bg-white border border-slate-200 px-2.5 py-2 flex items-center justify-between gap-1.5 text-xs"
+                      >
+                        <span className="font-mono text-[11px] text-[#000831] truncate">
+                          {table.replace('kicksxr_', '')}
+                        </span>
+                        <span
+                          className={`font-bold shrink-0 ${
+                            ok ? 'text-[#109173]' : 'text-amber-600'
+                          }`}
+                        >
+                          {ok ? 'OK' : 'Pend.'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">

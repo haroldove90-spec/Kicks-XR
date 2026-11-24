@@ -178,3 +178,42 @@ export interface PopupAlert {
   onAction?: () => void;
   whatsappUrl?: string;
 }
+
+export interface ManagedAdminUser {
+  id: string;
+  name: string;
+  username: string;
+  email?: string;
+  whatsapp?: string;
+  role: 'admin';
+  active: boolean;
+  createdAt: string;
+}
+
+export interface ManagedClientUser {
+  id: string;
+  name: string;
+  whatsapp: string;
+  address: string;
+  userType: 'general' | 'university';
+  createdAt: string;
+}
+
+export interface CreatedCredentials {
+  role: UserRole;
+  name: string;
+  identifier: string;
+  password: string;
+  whatsapp?: string;
+  loginUrl: string;
+  shareMessage: string;
+  whatsappUrl: string;
+}
+
+export interface SupabaseHealthStatus {
+  configured: boolean;
+  connected: boolean;
+  tables: Record<string, boolean>;
+  error?: string;
+}
+

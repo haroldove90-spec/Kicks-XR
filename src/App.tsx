@@ -14,6 +14,7 @@ import {
 } from './components/RoleSelectorHome';
 import {SplashScreen} from './components/SplashScreen';
 import {api, setAuthToken, subscribeToRealtimeUpdates} from './lib/api';
+import {playNotificationSound, unlockNotificationAudio} from './lib/sound';
 import type {AuthUser, PopupAlert, PublicConfig} from './types';
 
 type AppRoute = 'home' | 'client-auth' | 'admin-auth' | 'client-app' | 'admin-app';
@@ -75,9 +76,20 @@ export default function App() {
   const [config, setConfig] = useState<PublicConfig>(FALLBACK_CONFIG);
   const [alerts, setAlerts] = useState<PopupAlert[]>([]);
 
+  useEffect(() => {
+    const unlock = () => unlockNotificationAudio();
+    window.addEventListener('pointerdown', unlock, {passive: true});
+    window.addEventListener('keydown', unlock, {passive: true});
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   const pushAlert = useCallback((alert: Omit<PopupAlert, 'id'>) => {
     const id = `pop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setAlerts((prev) => [{...alert, id}, ...prev].slice(0, 4));
+    playNotificationSound(alert.tone || 'info');
     triggerDeviceNotification(`Kicks XR · ${alert.title}`, alert.message);
     window.setTimeout(() => {
       setAlerts((prev) => prev.filter((a) => a.id !== id));
