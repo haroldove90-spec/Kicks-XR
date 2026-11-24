@@ -3,6 +3,7 @@ import type {
   AdminDashboardMetrics,
   AuthUser,
   Campus,
+  Coupon,
   CreatedCredentials,
   DeliveryMethod,
   DropoffMethod,
@@ -97,6 +98,27 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  changeClientPassword: (body: {currentPassword: string; newPassword: string}) =>
+    request<{ok: boolean}>('/api/client/change-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  validateCoupon: (code: string, subtotal: number) =>
+    request<{
+      coupon: {
+        id: string;
+        code: string;
+        description: string;
+        discountType: 'percent' | 'fixed';
+        value: number;
+      };
+      discountAmount: number;
+    }>('/api/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify({code, subtotal}),
+    }),
+
   // Client orders
   getMyOrders: () =>
     request<{orders: Order[]; notifications: NotificationLog[]}>('/api/orders/mine'),
@@ -112,6 +134,8 @@ export const api = {
     paymentMethod: PaymentMethod;
     cardLast4?: string;
     photoDataUrl?: string;
+    shoeNotes?: string;
+    discountCode?: string;
   }) =>
     request<{order: Order}>('/api/orders', {
       method: 'POST',
@@ -122,6 +146,12 @@ export const api = {
     request<{order: Order}>(`/api/orders/${encodeURIComponent(orderId)}/deposit`, {
       method: 'POST',
       body: JSON.stringify({dropoffMethod}),
+    }),
+
+  rateOrder: (orderId: string, body: {rating: number; comment?: string}) =>
+    request<{order: Order}>(`/api/orders/${encodeURIComponent(orderId)}/rate`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 
   markNotificationRead: (notificationId: string) =>
@@ -226,6 +256,27 @@ export const api = {
       body: JSON.stringify({bagCodes}),
     }),
 
+  createAdminOrder: (body: {
+    clientId?: string;
+    clientName: string;
+    clientWhatsapp: string;
+    pairs: number;
+    serviceId: string;
+    campusId: string;
+    deliveryMethod: DeliveryMethod;
+    deliveryAddress?: string;
+    paymentMethod: PaymentMethod;
+    markPaid?: boolean;
+    shoeNotes?: string;
+    adminNotes?: string;
+    discountCode?: string;
+    photoDataUrl?: string;
+  }) =>
+    request<{order: Order; whatsappUrl: string}>('/api/admin/orders', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   updateAdminOrder: (
     orderId: string,
     body: {
@@ -233,19 +284,34 @@ export const api = {
       paymentStatus?: PaymentStatus;
       bagCode?: string;
       note?: string;
+      adminNotes?: string;
+      afterPhotoDataUrl?: string | null;
     },
   ) =>
-    request<{order: Order}>(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
+    request<{order: Order; whatsappUrl: string}>(
+      `/api/admin/orders/${encodeURIComponent(orderId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      },
+    ),
+
+  cancelAdminOrder: (orderId: string, reason: string) =>
+    request<{order: Order; whatsappUrl: string}>(
+      `/api/admin/orders/${encodeURIComponent(orderId)}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify({reason}),
+      },
+    ),
 
   confirmDelivery: (body: {
     folio: string;
     deliveryMethod: DeliveryMethod;
     markPaid?: boolean;
+    afterPhotoDataUrl?: string;
   }) =>
-    request<{order: Order}>('/api/admin/orders/deliver', {
+    request<{order: Order; whatsappUrl: string}>('/api/admin/orders/deliver', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -277,7 +343,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  updateCampus: (id: string, body: {active?: boolean; name?: string; address?: string}) =>
+  updateCampus: (
+    id: string,
+    body: {active?: boolean; name?: string; address?: string; type?: 'university' | 'point'},
+  ) =>
     request<{campus: Campus}>(`/api/admin/config/campuses/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
@@ -294,7 +363,16 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  updateService: (id: string, body: {price?: number; active?: boolean; name?: string}) =>
+  updateService: (
+    id: string,
+    body: {
+      price?: number;
+      active?: boolean;
+      name?: string;
+      description?: string;
+      turnaroundHours?: number;
+    },
+  ) =>
     request(`/api/admin/config/services/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
@@ -316,6 +394,31 @@ export const api = {
     request('/api/admin/config/settings', {
       method: 'PATCH',
       body: JSON.stringify(body),
+    }),
+
+  createCoupon: (body: {
+    code: string;
+    description: string;
+    discountType: 'percent' | 'fixed';
+    value: number;
+  }) =>
+    request<{coupon: Coupon}>('/api/admin/config/coupons', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateCoupon: (
+    id: string,
+    body: {active?: boolean; description?: string; value?: number},
+  ) =>
+    request<{coupon: Coupon}>(`/api/admin/config/coupons/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  deleteCoupon: (id: string) =>
+    request<{ok: boolean}>(`/api/admin/config/coupons/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     }),
 };
 

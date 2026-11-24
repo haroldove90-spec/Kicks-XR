@@ -6,7 +6,8 @@ export type OrderStatus =
   | 'Recibido por KicksXR'
   | 'En limpieza'
   | 'Listo para entrega'
-  | 'Entregado';
+  | 'Entregado'
+  | 'Cancelado';
 
 export type CollectionStatus = 'Pendiente' | 'Recolectado';
 export type DeliveryMethod = 'pickup' | 'delivery';
@@ -60,6 +61,17 @@ export interface Locker {
   currentBagCode?: string;
 }
 
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string;
+  discountType: 'percent' | 'fixed';
+  value: number;
+  active: boolean;
+  usageCount: number;
+  createdAt: string;
+}
+
 export interface StatusHistoryEntry {
   status: OrderStatus;
   timestamp: string;
@@ -82,8 +94,16 @@ export interface Order {
   serviceName: string;
   unitPrice: number;
   shippingFee: number;
+  discountCode?: string;
+  discountAmount?: number;
   totalAmount: number;
   photoDataUrl?: string;
+  afterPhotoDataUrl?: string;
+  shoeNotes?: string;
+  adminNotes?: string;
+  rating?: number;
+  ratingComment?: string;
+  ratedAt?: string;
   deliveryMethod: DeliveryMethod;
   deliveryAddress?: string;
   dropoffMethod?: DropoffMethod;
@@ -111,6 +131,11 @@ export interface PublicOrderTrack {
   assignedLockerCode?: string;
   paymentStatus: PaymentStatus;
   status: OrderStatus;
+  photoDataUrl?: string;
+  afterPhotoDataUrl?: string;
+  shoeNotes?: string;
+  rating?: number;
+  ratingComment?: string;
   createdAt: string;
   updatedAt: string;
   history: StatusHistoryEntry[];
@@ -154,6 +179,7 @@ export interface PublicConfig {
 
 export interface AdminConfig extends PublicConfig {
   lockers: Locker[];
+  coupons: Coupon[];
   nextOrderSeq: number;
   nextBagSeq: number;
 }
@@ -164,9 +190,14 @@ export interface AdminDashboardMetrics {
   inCleaning: number;
   readyForDelivery: number;
   delivered: number;
+  cancelled: number;
   openIncidents: number;
   revenuePaid: number;
   revenuePending: number;
+  cashPaid: number;
+  cardPaid: number;
+  avgRating: number;
+  ratedCount: number;
 }
 
 export interface PopupAlert {

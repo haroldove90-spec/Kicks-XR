@@ -8,7 +8,9 @@ import {
   Check,
   CreditCard,
   ExternalLink,
+  FileText,
   Image as ImageIcon,
+  KeyRound,
   ListChecks,
   Lock,
   MapPin,
@@ -17,17 +19,22 @@ import {
   Phone,
   PlusCircle,
   QrCode,
+  Receipt,
   Search,
   ShoppingBag,
   Sparkles,
+  Star,
   Store,
+  Tag,
   Trash2,
   Truck,
   User,
   UserCheck,
+  X,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
+import {compressImageFile} from '../lib/image';
 import type {
   AuthUser,
   DeliveryMethod,
@@ -39,9 +46,11 @@ import type {
   PublicConfig,
   PublicOrderTrack,
 } from '../types';
+import {isSafePhotoDataUrl} from './AdminOrderDetailModal';
 import {AppShell, type NavModuleItem} from './AppShell';
 import {CameraCaptureModal} from './CameraCaptureModal';
 import {NotificationsCenter} from './NotificationsCenter';
+import {OrderReceiptModal} from './OrderReceiptModal';
 import {OrderTimeline} from './OrderTimeline';
 import {QRScannerModal} from './QRScannerModal';
 
@@ -56,42 +65,6 @@ interface ClientAppProps {
 
 type ClientTab = 'register' | 'track' | 'orders' | 'notifications' | 'profile';
 type WizardStep = 1 | 2 | 3 | 4 | 5;
-
-async function compressImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Formato de imagen no soportado.'));
-      img.onload = () => {
-        const maxSide = 960;
-        let {width, height} = img;
-        if (width > maxSide || height > maxSide) {
-          if (width > height) {
-            height = Math.round((height * maxSide) / width);
-            width = maxSide;
-          } else {
-            width = Math.round((width * maxSide) / height);
-            height = maxSide;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('No se pudo procesar la fotografía.'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 export const ClientApp: React.FC<ClientAppProps> = ({
   user,
@@ -128,6 +101,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       '',
   );
   const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>(undefined);
+  const [shoeNotes, setShoeNotes] = useState('');
 
   // Step 2: Elige la devolución
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('pickup');
@@ -136,21 +110,44 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   );
   const [deliveryAddress, setDeliveryAddress] = useState(user.address || '');
 
-  // Step 3: Forma de pago
+  // Step 3: Forma de pago + Cupón
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [cardHolder, setCardHolder] = useState(user.name || '');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    description: string;
+    discountAmount: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   // Step 4: Entrega tu bolsa
   const [dropoffMethod, setDropoffMethod] = useState<DropoffMethod>('locker');
 
-  // Profile editing
+  // Receipt, Rating & Photo Lightbox
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [zoomedPhoto, setZoomedPhoto] = useState<{url: string; label: string} | null>(
+    null,
+  );
+
+  // Profile editing & Password change
   const [profileName, setProfileName] = useState(user.name || '');
   const [profileWhatsapp, setProfileWhatsapp] = useState(user.whatsapp || '');
   const [profileAddress, setProfileAddress] = useState(user.address || '');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +163,16 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   );
 
   const shippingCost = deliveryMethod === 'delivery' ? config.shippingFee : 0;
-  const estimatedTotal = (selectedService?.price || 0) * pairs + shippingCost;
+  const baseSubtotal = (selectedService?.price || 0) * pairs + shippingCost;
+  const appliedDiscount = appliedCoupon
+    ? Math.min(appliedCoupon.discountAmount, baseSubtotal)
+    : 0;
+  const estimatedTotal = Math.max(0, baseSubtotal - appliedDiscount);
+
+  useEffect(() => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  }, [serviceId, pairs, deliveryMethod]);
 
   const fetchMyOrders = useCallback(async () => {
     try {
@@ -297,6 +303,31 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     setStep(3);
   };
 
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setValidatingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await api.validateCoupon(code, baseSubtotal);
+      setAppliedCoupon({
+        code: res.coupon.code,
+        description: res.coupon.description,
+        discountAmount: res.discountAmount,
+      });
+      onPushAlert({
+        title: `Cupón ${res.coupon.code} aplicado`,
+        message: `Se descontaron $${res.discountAmount} MXN de tu total.`,
+        tone: 'success',
+      });
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError(err instanceof Error ? err.message : 'Cupón no válido.');
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
   const handleConfirmOrder = async () => {
     setError(null);
     if (paymentMethod === 'card') {
@@ -329,6 +360,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             ? cardNumber.replace(/\D/g, '').slice(-4) || '4242'
             : undefined,
         photoDataUrl,
+        shoeNotes: shoeNotes.trim() || undefined,
+        discountCode: appliedCoupon?.code,
       });
 
       setOrders((prev) => [res.order, ...prev]);
@@ -372,9 +405,41 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     }
   };
 
+  const handleSubmitRating = async (orderId: string) => {
+    setSubmittingRating(true);
+    try {
+      const res = await api.rateOrder(orderId, {
+        rating: ratingStars,
+        comment: ratingComment.trim() || undefined,
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o.id === res.order.id ? res.order : o)),
+      );
+      setRatingComment('');
+      onPushAlert({
+        title: '¡Gracias por tu calificación!',
+        message: `Registramos tu evaluación de ${ratingStars} estrellas.`,
+        tone: 'success',
+      });
+    } catch (err) {
+      onPushAlert({
+        title: 'Error al calificar',
+        message:
+          err instanceof Error ? err.message : 'No se pudo guardar tu calificación.',
+        tone: 'error',
+      });
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   const startNewOrder = () => {
     setPairs(1);
     setPhotoDataUrl(undefined);
+    setShoeNotes('');
+    setCouponInput('');
+    setAppliedCoupon(null);
+    setCouponError(null);
     setCardNumber('');
     setCardExpiry('');
     setCardCvv('');
@@ -409,6 +474,40 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSaved(false);
+    if (newPassword.trim().length < 4) {
+      setPasswordError('La nueva contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('La confirmación no coincide con la nueva contraseña.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api.changeClientPassword({currentPassword, newPassword});
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setPasswordSaved(true);
+      onPushAlert({
+        title: 'Contraseña actualizada',
+        message: 'Usa tu nueva contraseña en tu próximo inicio de sesión.',
+        tone: 'success',
+      });
+      window.setTimeout(() => setPasswordSaved(false), 4000);
+    } catch (err) {
+      setPasswordError(
+        err instanceof Error ? err.message : 'No se pudo cambiar la contraseña.',
+      );
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const handleMarkNotificationRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? {...n, read: true} : n)),
@@ -440,7 +539,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       label: 'Rastrear pedido',
       shortLabel: 'Rastrear',
       icon: ListChecks,
-      badgeCount: orders.filter((o) => o.status !== 'Entregado').length,
+      badgeCount: orders.filter(
+        (o) => o.status !== 'Entregado' && o.status !== 'Cancelado',
+      ).length,
     },
     {
       id: 'orders',
@@ -705,6 +806,20 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Notas del calzado (opcional) */}
+                  <div>
+                    <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                      Notas del calzado y observaciones (opcional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={shoeNotes}
+                      onChange={(e) => setShoeNotes(e.target.value)}
+                      placeholder="Ej. Jordan 1 blanco, gamuza delicada en punta, mancha en talón derecho..."
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-[#000831] focus:border-[#109173] focus:outline-none focus:ring-2 focus:ring-[#109173]/20"
+                    />
                   </div>
 
                   <button
@@ -1000,6 +1115,67 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </div>
                   )}
 
+                  {/* Cupón de descuento */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#000831]">
+                      <Tag className="h-3.5 w-3.5 text-[#109173]" />
+                      <span>¿Tienes un cupón de descuento?</span>
+                    </div>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-[#109173]/30 bg-[#E6F7F3] px-3.5 py-2.5 text-xs">
+                        <div>
+                          <span className="font-mono font-extrabold text-[#109173]">
+                            {appliedCoupon.code}
+                          </span>{' '}
+                          <span className="text-[#000831] font-semibold">
+                            (-${appliedDiscount} MXN)
+                          </span>
+                          {appliedCoupon.description && (
+                            <span className="text-slate-600 ml-1">
+                              · {appliedCoupon.description}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedCoupon(null);
+                            setCouponInput('');
+                          }}
+                          className="text-slate-500 hover:text-red-600 cursor-pointer"
+                          title="Quitar cupón"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) =>
+                            setCouponInput(e.target.value.toUpperCase())
+                          }
+                          placeholder="Ej. BIENVENIDO10"
+                          className="flex-1 min-h-[42px] rounded-xl border border-slate-300 bg-white px-3.5 font-mono text-sm uppercase text-[#000831] focus:border-[#109173] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={validatingCoupon || !couponInput.trim()}
+                          onClick={handleApplyCoupon}
+                          className="min-h-[42px] rounded-xl bg-[#000831] px-4 text-xs font-bold text-white hover:bg-black disabled:opacity-50 transition-colors cursor-pointer"
+                        >
+                          {validatingCoupon ? 'Validando...' : 'Aplicar'}
+                        </button>
+                      </div>
+                    )}
+                    {couponError && (
+                      <p className="text-xs font-semibold text-red-600">
+                        {couponError}
+                      </p>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     disabled={submitting}
@@ -1151,6 +1327,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={() => setReceiptOrder(activeOrder)}
+                      className="min-h-[46px] inline-flex items-center gap-1.5 rounded-xl bg-[#000831] px-4 text-sm font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                    >
+                      <Receipt className="h-4 w-4 text-[#109173]" />
+                      <span>Comprobante</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setActiveTab('orders')}
                       className="min-h-[46px] rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-[#000831] hover:bg-slate-50 transition-colors cursor-pointer"
                     >
@@ -1195,6 +1379,16 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       {paymentMethod === 'card' ? 'Tarjeta en línea' : 'Efectivo'}
                     </span>
                   </div>
+                  {appliedCoupon && appliedDiscount > 0 && (
+                    <div className="flex justify-between gap-2 text-[#109173]">
+                      <span className="font-semibold">
+                        Cupón ({appliedCoupon.code})
+                      </span>
+                      <span className="font-mono font-bold tabular-nums">
+                        -${appliedDiscount} MXN
+                      </span>
+                    </div>
+                  )}
                   <div className="pt-3 border-t border-slate-100 flex items-baseline justify-between">
                     <span className="font-bold text-[#000831]">Total</span>
                     <span className="font-mono text-2xl font-extrabold text-[#109173] tabular-nums">
@@ -1419,6 +1613,34 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       ${activeOrder.totalAmount} · {activeOrder.paymentStatus}
                     </span>
                   </div>
+                  {activeOrder.discountAmount && activeOrder.discountAmount > 0 ? (
+                    <div className="flex justify-between text-xs text-[#109173]">
+                      <span className="font-semibold">
+                        Descuento ({activeOrder.discountCode || 'Cupón'})
+                      </span>
+                      <span className="font-mono font-bold">
+                        -${activeOrder.discountAmount} MXN
+                      </span>
+                    </div>
+                  ) : null}
+                  {activeOrder.shoeNotes && (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-700 flex items-start gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-[#5B21B6] shrink-0 mt-0.5" />
+                      <span>
+                        <strong className="text-[#000831]">Tus notas:</strong>{' '}
+                        {activeOrder.shoeNotes}
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setReceiptOrder(activeOrder)}
+                    className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                  >
+                    <Receipt className="h-4 w-4 text-[#109173]" />
+                    <span>Ver / Descargar comprobante</span>
+                  </button>
 
                   {activeOrder.status === 'Pendiente de depósito' && (
                     <button
@@ -1427,22 +1649,70 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         setStep(4);
                         setActiveTab('register');
                       }}
-                      className="mt-2 w-full min-h-[44px] rounded-xl bg-[#109173] text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                      className="w-full min-h-[44px] rounded-xl bg-[#109173] text-sm font-bold text-white hover:bg-[#0B755C] cursor-pointer"
                     >
                       Reportar depósito de bolsa
                     </button>
                   )}
 
-                  {activeOrder.photoDataUrl && (
-                    <div className="pt-2">
-                      <div className="text-xs font-semibold text-slate-500 mb-1.5">
-                        Evidencia fotográfica inicial
+                  {(isSafePhotoDataUrl(activeOrder.photoDataUrl) ||
+                    isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl)) && (
+                    <div className="pt-2 space-y-2">
+                      <div className="text-xs font-bold text-[#000831]">
+                        {isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl)
+                          ? 'Comparativa: Antes y Después'
+                          : 'Evidencia fotográfica inicial'}
                       </div>
-                      <img
-                        src={activeOrder.photoDataUrl}
-                        alt={`Calzado ${activeOrder.folio}`}
-                        className="h-40 w-full rounded-xl object-cover border border-slate-200"
-                      />
+                      <div
+                        className={`grid gap-2.5 ${
+                          isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl)
+                            ? 'grid-cols-2'
+                            : 'grid-cols-1'
+                        }`}
+                      >
+                        {isSafePhotoDataUrl(activeOrder.photoDataUrl) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setZoomedPhoto({
+                                url: activeOrder.photoDataUrl!,
+                                label: `Antes · ${activeOrder.folio}`,
+                              })
+                            }
+                            className="group relative overflow-hidden rounded-xl border border-slate-200 cursor-pointer text-left"
+                          >
+                            <img
+                              src={activeOrder.photoDataUrl}
+                              alt={`Antes ${activeOrder.folio}`}
+                              className="h-36 w-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#000831]/80 px-2 py-0.5 text-[10px] font-bold text-white">
+                              Antes
+                            </span>
+                          </button>
+                        )}
+                        {isSafePhotoDataUrl(activeOrder.afterPhotoDataUrl) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setZoomedPhoto({
+                                url: activeOrder.afterPhotoDataUrl!,
+                                label: `Después (Limpios) · ${activeOrder.folio}`,
+                              })
+                            }
+                            className="group relative overflow-hidden rounded-xl border border-[#109173]/40 cursor-pointer text-left"
+                          >
+                            <img
+                              src={activeOrder.afterPhotoDataUrl}
+                              alt={`Después ${activeOrder.folio}`}
+                              className="h-36 w-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#109173] px-2 py-0.5 text-[10px] font-bold text-white">
+                              Después ✨
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1458,6 +1728,88 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     history={activeOrder.history}
                   />
                 </div>
+
+                {/* Calificación post-entrega */}
+                {activeOrder.status === 'Entregado' && (
+                  <div className="rounded-2xl bg-white border border-amber-200 p-5 space-y-3">
+                    {activeOrder.rating ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="font-display text-sm font-extrabold text-[#000831]">
+                            Tu calificación del servicio
+                          </h3>
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`h-4 w-4 ${
+                                  s <= activeOrder.rating!
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-slate-200'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {activeOrder.ratingComment && (
+                          <p className="text-xs text-slate-600 italic">
+                            "{activeOrder.ratingComment}"
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="font-display text-sm font-extrabold text-[#000831]">
+                            ¿Qué te pareció la limpieza de tus tenis?
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Califica tu servicio para ayudarnos a mejorar cada día.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setRatingStars(s)}
+                              className="p-1 cursor-pointer transition-transform hover:scale-110"
+                              aria-label={`${s} estrellas`}
+                            >
+                              <Star
+                                className={`h-7 w-7 ${
+                                  s <= ratingStars
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-slate-300'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                          <span className="ml-2 text-xs font-bold text-[#000831]">
+                            {ratingStars}/5
+                          </span>
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={ratingComment}
+                          onChange={(e) => setRatingComment(e.target.value)}
+                          placeholder="Cuéntanos cómo quedaron tus tenis (opcional)..."
+                          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={submittingRating}
+                          onClick={() => handleSubmitRating(activeOrder.id)}
+                          className="min-h-[42px] rounded-xl bg-[#109173] px-5 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] disabled:opacity-60 cursor-pointer"
+                        >
+                          {submittingRating
+                            ? 'Enviando...'
+                            : 'Enviar calificación'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {orderNotifications.length > 0 && (
                   <div className="rounded-2xl bg-white border border-slate-200 p-5">
@@ -1543,9 +1895,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
                           order.status === 'Entregado'
                             ? 'bg-[#E6F7F3] text-[#109173]'
-                            : order.status === 'En limpieza'
-                              ? 'bg-[#E6F7F3] text-[#000831]'
-                              : 'bg-[#EFEAFF] text-[#5B21B6]'
+                            : order.status === 'Cancelado'
+                              ? 'bg-red-100 text-red-700'
+                              : order.status === 'En limpieza'
+                                ? 'bg-[#E6F7F3] text-[#000831]'
+                                : 'bg-[#EFEAFF] text-[#5B21B6]'
                         }`}
                       >
                         {order.status}
@@ -1567,6 +1921,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           ${order.totalAmount} · {order.paymentStatus}
                         </span>
                       </div>
+                      {order.rating && (
+                        <div className="flex items-center gap-1 text-xs font-bold text-amber-600 pt-1">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          <span>Calificado con {order.rating}/5</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1581,6 +1941,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                       className="flex-1 min-h-[42px] rounded-xl bg-[#109173] text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
                     >
                       Rastrear pedido
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptOrder(order)}
+                      title="Ver comprobante / ticket"
+                      className="min-h-[42px] inline-flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                    >
+                      <Receipt className="h-4 w-4" />
                     </button>
                     {order.status === 'Pendiente de depósito' && (
                       <button
@@ -1619,68 +1987,154 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
       {/* MODULE: MI PERFIL */}
       {activeTab === 'profile' && (
-        <div className="max-w-2xl rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
-          <h1 className="font-display text-2xl font-extrabold text-[#000000]">
-            Mi perfil
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Tus datos se autocompletan al registrar nuevos tenis y recibir avisos por WhatsApp.
-          </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
+            <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+              Mi perfil
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Tus datos se autocompletan al registrar nuevos tenis y recibir avisos por WhatsApp.
+            </p>
 
-          {profileSaved && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#E6F7F3] px-4 py-3 text-sm font-semibold text-[#109173]">
-              <Check className="h-4 w-4" />
-              <span>Perfil actualizado correctamente.</span>
+            {profileSaved && (
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#E6F7F3] px-4 py-3 text-sm font-semibold text-[#109173]">
+                <Check className="h-4 w-4" />
+                <span>Perfil actualizado correctamente.</span>
+              </div>
+            )}
+
+            <form onSubmit={handleProfileSave} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  Nombre completo
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={profileWhatsapp}
+                  onChange={(e) => setProfileWhatsapp(e.target.value)}
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  Dirección de entrega predeterminada
+                </label>
+                <input
+                  type="text"
+                  value={profileAddress}
+                  onChange={(e) => setProfileAddress(e.target.value)}
+                  placeholder="Calle, número, colonia, CP"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+              >
+                Guardar cambios
+              </button>
+            </form>
+          </div>
+
+          {/* Cambio de contraseña del cliente */}
+          <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFEAFF] text-[#5B21B6]">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-extrabold text-[#000000]">
+                  Seguridad y contraseña
+                </h2>
+                <p className="text-xs text-slate-600">
+                  Actualiza tu contraseña de acceso cuando lo necesites
+                </p>
+              </div>
             </div>
-          )}
 
-          <form onSubmit={handleProfileSave} className="mt-6 space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-[#000831] mb-1.5">
-                Nombre completo
-              </label>
-              <input
-                type="text"
-                required
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
-              />
-            </div>
+            {passwordError && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+                {passwordError}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-bold text-[#000831] mb-1.5">
-                WhatsApp
-              </label>
-              <input
-                type="tel"
-                required
-                value={profileWhatsapp}
-                onChange={(e) => setProfileWhatsapp(e.target.value)}
-                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
-              />
-            </div>
+            {passwordSaved && (
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#E6F7F3] px-4 py-3 text-sm font-semibold text-[#109173]">
+                <Check className="h-4 w-4" />
+                <span>Contraseña actualizada correctamente.</span>
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-bold text-[#000831] mb-1.5">
-                Dirección de entrega predeterminada
-              </label>
-              <input
-                type="text"
-                value={profileAddress}
-                onChange={(e) => setProfileAddress(e.target.value)}
-                placeholder="Calle, número, colonia, CP"
-                className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
-              />
-            </div>
+            <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  Contraseña actual
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Tu contraseña actual"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="min-h-[48px] rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
-            >
-              Guardar cambios
-            </button>
-          </form>
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  Nueva contraseña
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={4}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 4 caracteres"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#000831] mb-1.5">
+                  Confirmar nueva contraseña
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={4}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Repite la nueva contraseña"
+                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="min-h-[48px] rounded-xl bg-[#000831] px-6 text-sm font-bold text-white hover:bg-black disabled:opacity-60 transition-colors cursor-pointer"
+              >
+                {changingPassword ? 'Actualizando...' : 'Cambiar contraseña'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
@@ -1716,6 +2170,39 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         }}
         onClose={() => setTrackScannerOpen(false)}
       />
+
+      {/* Order Receipt / Ticket Modal */}
+      <OrderReceiptModal
+        order={receiptOrder}
+        onClose={() => setReceiptOrder(null)}
+      />
+
+      {/* Photo Preview Lightbox */}
+      {zoomedPhoto && (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/90 p-4 backdrop-blur-xs"
+          onClick={() => setZoomedPhoto(null)}
+        >
+          <div className="mb-3 flex items-center justify-between w-full max-w-2xl text-white">
+            <span className="font-display text-sm font-bold">
+              {zoomedPhoto.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setZoomedPhoto(null)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <img
+            src={zoomedPhoto.url}
+            alt={zoomedPhoto.label}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-2xl"
+          />
+        </div>
+      )}
     </AppShell>
   );
 };

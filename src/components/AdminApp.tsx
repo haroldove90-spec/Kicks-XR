@@ -1,7 +1,9 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   AlertTriangle,
+  Ban,
   Banknote,
+  BarChart3,
   Bell,
   Building2,
   Calendar,
@@ -13,6 +15,7 @@ import {
   Download,
   ExternalLink,
   Eye,
+  FileText,
   Home,
   ImageOff,
   Layers,
@@ -23,12 +26,18 @@ import {
   Pencil,
   Plus,
   QrCode,
+  Receipt,
   RefreshCw,
   Search,
   Settings,
   ShoppingBag,
+  Sparkles,
+  Star,
   Store,
+  Tag,
+  Trash2,
   Truck,
+  UserPlus,
   Users,
   X,
   ZoomIn,
@@ -36,6 +45,7 @@ import {
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
+import {compressImageFile} from '../lib/image';
 import type {
   AdminConfig,
   AdminDashboardMetrics,
@@ -56,9 +66,12 @@ import {
   AdminOrderDetailModal,
   isSafePhotoDataUrl,
 } from './AdminOrderDetailModal';
+import {AdminReportsModule} from './AdminReportsModule';
 import {AdminUsersModule} from './AdminUsersModule';
+import {AdminWalkInOrderModal} from './AdminWalkInOrderModal';
 import {AppShell, type NavModuleItem} from './AppShell';
 import {NotificationsCenter} from './NotificationsCenter';
+import {OrderReceiptModal} from './OrderReceiptModal';
 import {OrderTimeline} from './OrderTimeline';
 import {QRScannerModal} from './QRScannerModal';
 
@@ -73,6 +86,7 @@ type AdminTab =
   | 'home'
   | 'collections'
   | 'orders'
+  | 'reports'
   | 'incidents'
   | 'users'
   | 'notifications'
@@ -85,6 +99,19 @@ const ORDER_STATUSES: OrderStatus[] = [
   'Listo para entrega',
   'Entregado',
 ];
+
+function buildDirectWhatsappUrl(order: Order, customStatus?: OrderStatus): string {
+  const digits = (order.clientWhatsapp || '').replace(/\D/g, '');
+  const fullPhone =
+    digits.length === 10
+      ? `52${digits}`
+      : digits.startsWith('52')
+        ? digits
+        : `52${digits}`;
+  const status = customStatus || order.status;
+  const text = `Hola ${order.clientName}, te contactamos de Kicks XR. Tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) se encuentra en estatus: "${status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
+  return `https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`;
+}
 
 const INCIDENT_TYPES: IncidentType[] = [
   'Bolsa faltante',
@@ -123,9 +150,20 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [orderPhotoFilter, setOrderPhotoFilter] = useState<'all' | 'with_photo'>('all');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [detailOrderModal, setDetailOrderModal] = useState<Order | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [editStatus, setEditStatus] = useState<OrderStatus>('En limpieza');
   const [editPayment, setEditPayment] = useState<PaymentStatus>('Pago pendiente');
   const [editBagCode, setEditBagCode] = useState('');
+  const [editAfterPhoto, setEditAfterPhoto] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [editAdminNotes, setEditAdminNotes] = useState('');
+  const [editStatusNote, setEditStatusNote] = useState('');
+  const [cancelMode, setCancelMode] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const afterPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<{
     url: string;
     title: string;
@@ -138,6 +176,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [deliverMethod, setDeliverMethod] = useState<DeliveryMethod>('pickup');
   const [deliverFolio, setDeliverFolio] = useState('');
   const [deliverMarkPaid, setDeliverMarkPaid] = useState(true);
+  const [deliverAfterPhoto, setDeliverAfterPhoto] = useState<string | undefined>(
+    undefined,
+  );
+  const deliverAfterPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Module 5: Incidencias
   const [incType, setIncType] = useState<IncidentType>('Bolsa faltante');
@@ -153,11 +195,27 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   const [newCampusType, setNewCampusType] = useState<'university' | 'point'>(
     'point',
   );
+  const [editingCampusId, setEditingCampusId] = useState<string | null>(null);
+  const [editCampusName, setEditCampusName] = useState('');
+  const [editCampusAddress, setEditCampusAddress] = useState('');
+  const [editCampusType, setEditCampusType] = useState<'university' | 'point'>('point');
+
   const [qrCampusModal, setQrCampusModal] = useState<Campus | null>(null);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServiceDesc, setNewServiceDesc] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('250');
   const [newServiceHours, setNewServiceHours] = useState('24');
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [editServiceName, setEditServiceName] = useState('');
+  const [editServiceDesc, setEditServiceDesc] = useState('');
+  const [editServicePrice, setEditServicePrice] = useState('250');
+  const [editServiceHours, setEditServiceHours] = useState('24');
+
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDesc, setNewCouponDesc] = useState('');
+  const [newCouponType, setNewCouponType] = useState<'percent' | 'fixed'>('percent');
+  const [newCouponValue, setNewCouponValue] = useState('10');
+
   const [newLockerCode, setNewLockerCode] = useState('');
   const [newLockerCampus, setNewLockerCampus] = useState('');
   const [shippingFeeInput, setShippingFeeInput] = useState('75');
@@ -247,6 +305,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
     );
     setEditPayment(selectedOrder.paymentStatus);
     setEditBagCode(selectedOrder.bagCode);
+    setEditAfterPhoto(selectedOrder.afterPhotoDataUrl);
+    setEditAdminNotes(selectedOrder.adminNotes || '');
+    setEditStatusNote('');
+    setCancelMode(false);
+    setCancelReason('');
   }, [selectedOrder]);
 
   const collectionBatch = useMemo(() => {
@@ -321,7 +384,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   }, [orders, orderSearch, orderPhotoFilter]);
 
   const readyToDeliverOrders = useMemo(
-    () => orders.filter((o) => o.status !== 'Entregado'),
+    () => orders.filter((o) => o.status !== 'Entregado' && o.status !== 'Cancelado'),
     [orders],
   );
 
@@ -409,18 +472,63 @@ export const AdminApp: React.FC<AdminAppProps> = ({
     setActiveTab('incidents');
   };
 
+  const handleAfterPhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImageFile(file);
+      setEditAfterPhoto(compressed);
+      onPushAlert({
+        title: 'Foto del resultado lista',
+        message: 'Pulsa "Actualizar estado" para guardar la foto del después en el pedido.',
+        tone: 'info',
+      });
+    } catch (err) {
+      onPushAlert({
+        title: 'Error de imagen',
+        message: err instanceof Error ? err.message : 'No se pudo procesar la foto.',
+        tone: 'error',
+      });
+    }
+    e.target.value = '';
+  };
+
+  const handleDeliverAfterPhotoFile = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImageFile(file);
+      setDeliverAfterPhoto(compressed);
+    } catch (err) {
+      onPushAlert({
+        title: 'Error de imagen',
+        message: err instanceof Error ? err.message : 'No se pudo procesar la foto.',
+        tone: 'error',
+      });
+    }
+    e.target.value = '';
+  };
+
   const handleUpdateOrder = async () => {
     if (!selectedOrder) return;
     try {
-      await api.updateAdminOrder(selectedOrder.id, {
+      const res = await api.updateAdminOrder(selectedOrder.id, {
         status: editStatus,
         paymentStatus: editPayment,
         bagCode: editBagCode.trim().toUpperCase(),
+        note: editStatusNote.trim() || undefined,
+        adminNotes: editAdminNotes,
+        afterPhotoDataUrl:
+          editAfterPhoto === null ? null : editAfterPhoto || undefined,
       });
+      setEditStatusNote('');
       onPushAlert({
         title: `Pedido ${selectedOrder.folio} actualizado`,
-        message: `Estatus: "${editStatus}" · Pago: ${editPayment}. Notificación enviada al cliente.`,
+        message: `Estatus: "${editStatus}" · Pago: ${editPayment}. Puedes avisar al cliente por WhatsApp.`,
         tone: 'success',
+        whatsappUrl: res.whatsappUrl,
       });
       fetchOverview();
     } catch (err) {
@@ -430,6 +538,36 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           err instanceof Error ? err.message : 'Error al actualizar el pedido.',
         tone: 'error',
       });
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!selectedOrder) return;
+    setCancellingOrder(true);
+    try {
+      const res = await api.cancelAdminOrder(
+        selectedOrder.id,
+        cancelReason.trim(),
+      );
+      setCancelMode(false);
+      setCancelReason('');
+      onPushAlert({
+        title: `Pedido ${selectedOrder.folio} cancelado`,
+        message:
+          'El pedido fue cancelado y cualquier locker asignado se liberó automáticamente.',
+        tone: 'warning',
+        whatsappUrl: res.whatsappUrl,
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'No se pudo cancelar',
+        message:
+          err instanceof Error ? err.message : 'Error al cancelar el pedido.',
+        tone: 'error',
+      });
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -452,12 +590,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
         folio: code,
         deliveryMethod: deliverMethod,
         markPaid: deliverMarkPaid,
+        afterPhotoDataUrl: deliverAfterPhoto,
       });
       setDeliverFolio('');
+      setDeliverAfterPhoto(undefined);
       onPushAlert({
         title: `Entrega cerrada · ${res.order.folio}`,
         message: `El pedido ${res.order.folio} fue marcado como Entregado y el cliente fue notificado.`,
         tone: 'success',
+        whatsappUrl: res.whatsappUrl,
       });
       fetchOverview();
     } catch (err) {
@@ -593,6 +734,97 @@ export const AdminApp: React.FC<AdminAppProps> = ({
     }
   };
 
+  const handleSaveCampusEdit = async (id: string) => {
+    try {
+      await api.updateCampus(id, {
+        name: editCampusName.trim(),
+        address: editCampusAddress.trim(),
+        type: editCampusType,
+      });
+      setEditingCampusId(null);
+      onPushAlert({
+        title: 'Sede actualizada',
+        message: 'Los cambios de la sede se guardaron correctamente.',
+        tone: 'success',
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error editando sede.',
+        tone: 'error',
+      });
+    }
+  };
+
+  const handleSaveServiceEdit = async (id: string) => {
+    try {
+      await api.updateService(id, {
+        name: editServiceName.trim(),
+        description: editServiceDesc.trim(),
+        price: Number(editServicePrice),
+        turnaroundHours: Number(editServiceHours),
+      });
+      setEditingServiceId(null);
+      onPushAlert({
+        title: 'Servicio actualizado',
+        message: 'Precio y detalles del servicio guardados correctamente.',
+        tone: 'success',
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error editando servicio.',
+        tone: 'error',
+      });
+    }
+  };
+
+  const handleAddCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.createCoupon({
+        code: newCouponCode.trim().toUpperCase(),
+        description: newCouponDesc.trim(),
+        discountType: newCouponType,
+        value: Number(newCouponValue),
+      });
+      setNewCouponCode('');
+      setNewCouponDesc('');
+      onPushAlert({
+        title: 'Cupón creado',
+        message: 'El código promocional ya está activo para clientes y mostrador.',
+        tone: 'success',
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'Error creando cupón',
+        message: err instanceof Error ? err.message : 'No se pudo crear el cupón.',
+        tone: 'error',
+      });
+    }
+  };
+
+  const handleDeleteCoupon = async (id: string, code: string) => {
+    try {
+      await api.deleteCoupon(id);
+      onPushAlert({
+        title: `Cupón ${code} eliminado`,
+        message: 'El código promocional fue dado de baja.',
+        tone: 'info',
+      });
+      fetchOverview();
+    } catch (err) {
+      onPushAlert({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Error eliminando cupón.',
+        tone: 'error',
+      });
+    }
+  };
+
   const handleSaveShipping = async () => {
     try {
       await api.updateSettings({shippingFee: Number(shippingFeeInput)});
@@ -644,6 +876,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       label: 'Pedidos',
       icon: ShoppingBag,
       badgeCount: (metrics?.inCleaning || 0) + (metrics?.readyForDelivery || 0),
+    },
+    {
+      id: 'reports',
+      label: 'Reportes / Caja',
+      shortLabel: 'Reportes',
+      icon: BarChart3,
+      hideOnMobileBar: true, // Accessible via Inicio quick button & Desktop Sidebar
     },
     {
       id: 'incidents',
@@ -704,13 +943,33 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           {/* MODULE 0: INICIO */}
           {activeTab === 'home' && metrics && (
             <div className="space-y-6">
-              <div>
-                <h1 className="font-display text-2xl font-extrabold text-[#000000]">
-                  Panel Operativo Kicks XR
-                </h1>
-                <p className="text-sm text-slate-600">
-                  Resumen en tiempo real de recolecciones, taller, entregas e incidencias
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#000000]">
+                    Panel Operativo Kicks XR
+                  </h1>
+                  <p className="text-sm text-slate-600">
+                    Resumen en tiempo real de recolecciones, taller, entregas, caja e incidencias
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('reports')}
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] transition-colors cursor-pointer"
+                  >
+                    <BarChart3 className="h-4 w-4 text-[#109173]" />
+                    <span>Corte de caja y reportes</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWalkInModalOpen(true)}
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl bg-[#109173] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>+ Pedido en mostrador</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -758,21 +1017,33 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     {metrics.openIncidents}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Faltantes, sin pedido o duplicados
+                    {metrics.ratedCount > 0 ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-600">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {metrics.avgRating} ({metrics.ratedCount} reseñas)
+                      </span>
+                    ) : (
+                      'Faltantes, sin pedido o duplicados'
+                    )}
                   </div>
                 </button>
 
-                <div className="rounded-2xl bg-[#000831] text-white p-5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reports')}
+                  className="rounded-2xl bg-[#000831] text-white p-5 text-left hover:bg-black transition-colors cursor-pointer"
+                >
                   <div className="text-xs font-semibold text-white/70">
                     Ingresos cobrados
                   </div>
                   <div className="mt-2 font-mono text-3xl font-extrabold text-[#E6F7F3] tabular-nums">
                     ${metrics.revenuePaid}
                   </div>
-                  <div className="mt-1 text-xs text-white/70 tabular-nums">
-                    Por cobrar: ${metrics.revenuePending} MXN
+                  <div className="mt-1 text-[11px] text-white/75 tabular-nums">
+                    Efectivo ${metrics.cashPaid} · Tarjeta ${metrics.cardPaid} · Pend. $
+                    {metrics.revenuePending}
                   </div>
-                </div>
+                </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1284,6 +1555,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           {activeTab === 'orders' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
               <div className="xl:col-span-4 rounded-2xl bg-white border border-slate-200 p-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setWalkInModalOpen(true)}
+                  className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4 text-[#109173]" />
+                  <span>+ Crear pedido rápido en mostrador</span>
+                </button>
+
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
@@ -1393,19 +1673,37 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       </h2>
                     </div>
                     {selectedOrder && (
-                      <button
-                        type="button"
-                        onClick={() => setDetailOrderModal(selectedOrder)}
-                        className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 text-xs font-bold text-white transition-colors cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Ficha completa y QR</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setReceiptOrder(selectedOrder)}
+                          className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 text-xs font-bold text-white transition-colors cursor-pointer"
+                        >
+                          <Receipt className="h-3.5 w-3.5" />
+                          <span>Ticket</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDetailOrderModal(selectedOrder)}
+                          className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 text-xs font-bold text-white transition-colors cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>Ficha completa y QR</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
                   {selectedOrder ? (
                     <div className="space-y-5">
+                      <input
+                        ref={afterPhotoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAfterPhotoFile}
+                        className="sr-only"
+                      />
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 rounded-2xl border border-slate-200 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
                         <div className="p-4 flex items-center gap-4">
                           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#E6F7F3] text-[#000831] shrink-0">
@@ -1416,8 +1714,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               Folio · Registrado{' '}
                               {new Date(selectedOrder.createdAt).toLocaleDateString('es-MX')}
                             </div>
-                            <div className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
-                              {selectedOrder.folio}
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-2xl font-extrabold text-[#000831] tabular-nums">
+                                {selectedOrder.folio}
+                              </span>
+                              {selectedOrder.status === 'Cancelado' && (
+                                <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                                  Cancelado
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1446,69 +1751,117 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         </div>
                       </div>
 
-                      {/* Evidencia fotográfica + Detalles completos del pedido y servicio */}
+                      {/* Evidencia fotográfica Antes y Después + Detalles completos del pedido y servicio */}
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                        {/* Photo Evidence Card */}
-                        <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col">
-                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                        {/* Photo Evidence Card: Antes + Después */}
+                        <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col gap-3">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#000831]">
                               <Camera className="h-4 w-4 text-[#109173]" />
-                              <span>Foto de los tenis</span>
+                              <span>Evidencia: Antes y Después</span>
                             </div>
-                            {isSafePhotoDataUrl(selectedOrder.photoDataUrl) && (
-                              <span className="text-[11px] font-bold text-[#109173]">
-                                Adjunta
-                              </span>
-                            )}
                           </div>
 
-                          {isSafePhotoDataUrl(selectedOrder.photoDataUrl) ? (
-                            <div className="flex-1 flex flex-col gap-2.5">
-                              <button
-                                type="button"
-                                onClick={() => openPhotoLightbox(selectedOrder)}
-                                className="group relative flex-1 min-h-[200px] max-h-[260px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center cursor-pointer"
-                              >
-                                <img
-                                  src={selectedOrder.photoDataUrl}
-                                  alt={`Evidencia de tenis ${selectedOrder.folio}`}
-                                  className="max-h-[256px] w-full object-contain group-hover:scale-[1.03] transition-transform"
-                                />
-                                <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-lg bg-[#000831]/85 px-2.5 py-1 text-[11px] font-bold text-white">
-                                  <ZoomIn className="h-3.5 w-3.5" />
-                                  <span>Ampliar</span>
-                                </span>
-                              </button>
-                              <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-2.5 flex-1">
+                            {/* ANTES */}
+                            <div className="flex flex-col gap-1.5">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                Antes (Cliente)
+                              </div>
+                              {isSafePhotoDataUrl(selectedOrder.photoDataUrl) ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openPhotoLightbox(selectedOrder)}
+                                    className="group relative h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center cursor-pointer"
+                                  >
+                                    <img
+                                      src={selectedOrder.photoDataUrl}
+                                      alt={`Antes ${selectedOrder.folio}`}
+                                      className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                                    />
+                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#000831]/80 p-1 text-white">
+                                      <ZoomIn className="h-3 w-3" />
+                                    </span>
+                                  </button>
+                                  <a
+                                    href={selectedOrder.photoDataUrl}
+                                    download={`${selectedOrder.folio}-antes.jpg`}
+                                    className="min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-[11px] font-bold text-[#000831] hover:bg-slate-50"
+                                  >
+                                    <Download className="h-3 w-3 text-[#109173]" />
+                                    <span>Bajar</span>
+                                  </a>
+                                </>
+                              ) : (
+                                <div className="h-36 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-[11px] text-slate-400 p-2 text-center">
+                                  <ImageOff className="h-5 w-5 text-slate-300 mb-1" />
+                                  <span>Sin foto inicial</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* DESPUÉS */}
+                            <div className="flex flex-col gap-1.5">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-[#109173] flex items-center gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                <span>Después (Taller)</span>
+                              </div>
+                              {isSafePhotoDataUrl(editAfterPhoto) ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLightboxZoomed(false);
+                                      setLightboxPhoto({
+                                        url: editAfterPhoto,
+                                        title: `Resultado final (Después) · ${selectedOrder.folio}`,
+                                        subtitle: `${selectedOrder.clientName} · ${selectedOrder.serviceName}`,
+                                        filename: `${selectedOrder.folio}-despues.jpg`,
+                                      });
+                                    }}
+                                    className="group relative h-36 w-full overflow-hidden rounded-xl border border-[#109173]/30 bg-white flex items-center justify-center cursor-pointer"
+                                  >
+                                    <img
+                                      src={editAfterPhoto}
+                                      alt={`Después ${selectedOrder.folio}`}
+                                      className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                                    />
+                                    <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#109173]/90 p-1 text-white">
+                                      <ZoomIn className="h-3 w-3" />
+                                    </span>
+                                  </button>
+                                  <div className="flex gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => afterPhotoInputRef.current?.click()}
+                                      className="flex-1 min-h-[30px] inline-flex items-center justify-center gap-1 rounded-lg border border-[#109173]/30 bg-[#E6F7F3] px-2 text-[11px] font-bold text-[#109173] cursor-pointer"
+                                    >
+                                      <Camera className="h-3 w-3" />
+                                      <span>Cambiar</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditAfterPhoto(null)}
+                                      title="Quitar foto del después"
+                                      className="min-h-[30px] px-2 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 cursor-pointer"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
                                 <button
                                   type="button"
-                                  onClick={() => openPhotoLightbox(selectedOrder)}
-                                  className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#000831] px-2.5 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer"
+                                  onClick={() => afterPhotoInputRef.current?.click()}
+                                  className="h-36 rounded-xl border-2 border-dashed border-[#109173]/35 bg-[#E6F7F3]/40 hover:bg-[#E6F7F3] flex flex-col items-center justify-center text-[11px] font-bold text-[#109173] p-2 text-center transition-colors cursor-pointer"
                                 >
-                                  <ZoomIn className="h-3.5 w-3.5" />
-                                  <span>Ver grande</span>
+                                  <Camera className="h-5 w-5 mb-1" />
+                                  <span>Subir foto del Después</span>
                                 </button>
-                                <a
-                                  href={selectedOrder.photoDataUrl}
-                                  download={`${selectedOrder.folio}-${selectedOrder.bagCode}-tenis.jpg`}
-                                  className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#000831] hover:bg-slate-50 transition-colors"
-                                >
-                                  <Download className="h-3.5 w-3.5 text-[#109173]" />
-                                  <span>Descargar</span>
-                                </a>
-                              </div>
+                              )}
                             </div>
-                          ) : (
-                            <div className="flex-1 min-h-[200px] rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-xs text-slate-500 p-4 text-center">
-                              <ImageOff className="h-7 w-7 text-slate-300 mb-2" />
-                              <span className="font-bold text-[#000831]">
-                                Sin foto inicial adjunta
-                              </span>
-                              <span className="mt-1 text-[11px] text-slate-500">
-                                El cliente no subió imagen de sus tenis en este folio.
-                              </span>
-                            </div>
-                          )}
+                          </div>
                         </div>
 
                         {/* Full Order & Service Breakdown Card */}
@@ -1540,7 +1893,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">WhatsApp</span>
                               <a
-                                href={`https://wa.me/52${(selectedOrder.clientWhatsapp || '').replace(/\D/g, '')}`}
+                                href={buildDirectWhatsappUrl(selectedOrder, editStatus)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 font-mono font-bold text-[#109173] hover:underline"
@@ -1562,6 +1915,10 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                 ${selectedOrder.unitPrice} × {selectedOrder.pairs}
                                 {selectedOrder.shippingFee > 0
                                   ? ` + $${selectedOrder.shippingFee} envío`
+                                  : ''}
+                                {selectedOrder.discountAmount &&
+                                selectedOrder.discountAmount > 0
+                                  ? ` - $${selectedOrder.discountAmount} (${selectedOrder.discountCode || 'Cupón'})`
                                   : ''}{' '}
                                 ={' '}
                                 <strong className="text-[#109173]">
@@ -1616,6 +1973,30 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   </span>
                                 </div>
                               )}
+                            {selectedOrder.shoeNotes && (
+                              <div className="rounded-lg bg-[#EFEAFF]/70 border border-[#5B21B6]/20 p-2.5 text-xs text-[#000831] flex items-start gap-1.5">
+                                <FileText className="h-3.5 w-3.5 text-[#5B21B6] shrink-0 mt-0.5" />
+                                <span>
+                                  <strong className="text-[#5B21B6]">
+                                    Notas del cliente:
+                                  </strong>{' '}
+                                  {selectedOrder.shoeNotes}
+                                </span>
+                              </div>
+                            )}
+                            {selectedOrder.rating && (
+                              <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-[#000831] flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-1 font-bold text-amber-800">
+                                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                  <span>{selectedOrder.rating}/5</span>
+                                  {selectedOrder.ratingComment && (
+                                    <span className="font-normal text-slate-700 ml-1">
+                                      — "{selectedOrder.ratingComment}"
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                             <div className="flex flex-wrap justify-between gap-2 pt-1.5 border-t border-slate-200/80 text-[11px] text-slate-500">
                               <span>
                                 Creado:{' '}
@@ -1644,11 +2025,16 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             Estado del pedido
                           </label>
                           <select
-                            value={editStatus}
+                            value={
+                              editStatus === 'Cancelado'
+                                ? 'Depósito reportado'
+                                : editStatus
+                            }
+                            disabled={selectedOrder.status === 'Cancelado'}
                             onChange={(e) =>
                               setEditStatus(e.target.value as OrderStatus)
                             }
-                            className="w-full min-h-[44px] rounded-xl bg-[#E6F7F3] border border-[#109173]/30 px-3 text-sm font-bold text-[#000831] focus:border-[#109173] focus:outline-none"
+                            className="w-full min-h-[44px] rounded-xl bg-[#E6F7F3] border border-[#109173]/30 px-3 text-sm font-bold text-[#000831] focus:border-[#109173] focus:outline-none disabled:opacity-60"
                           >
                             {ORDER_STATUSES.map((st) => (
                               <option key={st} value={st}>
@@ -1685,14 +2071,107 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleUpdateOrder}
-                        className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-6 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        <span>Actualizar estado</span>
-                      </button>
+                      {/* Notas de actualización y notas internas de taller */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                            Nota del cambio (visible en historial del cliente)
+                          </label>
+                          <input
+                            type="text"
+                            value={editStatusNote}
+                            onChange={(e) => setEditStatusNote(e.target.value)}
+                            placeholder="Ej. Secado completado y sellado hidrofóbico aplicado"
+                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-[#000831] mb-1">
+                            Notas internas de taller (solo Admin)
+                          </label>
+                          <input
+                            type="text"
+                            value={editAdminNotes}
+                            onChange={(e) => setEditAdminNotes(e.target.value)}
+                            placeholder="Ej. Usar cepillo suave en gamuza, plantilla suelta..."
+                            className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-xs sm:text-sm text-[#000831] focus:border-[#109173] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Primary Action Bar + WhatsApp + Cancelar */}
+                      <div className="flex flex-wrap gap-2.5">
+                        <button
+                          type="button"
+                          onClick={handleUpdateOrder}
+                          className="flex-1 min-w-[180px] min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#109173] px-5 text-sm font-bold text-white hover:bg-[#0B755C] transition-colors cursor-pointer"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span>Guardar actualización</span>
+                        </button>
+
+                        <a
+                          href={buildDirectWhatsappUrl(selectedOrder, editStatus)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#000831] px-4 text-xs sm:text-sm font-bold text-white hover:bg-black transition-colors"
+                        >
+                          <MessageSquare className="h-4 w-4 text-[#109173]" />
+                          <span>Notificar por WhatsApp</span>
+                          <ExternalLink className="h-3.5 w-3.5 opacity-75" />
+                        </a>
+
+                        {selectedOrder.status !== 'Entregado' &&
+                          selectedOrder.status !== 'Cancelado' && (
+                            <button
+                              type="button"
+                              onClick={() => setCancelMode((v) => !v)}
+                              className="min-h-[48px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 text-xs sm:text-sm font-bold text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                            >
+                              <Ban className="h-4 w-4" />
+                              <span>Cancelar</span>
+                            </button>
+                          )}
+                      </div>
+
+                      {cancelMode &&
+                        selectedOrder.status !== 'Entregado' &&
+                        selectedOrder.status !== 'Cancelado' && (
+                          <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                            <div className="text-xs font-extrabold text-red-800">
+                              Confirmar cancelación de pedido {selectedOrder.folio}
+                              {selectedOrder.assignedLockerCode
+                                ? ` (se liberará el locker ${selectedOrder.assignedLockerCode})`
+                                : ''}
+                            </div>
+                            <input
+                              type="text"
+                              value={cancelReason}
+                              onChange={(e) => setCancelReason(e.target.value)}
+                              placeholder="Motivo de cancelación (opcional)"
+                              className="w-full min-h-[40px] rounded-lg border border-red-200 bg-white px-3 text-xs text-[#000831]"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setCancelMode(false)}
+                                className="min-h-[36px] rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 cursor-pointer"
+                              >
+                                Volver
+                              </button>
+                              <button
+                                type="button"
+                                disabled={cancellingOrder}
+                                onClick={handleCancelOrder}
+                                className="min-h-[36px] rounded-lg bg-red-600 px-4 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60 cursor-pointer"
+                              >
+                                {cancellingOrder
+                                  ? 'Cancelando...'
+                                  : 'Confirmar cancelación'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                       {/* Inline Order Timeline */}
                       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
@@ -1819,6 +2298,57 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       )}
                     </div>
 
+                    <div>
+                      <input
+                        ref={deliverAfterPhotoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleDeliverAfterPhotoFile}
+                        className="sr-only"
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[#109173]/40 bg-[#E6F7F3]/40 p-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {deliverAfterPhoto ? (
+                            <img
+                              src={deliverAfterPhoto}
+                              alt="Evidencia final"
+                              className="h-12 w-12 rounded-lg object-cover border border-[#109173]/30 shrink-0"
+                            />
+                          ) : (
+                            <Camera className="h-5 w-5 text-[#109173] shrink-0" />
+                          )}
+                          <div className="text-xs">
+                            <div className="font-bold text-[#000831]">
+                              Foto del calzado limpio (opcional)
+                            </div>
+                            <div className="text-slate-500">
+                              {deliverAfterPhoto
+                                ? 'Evidencia del después lista para adjuntar al cierre'
+                                : 'Adjunta el resultado final al marcar entregado'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => deliverAfterPhotoInputRef.current?.click()}
+                            className="min-h-[34px] rounded-lg bg-white border border-[#109173]/30 px-3 text-xs font-bold text-[#109173] hover:bg-[#E6F7F3] cursor-pointer"
+                          >
+                            {deliverAfterPhoto ? 'Cambiar' : 'Subir foto'}
+                          </button>
+                          {deliverAfterPhoto && (
+                            <button
+                              type="button"
+                              onClick={() => setDeliverAfterPhoto(undefined)}
+                              className="min-h-[34px] rounded-lg border border-red-200 bg-white px-2.5 text-red-600 cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1840,6 +2370,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 </section>
               </div>
             </div>
+          )}
+
+          {/* MODULE: REPORTES Y CORTE DE CAJA */}
+          {activeTab === 'reports' && (
+            <AdminReportsModule
+              orders={orders}
+              campuses={config?.campuses || []}
+              onOpenOrderDetail={(o) => setDetailOrderModal(o)}
+            />
           )}
 
           {/* MODULE 5: INCIDENCIAS */}
@@ -2121,7 +2660,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                       <Database className="h-4 w-4 text-[#109173]" />
                       <span>
                         {sbHealth.connected
-                          ? 'Supabase conectado y las 9 tablas están operativas'
+                          ? 'Supabase conectado y las 10 tablas están operativas'
                           : sbHealth.configured
                             ? 'Claves de Supabase detectadas — ejecuta el SQL actualizado en Supabase'
                             : 'Claves de Supabase no detectadas en el servidor'}
@@ -2161,48 +2700,115 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   </div>
 
                   <div className="space-y-2.5">
-                    {config.campuses.map((c) => (
-                      <div
-                        key={c.id}
-                        className="rounded-xl border border-slate-200 p-3.5 flex flex-wrap items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <div className="font-bold text-sm text-[#000831]">
-                            {c.name}{' '}
-                            <span className="font-mono text-xs font-normal text-slate-500">
-                              ({c.code})
-                            </span>
-                          </div>
-                          <div className="text-xs text-slate-500 truncate">
-                            {c.address}
-                          </div>
+                    {config.campuses.map((c) => {
+                      const isEditing = editingCampusId === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          className="rounded-xl border border-slate-200 p-3.5 space-y-2.5"
+                        >
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  value={editCampusName}
+                                  onChange={(e) => setEditCampusName(e.target.value)}
+                                  placeholder="Nombre de sede"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#000831]"
+                                />
+                                <select
+                                  value={editCampusType}
+                                  onChange={(e) =>
+                                    setEditCampusType(
+                                      e.target.value as 'university' | 'point',
+                                    )
+                                  }
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                                >
+                                  <option value="point">Punto físico KicksXR</option>
+                                  <option value="university">Sede universitaria</option>
+                                </select>
+                              </div>
+                              <input
+                                type="text"
+                                value={editCampusAddress}
+                                onChange={(e) => setEditCampusAddress(e.target.value)}
+                                placeholder="Dirección"
+                                className="w-full min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCampusId(null)}
+                                  className="min-h-[32px] rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-600 cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveCampusEdit(c.id)}
+                                  className="min-h-[32px] rounded-lg bg-[#109173] px-3 text-xs font-bold text-white cursor-pointer"
+                                >
+                                  Guardar sede
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-bold text-sm text-[#000831]">
+                                  {c.name}{' '}
+                                  <span className="font-mono text-xs font-normal text-slate-500">
+                                    ({c.code})
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-500 truncate">
+                                  {c.address}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCampusId(c.id);
+                                    setEditCampusName(c.name);
+                                    setEditCampusAddress(c.address);
+                                    setEditCampusType(c.type);
+                                  }}
+                                  title="Editar sede"
+                                  className="min-h-[34px] inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setQrCampusModal(c)}
+                                  className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg bg-[#EFEAFF] px-2.5 text-xs font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <QrCode className="h-3.5 w-3.5" />
+                                  <span>QR</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await api.updateCampus(c.id, {active: !c.active});
+                                    fetchOverview();
+                                  }}
+                                  className={`min-h-[34px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
+                                    c.active
+                                      ? 'bg-[#E6F7F3] text-[#109173]'
+                                      : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {c.active ? 'Activa' : 'Inactiva'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setQrCampusModal(c)}
-                            className="min-h-[36px] inline-flex items-center gap-1.5 rounded-lg bg-[#EFEAFF] px-3 text-xs font-bold text-[#5B21B6] hover:bg-[#5B21B6] hover:text-white transition-colors cursor-pointer"
-                          >
-                            <QrCode className="h-3.5 w-3.5" />
-                            <span>QR Sede</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await api.updateCampus(c.id, {active: !c.active});
-                              fetchOverview();
-                            }}
-                            className={`min-h-[36px] rounded-lg px-3 text-xs font-bold cursor-pointer ${
-                              c.active
-                                ? 'bg-[#E6F7F3] text-[#109173]'
-                                : 'bg-slate-100 text-slate-500'
-                            }`}
-                          >
-                            {c.active ? 'Activa' : 'Inactiva'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <form
@@ -2277,40 +2883,116 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                   </div>
 
                   <div className="space-y-2.5">
-                    {config.services.map((svc) => (
-                      <div
-                        key={svc.id}
-                        className="rounded-xl border border-slate-200 p-3.5 flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <div className="font-bold text-sm text-[#000831]">
-                            {svc.name}
-                          </div>
-                          <div className="text-xs text-slate-500 truncate">
-                            {svc.description}
-                          </div>
+                    {config.services.map((svc) => {
+                      const isEditing = editingServiceId === svc.id;
+                      return (
+                        <div
+                          key={svc.id}
+                          className="rounded-xl border border-slate-200 p-3.5"
+                        >
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <input
+                                  type="text"
+                                  value={editServiceName}
+                                  onChange={(e) => setEditServiceName(e.target.value)}
+                                  placeholder="Nombre del servicio"
+                                  className="sm:col-span-2 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-[#000831]"
+                                />
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={editServicePrice}
+                                  onChange={(e) => setEditServicePrice(e.target.value)}
+                                  placeholder="Precio $"
+                                  className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 font-mono text-xs font-bold text-[#000831]"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={editServiceDesc}
+                                  onChange={(e) => setEditServiceDesc(e.target.value)}
+                                  placeholder="Descripción"
+                                  className="flex-1 min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#000831]"
+                                />
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={editServiceHours}
+                                  onChange={(e) => setEditServiceHours(e.target.value)}
+                                  title="Horas estimadas"
+                                  className="w-20 min-h-[38px] rounded-lg border border-slate-300 px-2 font-mono text-xs text-[#000831]"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingServiceId(null)}
+                                  className="min-h-[32px] rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-600 cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveServiceEdit(svc.id)}
+                                  className="min-h-[32px] rounded-lg bg-[#109173] px-3 text-xs font-bold text-white cursor-pointer"
+                                >
+                                  Guardar servicio
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-bold text-sm text-[#000831]">
+                                  {svc.name}
+                                </div>
+                                <div className="text-xs text-slate-500 truncate">
+                                  {svc.description} · {svc.turnaroundHours}h
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="font-mono text-sm font-extrabold text-[#109173] tabular-nums mr-1">
+                                  ${svc.price}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingServiceId(svc.id);
+                                    setEditServiceName(svc.name);
+                                    setEditServiceDesc(svc.description);
+                                    setEditServicePrice(String(svc.price));
+                                    setEditServiceHours(String(svc.turnaroundHours));
+                                  }}
+                                  title="Editar servicio y precio"
+                                  className="min-h-[34px] inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-[#000831] hover:border-[#109173] hover:text-[#109173] cursor-pointer"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await api.updateService(svc.id, {
+                                      active: !svc.active,
+                                    });
+                                    fetchOverview();
+                                  }}
+                                  className={`min-h-[34px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
+                                    svc.active
+                                      ? 'bg-[#E6F7F3] text-[#109173]'
+                                      : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {svc.active ? 'Activo' : 'Pausado'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono text-sm font-extrabold text-[#109173] tabular-nums">
-                            ${svc.price}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await api.updateService(svc.id, {active: !svc.active});
-                              fetchOverview();
-                            }}
-                            className={`min-h-[34px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
-                              svc.active
-                                ? 'bg-[#E6F7F3] text-[#109173]'
-                                : 'bg-slate-100 text-slate-500'
-                            }`}
-                          >
-                            {svc.active ? 'Activo' : 'Pausado'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <form
@@ -2362,6 +3044,115 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         Agregar
                       </button>
                     </div>
+                  </form>
+                </div>
+
+                {/* Cupones y promociones */}
+                <div className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-display text-base font-bold text-[#000000]">
+                      <Tag className="h-5 w-5 text-[#109173]" />
+                      <span>Cupones y promociones</span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Aplicables por clientes en el paso de pago y en mostrador
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(config.coupons || []).map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded-xl border border-slate-200 p-3.5 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-extrabold text-[#000831]">
+                              {c.code}
+                            </span>
+                            <span className="rounded-md bg-[#E6F7F3] px-2 py-0.5 font-mono text-xs font-bold text-[#109173]">
+                              {c.discountType === 'percent'
+                                ? `${c.value}% OFF`
+                                : `-$${c.value}`}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500 truncate">
+                            {c.description || 'Promoción Kicks XR'} · {c.usageCount}{' '}
+                            {c.usageCount === 1 ? 'uso' : 'usos'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await api.updateCoupon(c.id, {active: !c.active});
+                              fetchOverview();
+                            }}
+                            className={`min-h-[32px] rounded-lg px-2.5 text-xs font-bold cursor-pointer ${
+                              c.active
+                                ? 'bg-[#E6F7F3] text-[#109173]'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {c.active ? 'Activo' : 'Pausado'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCoupon(c.id, c.code)}
+                            title="Eliminar cupón"
+                            className="min-h-[32px] rounded-lg border border-red-200 bg-white px-2 text-red-600 hover:bg-red-50 cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form
+                    onSubmit={handleAddCoupon}
+                    className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-2.5"
+                  >
+                    <input
+                      type="text"
+                      required
+                      value={newCouponCode}
+                      onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Código (ej. VERANO15)"
+                      className="sm:col-span-3 min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm uppercase"
+                    />
+                    <select
+                      value={newCouponType}
+                      onChange={(e) =>
+                        setNewCouponType(e.target.value as 'percent' | 'fixed')
+                      }
+                      className="sm:col-span-2 min-h-[42px] rounded-xl border border-slate-300 px-2.5 text-sm"
+                    >
+                      <option value="percent">% Porcentaje</option>
+                      <option value="fixed">$ Monto fijo</option>
+                    </select>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={newCouponValue}
+                      onChange={(e) => setNewCouponValue(e.target.value)}
+                      placeholder="Valor"
+                      className="sm:col-span-2 min-h-[42px] rounded-xl border border-slate-300 px-3 font-mono text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={newCouponDesc}
+                      onChange={(e) => setNewCouponDesc(e.target.value)}
+                      placeholder="Descripción promocional"
+                      className="sm:col-span-3 min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      className="sm:col-span-2 min-h-[42px] rounded-xl bg-[#109173] px-4 text-xs font-bold text-white hover:bg-[#0B755C] cursor-pointer"
+                    >
+                      Crear cupón
+                    </button>
                   </form>
                 </div>
 
@@ -2535,6 +3326,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
           setLightboxZoomed(false);
           setLightboxPhoto(payload);
         }}
+        onOpenReceipt={(order) => setReceiptOrder(order)}
         onManageOrder={
           activeTab !== 'orders'
             ? (order) => {
@@ -2543,6 +3335,31 @@ export const AdminApp: React.FC<AdminAppProps> = ({
               }
             : undefined
         }
+      />
+
+      {/* Printable / Downloadable Order Receipt Modal */}
+      <OrderReceiptModal
+        order={receiptOrder}
+        onClose={() => setReceiptOrder(null)}
+      />
+
+      {/* Walk-In Counter Order Creation Modal */}
+      <AdminWalkInOrderModal
+        open={walkInModalOpen}
+        config={config}
+        onClose={() => setWalkInModalOpen(false)}
+        onPushAlert={onPushAlert}
+        onCreated={(order, whatsappUrl) => {
+          setSelectedOrderId(order.id);
+          setActiveTab('orders');
+          onPushAlert({
+            title: `Pedido en mostrador ${order.folio}`,
+            message: `Bolsa ${order.bagCode} registrada para ${order.clientName}.`,
+            tone: 'success',
+            whatsappUrl,
+          });
+          fetchOverview();
+        }}
       />
 
       {/* Enhanced Full-Screen Sneaker Photo Lightbox */}

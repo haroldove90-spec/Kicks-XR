@@ -93,8 +93,16 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_orders (
   service_name TEXT NOT NULL,
   unit_price INTEGER NOT NULL,
   shipping_fee INTEGER NOT NULL DEFAULT 0,
+  discount_code TEXT,
+  discount_amount INTEGER NOT NULL DEFAULT 0,
   total_amount INTEGER NOT NULL,
   photo_data_url TEXT,
+  after_photo_data_url TEXT,
+  shoe_notes TEXT,
+  admin_notes TEXT,
+  rating INTEGER,
+  rating_comment TEXT,
+  rated_at TIMESTAMPTZ,
   delivery_method TEXT NOT NULL,
   delivery_address TEXT,
   dropoff_method TEXT,
@@ -110,6 +118,16 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Compatibilidad si kicksxr_orders ya existía previamente
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS after_photo_data_url TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS shoe_notes TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS discount_code TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS discount_amount INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rating INTEGER;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rating_comment TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rated_at TIMESTAMPTZ;
 
 -- 7. Incidencias operativas
 CREATE TABLE IF NOT EXISTS public.kicksxr_incidents (
@@ -153,6 +171,18 @@ INSERT INTO public.kicksxr_settings (id, shipping_fee, next_order_seq, next_bag_
 VALUES (1, 75, 1044, 30)
 ON CONFLICT (id) DO NOTHING;
 
+-- 10. Cupones y promociones
+CREATE TABLE IF NOT EXISTS public.kicksxr_coupons (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  discount_type TEXT NOT NULL DEFAULT 'percent',
+  value INTEGER NOT NULL DEFAULT 10,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  usage_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ============================================================================
 -- Permisos para PostgREST (permite guardar y consultar registros desde la app
 -- usando VITE_SUPABASE_ANON_KEY / publishable key sin bloqueos de permisos)
@@ -167,7 +197,8 @@ GRANT ALL PRIVILEGES ON TABLE
   public.kicksxr_orders,
   public.kicksxr_incidents,
   public.kicksxr_notifications,
-  public.kicksxr_settings
+  public.kicksxr_settings,
+  public.kicksxr_coupons
 TO anon, authenticated, service_role;
 
 ALTER TABLE public.kicksxr_admins DISABLE ROW LEVEL SECURITY;
@@ -179,6 +210,7 @@ ALTER TABLE public.kicksxr_orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kicksxr_incidents DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kicksxr_notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kicksxr_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kicksxr_coupons DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- Credenciales iniciales de Administrador (hash scrypt seguro)
@@ -213,7 +245,7 @@ SET
   active = TRUE;
 
 -- ============================================================================
--- Datos iniciales de Sedes, Servicios y Lockers
+-- Datos iniciales de Sedes, Servicios, Lockers y Cupones
 -- ============================================================================
 INSERT INTO public.kicksxr_campuses (id, name, code, address, type, active)
 VALUES
@@ -242,12 +274,19 @@ VALUES
   ('lk-8', 'L-08', 'punto-roma', 'disponible')
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO public.kicksxr_coupons (id, code, description, discount_type, value, active, usage_count)
+VALUES
+  ('cpn-bienvenido', 'BIENVENIDO10', '10% de descuento en tu servicio de limpieza', 'percent', 10, TRUE, 0),
+  ('cpn-kicks50', 'KICKS50', '$50 MXN de descuento directo en tu pedido', 'fixed', 50, TRUE, 0)
+ON CONFLICT (id) DO NOTHING;
+
 -- Índices recomendados para consultas rápidas
 CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_client ON public.kicksxr_orders(client_id);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_orders_status ON public.kicksxr_orders(status);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_notifications_order ON public.kicksxr_notifications(order_id);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_incidents_status ON public.kicksxr_incidents(status);
 CREATE INDEX IF NOT EXISTS idx_kicksxr_clients_whatsapp ON public.kicksxr_clients(whatsapp_normalized);
+CREATE INDEX IF NOT EXISTS idx_kicksxr_coupons_code ON public.kicksxr_coupons(UPPER(code));
 
 -- Refrescar caché de esquema de PostgREST
 NOTIFY pgrst, 'reload schema';

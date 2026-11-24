@@ -1,5 +1,6 @@
 import type {
   Campus,
+  Coupon,
   Incident,
   Locker,
   NotificationLog,
@@ -148,6 +149,7 @@ export const supabaseStore = {
       'kicksxr_incidents',
       'kicksxr_notifications',
       'kicksxr_settings',
+      'kicksxr_coupons',
     ];
     const tables: Record<string, boolean> = {};
     if (!isSupabaseConfigured()) {
@@ -366,8 +368,19 @@ export const supabaseStore = {
       serviceName: String(row.service_name),
       unitPrice: Number(row.unit_price || 0),
       shippingFee: Number(row.shipping_fee || 0),
+      discountCode: row.discount_code ? String(row.discount_code) : undefined,
+      discountAmount: row.discount_amount ? Number(row.discount_amount) : 0,
       totalAmount: Number(row.total_amount || 0),
       photoDataUrl: row.photo_data_url ? String(row.photo_data_url) : undefined,
+      afterPhotoDataUrl: row.after_photo_data_url
+        ? String(row.after_photo_data_url)
+        : undefined,
+      shoeNotes: row.shoe_notes ? String(row.shoe_notes) : undefined,
+      adminNotes: row.admin_notes ? String(row.admin_notes) : undefined,
+      rating:
+        row.rating !== null && row.rating !== undefined ? Number(row.rating) : undefined,
+      ratingComment: row.rating_comment ? String(row.rating_comment) : undefined,
+      ratedAt: row.rated_at ? String(row.rated_at) : undefined,
       deliveryMethod: row.delivery_method as Order['deliveryMethod'],
       deliveryAddress: row.delivery_address ? String(row.delivery_address) : undefined,
       dropoffMethod: (row.dropoff_method as Order['dropoffMethod']) || undefined,
@@ -388,43 +401,66 @@ export const supabaseStore = {
   },
 
   async upsertOrder(order: Order): Promise<boolean> {
+    const baseBody = {
+      id: order.id,
+      folio: order.folio,
+      bag_code: order.bagCode,
+      order_qr_payload: order.orderQrPayload,
+      client_id: order.clientId,
+      client_name: order.clientName,
+      client_whatsapp: order.clientWhatsapp,
+      user_type: order.userType,
+      campus_id: order.campusId,
+      campus_name: order.campusName,
+      pairs: order.pairs,
+      service_id: order.serviceId,
+      service_name: order.serviceName,
+      unit_price: order.unitPrice,
+      shipping_fee: order.shippingFee,
+      total_amount: order.totalAmount,
+      photo_data_url: order.photoDataUrl || null,
+      delivery_method: order.deliveryMethod,
+      delivery_address: order.deliveryAddress || null,
+      dropoff_method: order.dropoffMethod || null,
+      assigned_locker_code: order.assignedLockerCode || null,
+      payment_method: order.paymentMethod,
+      payment_status: order.paymentStatus,
+      card_last4: order.cardLast4 || null,
+      status: order.status,
+      collection_status: order.collectionStatus,
+      bag_verified: order.bagVerified,
+      collection_date: order.collectionDate,
+      history: order.history,
+      created_at: order.createdAt,
+      updated_at: order.updatedAt,
+    };
+
+    const fullBody = {
+      ...baseBody,
+      after_photo_data_url: order.afterPhotoDataUrl || null,
+      shoe_notes: order.shoeNotes || null,
+      admin_notes: order.adminNotes || null,
+      discount_code: order.discountCode || null,
+      discount_amount: order.discountAmount || 0,
+      rating: order.rating ?? null,
+      rating_comment: order.ratingComment || null,
+      rated_at: order.ratedAt || null,
+    };
+
     const res = await sbRequest('kicksxr_orders?on_conflict=id', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates,return=minimal',
-      body: {
-        id: order.id,
-        folio: order.folio,
-        bag_code: order.bagCode,
-        order_qr_payload: order.orderQrPayload,
-        client_id: order.clientId,
-        client_name: order.clientName,
-        client_whatsapp: order.clientWhatsapp,
-        user_type: order.userType,
-        campus_id: order.campusId,
-        campus_name: order.campusName,
-        pairs: order.pairs,
-        service_id: order.serviceId,
-        service_name: order.serviceName,
-        unit_price: order.unitPrice,
-        shipping_fee: order.shippingFee,
-        total_amount: order.totalAmount,
-        photo_data_url: order.photoDataUrl || null,
-        delivery_method: order.deliveryMethod,
-        delivery_address: order.deliveryAddress || null,
-        dropoff_method: order.dropoffMethod || null,
-        assigned_locker_code: order.assignedLockerCode || null,
-        payment_method: order.paymentMethod,
-        payment_status: order.paymentStatus,
-        card_last4: order.cardLast4 || null,
-        status: order.status,
-        collection_status: order.collectionStatus,
-        bag_verified: order.bagVerified,
-        collection_date: order.collectionDate,
-        history: order.history,
-        created_at: order.createdAt,
-        updated_at: order.updatedAt,
-      },
+      body: fullBody,
     });
+    if (!res.ok && res.status === 400) {
+      // Backward-compatible fallback if new columns have not yet been added in Supabase
+      const retry = await sbRequest('kicksxr_orders?on_conflict=id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+        body: baseBody,
+      });
+      return retry.ok;
+    }
     return res.ok;
   },
 
@@ -525,6 +561,51 @@ export const supabaseStore = {
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: settings,
     });
+    return res.ok;
+  },
+
+  async listCoupons(): Promise<Coupon[] | null> {
+    const res = await sbRequest<Array<Record<string, unknown>>>(
+      'kicksxr_coupons?select=*&order=created_at.desc',
+    );
+    if (!res.ok || !res.data) return null;
+    return res.data.map((row) => ({
+      id: String(row.id),
+      code: String(row.code).toUpperCase(),
+      description: String(row.description || ''),
+      discountType: row.discount_type === 'fixed' ? 'fixed' : 'percent',
+      value: Number(row.value || 0),
+      active: Boolean(row.active),
+      usageCount: Number(row.usage_count || 0),
+      createdAt: String(row.created_at),
+    }));
+  },
+
+  async upsertCoupon(coupon: Coupon): Promise<boolean> {
+    const res = await sbRequest('kicksxr_coupons?on_conflict=id', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: {
+        id: coupon.id,
+        code: coupon.code.toUpperCase(),
+        description: coupon.description,
+        discount_type: coupon.discountType,
+        value: coupon.value,
+        active: coupon.active,
+        usage_count: coupon.usageCount,
+        created_at: coupon.createdAt,
+      },
+    });
+    return res.ok;
+  },
+
+  async deleteCoupon(id: string): Promise<boolean> {
+    const res = await sbRequest(
+      `kicksxr_coupons?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+    );
     return res.ok;
   },
 };

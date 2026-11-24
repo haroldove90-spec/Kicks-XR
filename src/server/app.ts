@@ -13,6 +13,7 @@ import {isSupabaseConfigured, supabaseStore} from './supabase.ts';
 import type {
   AuthUser,
   Campus,
+  Coupon,
   DeliveryMethod,
   DropoffMethod,
   Incident,
@@ -123,6 +124,7 @@ interface DatabaseState {
   campuses: Campus[];
   services: ServiceItem[];
   lockers: Locker[];
+  coupons: Coupon[];
   shippingFee: number;
   nextOrderSeq: number;
   nextBagSeq: number;
@@ -130,6 +132,29 @@ interface DatabaseState {
   incidents: Incident[];
   notifications: NotificationLog[];
 }
+
+const DEFAULT_COUPONS: Coupon[] = [
+  {
+    id: 'cpn-bienvenido',
+    code: 'BIENVENIDO10',
+    description: '10% de descuento en tu servicio de limpieza',
+    discountType: 'percent',
+    value: 10,
+    active: true,
+    usageCount: 0,
+    createdAt: '2025-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'cpn-kicks50',
+    code: 'KICKS50',
+    description: '$50 MXN de descuento directo en tu pedido',
+    discountType: 'fixed',
+    value: 50,
+    active: true,
+    usageCount: 0,
+    createdAt: '2025-01-01T00:00:00.000Z',
+  },
+];
 
 function normalizePhone(raw: string): string {
   return String(raw || '').replace(/\D/g, '').slice(0, 15);
@@ -478,6 +503,7 @@ function createInitialDb(): DatabaseState {
     campuses,
     services,
     lockers,
+    coupons: DEFAULT_COUPONS.map((c) => ({...c})),
     shippingFee: 75,
     nextOrderSeq: 1044,
     nextBagSeq: 30,
@@ -537,6 +563,9 @@ function loadDb(): DatabaseState {
       if (parsed && Array.isArray(parsed.campuses) && Array.isArray(parsed.orders)) {
         if (!Array.isArray(parsed.admins)) {
           parsed.admins = [];
+        }
+        if (!Array.isArray(parsed.coupons)) {
+          parsed.coupons = DEFAULT_COUPONS.map((c) => ({...c}));
         }
         if (parsed.admin && parsed.admins.length === 0) {
           parsed.admins.push({
@@ -637,6 +666,7 @@ async function hydrateFromSupabase(): Promise<void> {
       sbIncidents,
       sbNotifications,
       sbSettings,
+      sbCoupons,
     ] = await Promise.all([
       supabaseStore.listAdmins(),
       supabaseStore.listClients(),
@@ -647,6 +677,7 @@ async function hydrateFromSupabase(): Promise<void> {
       supabaseStore.listIncidents(),
       supabaseStore.listNotifications(),
       supabaseStore.getSettings(),
+      supabaseStore.listCoupons(),
     ]);
 
     let changed = false;
@@ -750,6 +781,10 @@ async function hydrateFromSupabase(): Promise<void> {
       db.shippingFee = sbSettings.shipping_fee;
       db.nextOrderSeq = Math.max(db.nextOrderSeq, sbSettings.next_order_seq);
       db.nextBagSeq = Math.max(db.nextBagSeq, sbSettings.next_bag_seq);
+      changed = true;
+    }
+    if (sbCoupons && sbCoupons.length > 0) {
+      db.coupons = sbCoupons;
       changed = true;
     }
 
@@ -933,7 +968,58 @@ const VALID_STATUSES: OrderStatus[] = [
   'En limpieza',
   'Listo para entrega',
   'Entregado',
+  'Cancelado',
 ];
+
+function buildOrderWhatsappUrl(order: Order, customMessage?: string): string {
+  const digits = normalizePhone(order.clientWhatsapp);
+  const waPhone = digits.length === 10 ? `52${digits}` : digits;
+  const text =
+    customMessage ||
+    `¡Hola ${order.clientName}! Kicks XR te informa sobre tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}): su estatus actual es "${order.status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
+  return waPhone
+    ? `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+function calculateCouponDiscount(
+  couponCode: string | undefined,
+  subtotal: number,
+): {coupon: Coupon | null; discountAmount: number; error?: string} {
+  const clean = sanitizeText(couponCode, 30).toUpperCase();
+  if (!clean) return {coupon: null, discountAmount: 0};
+  const coupon = db.coupons.find((c) => c.code.toUpperCase() === clean);
+  if (!coupon) {
+    return {coupon: null, discountAmount: 0, error: 'El cupón ingresado no existe.'};
+  }
+  if (!coupon.active) {
+    return {coupon: null, discountAmount: 0, error: 'Este cupón ya no está activo.'};
+  }
+  const rawDiscount =
+    coupon.discountType === 'percent'
+      ? Math.round((subtotal * coupon.value) / 100)
+      : Math.round(coupon.value);
+  const discountAmount = Math.max(0, Math.min(subtotal, rawDiscount));
+  return {coupon, discountAmount};
+}
+
+function releaseOrderLocker(order: Order, writes: Promise<unknown>[]) {
+  const locker = db.lockers.find(
+    (l) =>
+      l.currentBagCode === order.bagCode ||
+      (order.assignedLockerCode &&
+        l.code === order.assignedLockerCode &&
+        l.campusId === order.campusId &&
+        l.status === 'ocupado'),
+  );
+  if (locker) {
+    locker.status = 'disponible';
+    locker.currentBagCode = undefined;
+    if (isSupabaseConfigured()) {
+      writes.push(supabaseStore.upsertLocker(locker));
+    }
+  }
+}
 
 const VALID_INCIDENT_TYPES: IncidentType[] = [
   'Bolsa faltante',
@@ -1013,9 +1099,43 @@ export function createApiApp(): Express {
       assignedLockerCode: order.assignedLockerCode,
       paymentStatus: order.paymentStatus,
       status: order.status,
+      photoDataUrl: order.photoDataUrl,
+      afterPhotoDataUrl: order.afterPhotoDataUrl,
+      shoeNotes: order.shoeNotes,
+      rating: order.rating,
+      ratingComment: order.ratingComment,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       history: order.history,
+    });
+  });
+
+  // Validate discount coupon
+  app.post('/api/coupons/validate', requireAuth, async (req, res) => {
+    await ensureFreshState();
+    const code = sanitizeText(req.body?.code, 30).toUpperCase();
+    const subtotal = Number(req.body?.subtotal || 0);
+    if (!code) {
+      res.status(400).json({error: 'Ingresa un código de cupón.'});
+      return;
+    }
+    const {coupon, discountAmount, error} = calculateCouponDiscount(
+      code,
+      Math.max(0, Number.isFinite(subtotal) ? subtotal : 0),
+    );
+    if (!coupon || error) {
+      res.status(404).json({error: error || 'Cupón no válido.'});
+      return;
+    }
+    res.json({
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        description: coupon.description,
+        discountType: coupon.discountType,
+        value: coupon.value,
+      },
+      discountAmount,
     });
   });
 
@@ -1256,6 +1376,75 @@ export function createApiApp(): Express {
     res.json({user: buildAuthUserFromClient(client)});
   });
 
+  // Client self-service password change
+  app.post(
+    '/api/client/change-password',
+    requireAuth,
+    async (req: AuthedRequest, res) => {
+      await ensureFreshState();
+      const currentPassword = String(req.body?.currentPassword || '');
+      const newPassword = String(req.body?.newPassword || '');
+
+      if (newPassword.length < 6 || newPassword.length > 80) {
+        res.status(400).json({
+          error: 'La nueva contraseña debe tener entre 6 y 80 caracteres.',
+        });
+        return;
+      }
+
+      if (req.auth?.role === 'admin') {
+        const admin = db.admins.find((a) => a.id === req.auth?.sub);
+        if (!admin || !verifyPassword(currentPassword, admin.passwordHash)) {
+          res.status(401).json({error: 'La contraseña actual es incorrecta.'});
+          return;
+        }
+        admin.passwordHash = hashPassword(newPassword);
+        saveDb(db);
+        if (isSupabaseConfigured()) {
+          await supabaseStore.upsertAdmin({
+            id: admin.id,
+            name: admin.name,
+            username: admin.username,
+            email: admin.email || null,
+            whatsapp: admin.whatsapp || null,
+            role: 'admin',
+            password_hash: admin.passwordHash,
+            active: admin.active !== false,
+            created_at: admin.createdAt,
+          });
+        }
+        res.json({ok: true});
+        return;
+      }
+
+      const client = db.clients.find((c) => c.id === req.auth?.sub);
+      if (!client || !client.passwordHash) {
+        res.status(404).json({error: 'Cuenta de cliente no encontrada.'});
+        return;
+      }
+      if (!verifyPassword(currentPassword, client.passwordHash)) {
+        res.status(401).json({error: 'La contraseña actual es incorrecta.'});
+        return;
+      }
+      client.passwordHash = hashPassword(newPassword);
+      saveDb(db);
+      if (isSupabaseConfigured()) {
+        await supabaseStore.upsertClient({
+          id: client.id,
+          name: client.name,
+          username: client.username || null,
+          whatsapp: client.whatsapp,
+          whatsapp_normalized: client.whatsappNormalized,
+          password_hash: client.passwordHash,
+          address: client.address,
+          user_type: client.userType,
+          created_at: client.createdAt,
+        });
+      }
+      res.json({ok: true});
+    },
+  );
+
   // --- ADMIN AUTH (Only pre-registered admins; public admin self-registration is disabled) ---
   app.get('/api/auth/admin/status', async (_req, res) => {
     res.json({
@@ -1463,6 +1652,8 @@ export function createApiApp(): Express {
     const cardLast4 = sanitizeText(req.body?.cardLast4, 4);
     const photoDataUrl =
       typeof req.body?.photoDataUrl === 'string' ? req.body.photoDataUrl : undefined;
+    const shoeNotes = sanitizeText(req.body?.shoeNotes, 300);
+    const rawDiscountCode = sanitizeText(req.body?.discountCode, 30).toUpperCase();
 
     if (clientName.length < 2) {
       res.status(400).json({error: 'El nombre de contacto es obligatorio.'});
@@ -1512,13 +1703,30 @@ export function createApiApp(): Express {
       }
     }
 
+    const subtotal = service.price * pairs;
+    const {coupon, discountAmount, error: couponError} = calculateCouponDiscount(
+      rawDiscountCode,
+      subtotal,
+    );
+    if (rawDiscountCode && couponError) {
+      res.status(400).json({error: couponError});
+      return;
+    }
+
     const folio = getNextFolio();
     const bagCode = getNextBagCode();
     const shippingFee = deliveryMethod === 'delivery' ? db.shippingFee : 0;
-    const totalAmount = service.price * pairs + shippingFee;
+    const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
     const paymentStatus: PaymentStatus =
       paymentMethod === 'card' ? 'Pagado' : 'Pago pendiente';
     const now = new Date().toISOString();
+
+    if (coupon) {
+      coupon.usageCount += 1;
+      if (isSupabaseConfigured()) {
+        await supabaseStore.upsertCoupon(coupon);
+      }
+    }
 
     const client = db.clients.find((c) => c.id === req.auth?.sub);
     if (client) {
@@ -1550,8 +1758,11 @@ export function createApiApp(): Express {
       serviceName: service.name,
       unitPrice: service.price,
       shippingFee,
+      discountCode: coupon?.code,
+      discountAmount: discountAmount || 0,
       totalAmount,
       photoDataUrl,
+      shoeNotes: shoeNotes || undefined,
       deliveryMethod,
       deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
       assignedLockerCode: freeLocker?.code,
@@ -1568,7 +1779,7 @@ export function createApiApp(): Express {
         {
           status: 'Pendiente de depósito',
           timestamp: now,
-          note: `Pedido confirmado (${service.name}, ${pairs} ${pairs === 1 ? 'par' : 'pares'}). Bolsa asignada: ${bagCode}`,
+          note: `Pedido confirmado (${service.name}, ${pairs} ${pairs === 1 ? 'par' : 'pares'}). Bolsa asignada: ${bagCode}${coupon ? `. Cupón ${coupon.code} (-$${discountAmount} MXN)` : ''}`,
         },
       ],
     };
@@ -1707,26 +1918,104 @@ export function createApiApp(): Express {
   });
 
   // --- ADMIN ENDPOINTS ---
+  // Client post-delivery rating (1-5 stars)
+  app.post('/api/orders/:id/rate', requireAuth, async (req: AuthedRequest, res) => {
+    await ensureFreshState();
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) {
+      res.status(404).json({error: 'Pedido no encontrado.'});
+      return;
+    }
+    if (req.auth?.role !== 'admin' && order.clientId !== req.auth?.sub) {
+      res.status(403).json({error: 'No tienes permiso para calificar este pedido.'});
+      return;
+    }
+    if (order.status !== 'Entregado') {
+      res.status(400).json({
+        error: 'Solo puedes calificar pedidos que ya hayan sido entregados.',
+      });
+      return;
+    }
+    const rating = Number(req.body?.rating);
+    const comment = sanitizeText(req.body?.comment, 300);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      res.status(400).json({error: 'Selecciona una calificación entre 1 y 5 estrellas.'});
+      return;
+    }
+    const now = new Date().toISOString();
+    order.rating = rating;
+    order.ratingComment = comment || undefined;
+    order.ratedAt = now;
+    order.updatedAt = now;
+
+    saveDb(db);
+    const writes: Promise<unknown>[] = [];
+    if (isSupabaseConfigured()) {
+      writes.push(supabaseStore.upsertOrder(order));
+    }
+    writes.push(
+      createNotification({
+        orderId: order.id,
+        folio: order.folio,
+        recipientWhatsapp: order.clientWhatsapp,
+        recipientName: order.clientName,
+        title: `Nueva calificación (${rating}★) · ${order.folio}`,
+        message: `${order.clientName} calificó su servicio con ${rating}/5 estrellas.${comment ? ` Comentario: "${comment}"` : ''}`,
+      }),
+    );
+    await Promise.all(writes);
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      title: `Calificación recibida · ${order.folio}`,
+      message: `${order.clientName} dejó ${rating}★ en su servicio.`,
+    });
+    res.json({order});
+  });
+
   app.get('/api/admin/overview', requireAdmin, async (_req, res) => {
     await ensureFreshState();
     const orders = db.orders;
+    const activeOrders = orders.filter((o) => o.status !== 'Cancelado');
+    const ratedOrders = orders.filter(
+      (o) => typeof o.rating === 'number' && o.rating >= 1 && o.rating <= 5,
+    );
+    const avgRating =
+      ratedOrders.length > 0
+        ? Math.round(
+            (ratedOrders.reduce((acc, o) => acc + (o.rating || 0), 0) /
+              ratedOrders.length) *
+              10,
+          ) / 10
+        : 0;
     const metrics = {
-      totalOrders: orders.length,
-      pendingCollections: orders.filter(
+      totalOrders: activeOrders.length,
+      pendingCollections: activeOrders.filter(
         (o) =>
           o.collectionStatus === 'Pendiente' &&
           (o.status === 'Depósito reportado' || o.status === 'Pendiente de depósito'),
       ).length,
-      inCleaning: orders.filter((o) => o.status === 'En limpieza').length,
-      readyForDelivery: orders.filter((o) => o.status === 'Listo para entrega').length,
-      delivered: orders.filter((o) => o.status === 'Entregado').length,
+      inCleaning: activeOrders.filter((o) => o.status === 'En limpieza').length,
+      readyForDelivery: activeOrders.filter((o) => o.status === 'Listo para entrega')
+        .length,
+      delivered: activeOrders.filter((o) => o.status === 'Entregado').length,
+      cancelled: orders.filter((o) => o.status === 'Cancelado').length,
       openIncidents: db.incidents.filter((i) => i.status !== 'Resuelta').length,
-      revenuePaid: orders
+      revenuePaid: activeOrders
         .filter((o) => o.paymentStatus === 'Pagado')
         .reduce((acc, o) => acc + o.totalAmount, 0),
-      revenuePending: orders
+      revenuePending: activeOrders
         .filter((o) => o.paymentStatus === 'Pago pendiente')
         .reduce((acc, o) => acc + o.totalAmount, 0),
+      cashPaid: activeOrders
+        .filter((o) => o.paymentStatus === 'Pagado' && o.paymentMethod === 'cash')
+        .reduce((acc, o) => acc + o.totalAmount, 0),
+      cardPaid: activeOrders
+        .filter((o) => o.paymentStatus === 'Pagado' && o.paymentMethod === 'card')
+        .reduce((acc, o) => acc + o.totalAmount, 0),
+      avgRating,
+      ratedCount: ratedOrders.length,
     };
 
     res.json({
@@ -1738,6 +2027,7 @@ export function createApiApp(): Express {
         campuses: db.campuses,
         services: db.services,
         lockers: db.lockers,
+        coupons: db.coupons,
         shippingFee: db.shippingFee,
         nextOrderSeq: db.nextOrderSeq,
         nextBagSeq: db.nextBagSeq,
@@ -1745,6 +2035,181 @@ export function createApiApp(): Express {
         supabaseConnected: isSupabaseConfigured(),
       },
     });
+  });
+
+  // Admin Walk-in / Mostrador Order Creation
+  app.post('/api/admin/orders', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    const existingClientId = sanitizeText(req.body?.clientId, 60);
+    const existingClient = existingClientId
+      ? db.clients.find((c) => c.id === existingClientId)
+      : undefined;
+
+    const clientName =
+      sanitizeText(req.body?.clientName, 80) || existingClient?.name || '';
+    const clientWhatsapp =
+      sanitizeText(req.body?.clientWhatsapp, 25) || existingClient?.whatsapp || '';
+    const pairs = Number(req.body?.pairs);
+    const serviceId = sanitizeText(req.body?.serviceId, 50);
+    const campusId = sanitizeText(req.body?.campusId, 50);
+    const deliveryMethod = (req.body?.deliveryMethod as DeliveryMethod) || 'pickup';
+    const deliveryAddress =
+      sanitizeText(req.body?.deliveryAddress, 220) || existingClient?.address || '';
+    const paymentMethod = (req.body?.paymentMethod as PaymentMethod) || 'cash';
+    const markPaid = Boolean(req.body?.markPaid);
+    const shoeNotes = sanitizeText(req.body?.shoeNotes, 300);
+    const adminNotes = sanitizeText(req.body?.adminNotes, 300);
+    const rawDiscountCode = sanitizeText(req.body?.discountCode, 30).toUpperCase();
+    const photoDataUrl =
+      typeof req.body?.photoDataUrl === 'string' ? req.body.photoDataUrl : undefined;
+
+    if (clientName.length < 2) {
+      res.status(400).json({error: 'Ingresa el nombre del cliente.'});
+      return;
+    }
+    if (normalizePhone(clientWhatsapp).length < 10) {
+      res.status(400).json({error: 'Ingresa un WhatsApp válido de 10 dígitos.'});
+      return;
+    }
+    if (!Number.isInteger(pairs) || pairs < 1 || pairs > 10) {
+      res.status(400).json({error: 'Selecciona entre 1 y 10 pares.'});
+      return;
+    }
+    const service = db.services.find((s) => s.id === serviceId && s.active);
+    if (!service) {
+      res.status(400).json({error: 'Selecciona un servicio activo.'});
+      return;
+    }
+    const campus =
+      db.campuses.find((c) => c.id === campusId && c.active) ||
+      db.campuses.find((c) => c.active);
+    if (!campus) {
+      res.status(400).json({error: 'No hay sedes activas disponibles.'});
+      return;
+    }
+    if (deliveryMethod === 'delivery' && deliveryAddress.length < 5) {
+      res.status(400).json({error: 'Ingresa la dirección de entrega a domicilio.'});
+      return;
+    }
+    if (photoDataUrl) {
+      if (photoDataUrl.length > 4_500_000 || !IMAGE_DATA_URL_REGEX.test(photoDataUrl)) {
+        res.status(400).json({
+          error: 'Formato de fotografía inválido. Usa JPG, PNG o WebP menor a 3MB.',
+        });
+        return;
+      }
+    }
+
+    const subtotal = service.price * pairs;
+    const {coupon, discountAmount, error: couponError} = calculateCouponDiscount(
+      rawDiscountCode,
+      subtotal,
+    );
+    if (rawDiscountCode && couponError) {
+      res.status(400).json({error: couponError});
+      return;
+    }
+
+    const folio = getNextFolio();
+    const bagCode = getNextBagCode();
+    const shippingFee = deliveryMethod === 'delivery' ? db.shippingFee : 0;
+    const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+    const paymentStatus: PaymentStatus =
+      markPaid || paymentMethod === 'card' ? 'Pagado' : 'Pago pendiente';
+    const now = new Date().toISOString();
+
+    const writes: Promise<unknown>[] = [];
+    if (coupon) {
+      coupon.usageCount += 1;
+      if (isSupabaseConfigured()) {
+        writes.push(supabaseStore.upsertCoupon(coupon));
+      }
+    }
+
+    const order: Order = {
+      id: `ord-${crypto.randomUUID().slice(0, 8)}`,
+      folio,
+      bagCode,
+      orderQrPayload: `KICKSXR|${folio}|${bagCode}|${campus.id}`,
+      clientId: existingClient?.id || `walkin-${normalizePhone(clientWhatsapp)}`,
+      clientName,
+      clientWhatsapp,
+      userType: 'general',
+      campusId: campus.id,
+      campusName: campus.name,
+      pairs,
+      serviceId: service.id,
+      serviceName: service.name,
+      unitPrice: service.price,
+      shippingFee,
+      discountCode: coupon?.code,
+      discountAmount: discountAmount || 0,
+      totalAmount,
+      photoDataUrl,
+      shoeNotes: shoeNotes || undefined,
+      adminNotes: adminNotes || undefined,
+      deliveryMethod,
+      deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
+      dropoffMethod: 'staff',
+      paymentMethod,
+      paymentStatus,
+      status: 'Recibido por KicksXR',
+      collectionStatus: 'Recolectado',
+      bagVerified: true,
+      createdAt: now,
+      collectionDate: todayDateStr(),
+      updatedAt: now,
+      history: [
+        {
+          status: 'Recibido por KicksXR',
+          timestamp: now,
+          note: `Pedido registrado en mostrador (${campus.name}).${coupon ? ` Cupón ${coupon.code} (-$${discountAmount} MXN).` : ''}`,
+        },
+      ],
+    };
+
+    db.orders.unshift(order);
+    saveDb(db);
+
+    if (isSupabaseConfigured()) {
+      writes.push(supabaseStore.upsertOrder(order));
+      writes.push(
+        supabaseStore.upsertSettings({
+          id: 1,
+          shipping_fee: db.shippingFee,
+          next_order_seq: db.nextOrderSeq,
+          next_bag_seq: db.nextBagSeq,
+        }),
+      );
+    }
+
+    const whatsappUrl = buildOrderWhatsappUrl(
+      order,
+      `¡Hola ${order.clientName}! Registramos tu servicio en Kicks XR.\n• Folio: ${order.folio}\n• Bolsa: ${order.bagCode}\n• Servicio: ${order.serviceName} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})\n• Total: $${order.totalAmount} MXN (${order.paymentStatus})\n• Sede: ${order.campusName}`,
+    );
+
+    writes.push(
+      createNotification({
+        orderId: order.id,
+        folio: order.folio,
+        recipientWhatsapp: order.clientWhatsapp,
+        recipientName: order.clientName,
+        title: `Pedido en mostrador · ${order.folio}`,
+        message: `${order.clientName} registró ${order.pairs} par(es) en ${order.campusName} (${order.serviceName}).`,
+      }),
+    );
+
+    await Promise.all(writes);
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: order.status,
+      title: `Nuevo pedido en mostrador · ${order.folio}`,
+      message: `${order.clientName} · ${order.serviceName} (${order.bagCode}).`,
+    });
+
+    res.status(201).json({order, whatsappUrl});
   });
 
   app.post('/api/admin/collections/confirm', requireAdmin, async (req, res) => {
@@ -1831,8 +2296,29 @@ export function createApiApp(): Express {
     const nextStatus = req.body?.status as OrderStatus | undefined;
     const nextPaymentStatus = req.body?.paymentStatus as PaymentStatus | undefined;
     const nextBagCode = sanitizeText(req.body?.bagCode, 20).toUpperCase();
-    const note = sanitizeText(req.body?.note, 200);
+    const note = sanitizeText(req.body?.note, 250);
+    const adminNotes =
+      typeof req.body?.adminNotes === 'string'
+        ? sanitizeText(req.body.adminNotes, 300)
+        : undefined;
+    const afterPhotoDataUrl =
+      typeof req.body?.afterPhotoDataUrl === 'string'
+        ? req.body.afterPhotoDataUrl
+        : undefined;
+    const clearAfterPhoto = req.body?.afterPhotoDataUrl === null;
     const now = new Date().toISOString();
+
+    if (afterPhotoDataUrl) {
+      if (
+        afterPhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(afterPhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'Formato de fotografía inválido. Usa JPG, PNG o WebP menor a 3MB.',
+        });
+        return;
+      }
+    }
 
     if (nextBagCode && nextBagCode !== order.bagCode) {
       const duplicate = db.orders.find(
@@ -1849,6 +2335,18 @@ export function createApiApp(): Express {
     }
 
     const writes: Promise<unknown>[] = [];
+    let afterPhotoAdded = false;
+
+    if (afterPhotoDataUrl && afterPhotoDataUrl !== order.afterPhotoDataUrl) {
+      order.afterPhotoDataUrl = afterPhotoDataUrl;
+      afterPhotoAdded = true;
+    } else if (clearAfterPhoto) {
+      order.afterPhotoDataUrl = undefined;
+    }
+
+    if (adminNotes !== undefined) {
+      order.adminNotes = adminNotes || undefined;
+    }
 
     if (nextStatus) {
       if (!VALID_STATUSES.includes(nextStatus)) {
@@ -1866,6 +2364,9 @@ export function createApiApp(): Express {
           order.collectionStatus = 'Recolectado';
           order.bagVerified = true;
         }
+        if (nextStatus === 'Cancelado' || nextStatus === 'Entregado') {
+          releaseOrderLocker(order, writes);
+        }
         order.history.push({
           status: nextStatus,
           timestamp: now,
@@ -1879,10 +2380,29 @@ export function createApiApp(): Express {
             recipientWhatsapp: order.clientWhatsapp,
             recipientName: order.clientName,
             title: `${nextStatus} · ${order.folio}`,
-            message: `Kicks XR actualiza tu pedido ${order.folio} (Bolsa ${order.bagCode}): ahora está en estatus "${nextStatus}".`,
+            message: `Kicks XR actualiza tu pedido ${order.folio} (Bolsa ${order.bagCode}): ahora está en estatus "${nextStatus}".${note ? ` Nota: ${note}` : ''}`,
           }),
         );
+      } else if (note) {
+        order.history.push({
+          status: order.status,
+          timestamp: now,
+          note,
+        });
       }
+    }
+
+    if (afterPhotoAdded && (!nextStatus || nextStatus === order.status)) {
+      writes.push(
+        createNotification({
+          orderId: order.id,
+          folio: order.folio,
+          recipientWhatsapp: order.clientWhatsapp,
+          recipientName: order.clientName,
+          title: `Foto del resultado lista · ${order.folio}`,
+          message: `¡Tus tenis quedaron listos! Ya puedes ver la fotografía del resultado final en tu pedido ${order.folio}.`,
+        }),
+      );
     }
 
     if (nextPaymentStatus) {
@@ -1907,7 +2427,65 @@ export function createApiApp(): Express {
       title: `Estatus actualizado · ${order.folio}`,
       message: `El pedido ${order.folio} ahora está en "${order.status}" (${order.paymentStatus}).`,
     });
-    res.json({order});
+    const whatsappUrl = buildOrderWhatsappUrl(
+      order,
+      `¡Hola ${order.clientName}! Kicks XR te informa que tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) pasó a estatus "${order.status}".${note ? ` Nota: ${note}.` : ''} Estado de pago: ${order.paymentStatus} ($${order.totalAmount} MXN).`,
+    );
+    res.json({order, whatsappUrl});
+  });
+
+  // Cancel order and release locker
+  app.post('/api/admin/orders/:id/cancel', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) {
+      res.status(404).json({error: 'Pedido no encontrado.'});
+      return;
+    }
+    const reason =
+      sanitizeText(req.body?.reason, 220) || 'Cancelado por el administrador.';
+    const now = new Date().toISOString();
+    const writes: Promise<unknown>[] = [];
+
+    order.status = 'Cancelado';
+    order.collectionStatus = 'Pendiente';
+    order.updatedAt = now;
+    order.history.push({
+      status: 'Cancelado',
+      timestamp: now,
+      note: reason,
+    });
+    releaseOrderLocker(order, writes);
+
+    saveDb(db);
+    if (isSupabaseConfigured()) {
+      writes.push(supabaseStore.upsertOrder(order));
+    }
+    writes.push(
+      createNotification({
+        orderId: order.id,
+        folio: order.folio,
+        recipientWhatsapp: order.clientWhatsapp,
+        recipientName: order.clientName,
+        title: `Pedido cancelado · ${order.folio}`,
+        message: `Tu pedido ${order.folio} (Bolsa ${order.bagCode}) fue cancelado. Motivo: ${reason}`,
+      }),
+    );
+    await Promise.all(writes);
+    broadcastEvent({
+      type: 'orders',
+      folio: order.folio,
+      orderId: order.id,
+      status: 'Cancelado',
+      title: `Pedido cancelado · ${order.folio}`,
+      message: `El pedido ${order.folio} fue cancelado y su locker liberado.`,
+    });
+    broadcastEvent({type: 'config'});
+    const whatsappUrl = buildOrderWhatsappUrl(
+      order,
+      `Hola ${order.clientName}, te informamos que tu pedido ${order.folio} en Kicks XR fue cancelado. Motivo: ${reason}`,
+    );
+    res.json({order, whatsappUrl});
   });
 
   app.post('/api/admin/orders/deliver', requireAdmin, async (req, res) => {
@@ -1915,10 +2493,25 @@ export function createApiApp(): Express {
     const folio = sanitizeText(req.body?.folio, 32).toUpperCase();
     const deliveryMethod = req.body?.deliveryMethod as DeliveryMethod;
     const markPaid = Boolean(req.body?.markPaid);
+    const afterPhotoDataUrl =
+      typeof req.body?.afterPhotoDataUrl === 'string'
+        ? req.body.afterPhotoDataUrl
+        : undefined;
 
     if (!folio) {
       res.status(400).json({error: 'Ingresa o escanea el folio de confirmación.'});
       return;
+    }
+    if (afterPhotoDataUrl) {
+      if (
+        afterPhotoDataUrl.length > 4_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(afterPhotoDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'Formato de fotografía inválido. Usa JPG, PNG o WebP menor a 3MB.',
+        });
+        return;
+      }
     }
 
     const order = db.orders.find(
@@ -1938,6 +2531,9 @@ export function createApiApp(): Express {
     if (markPaid) {
       order.paymentStatus = 'Pagado';
     }
+    if (afterPhotoDataUrl) {
+      order.afterPhotoDataUrl = afterPhotoDataUrl;
+    }
     order.status = 'Entregado';
     order.collectionStatus = 'Recolectado';
     order.bagVerified = true;
@@ -1952,14 +2548,7 @@ export function createApiApp(): Express {
     });
 
     const writes: Promise<unknown>[] = [];
-    const locker = db.lockers.find((l) => l.currentBagCode === order.bagCode);
-    if (locker) {
-      locker.status = 'disponible';
-      locker.currentBagCode = undefined;
-      if (isSupabaseConfigured()) {
-        writes.push(supabaseStore.upsertLocker(locker));
-      }
-    }
+    releaseOrderLocker(order, writes);
 
     saveDb(db);
     if (isSupabaseConfigured()) {
@@ -1972,7 +2561,7 @@ export function createApiApp(): Express {
         recipientWhatsapp: order.clientWhatsapp,
         recipientName: order.clientName,
         title: `Pedido entregado · ${order.folio}`,
-        message: `¡Gracias por confiar en Kicks XR, ${order.clientName}! Tu pedido ${order.folio} fue marcado como Entregado. ¡Disfruta tus tenis como nuevos!`,
+        message: `¡Gracias por confiar en Kicks XR, ${order.clientName}! Tu pedido ${order.folio} fue marcado como Entregado. ¡Disfruta tus tenis como nuevos y califica tu servicio en la app!`,
       }),
     );
     await Promise.all(writes);
@@ -1985,7 +2574,11 @@ export function createApiApp(): Express {
       title: `Entrega confirmada · ${order.folio}`,
       message: `El folio ${order.folio} fue entregado y cerrado exitosamente.`,
     });
-    res.json({order});
+    const whatsappUrl = buildOrderWhatsappUrl(
+      order,
+      `¡Gracias por confiar en Kicks XR, ${order.clientName}! Confirmamos la entrega de tu pedido ${order.folio}. ¡Disfruta tus tenis como nuevos!`,
+    );
+    res.json({order, whatsappUrl});
   });
 
   app.post('/api/admin/incidents', requireAdmin, async (req, res) => {
@@ -2141,8 +2734,10 @@ export function createApiApp(): Express {
     if (typeof req.body?.active === 'boolean') campus.active = req.body.active;
     const name = sanitizeText(req.body?.name, 80);
     const address = sanitizeText(req.body?.address, 200);
+    const type = req.body?.type;
     if (name) campus.name = name;
     if (address) campus.address = address;
+    if (type === 'university' || type === 'point') campus.type = type;
     saveDb(db);
     if (isSupabaseConfigured()) {
       await supabaseStore.upsertCampus(campus);
@@ -2189,9 +2784,16 @@ export function createApiApp(): Express {
     }
     const price = Number(req.body?.price);
     if (Number.isFinite(price) && price > 0) service.price = Math.round(price);
+    const turnaroundHours = Number(req.body?.turnaroundHours);
+    if (Number.isFinite(turnaroundHours) && turnaroundHours >= 1) {
+      service.turnaroundHours = Math.round(turnaroundHours);
+    }
     if (typeof req.body?.active === 'boolean') service.active = req.body.active;
     const name = sanitizeText(req.body?.name, 80);
     if (name) service.name = name;
+    if (typeof req.body?.description === 'string') {
+      service.description = sanitizeText(req.body.description, 220);
+    }
     saveDb(db);
     if (isSupabaseConfigured()) {
       await supabaseStore.upsertService(service);
@@ -2264,6 +2866,98 @@ export function createApiApp(): Express {
     }
     broadcastEvent({type: 'config'});
     res.json({shippingFee: db.shippingFee});
+  });
+
+  // --- ADMIN COUPONS CRUD ---
+  app.post('/api/admin/config/coupons', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    const code = sanitizeText(req.body?.code, 30)
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, '');
+    const description = sanitizeText(req.body?.description, 160);
+    const discountType = req.body?.discountType === 'fixed' ? 'fixed' : 'percent';
+    const value = Number(req.body?.value);
+
+    if (code.length < 3) {
+      res.status(400).json({error: 'El código debe tener al menos 3 caracteres.'});
+      return;
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      res.status(400).json({error: 'Ingresa un valor de descuento mayor a 0.'});
+      return;
+    }
+    if (discountType === 'percent' && value > 90) {
+      res.status(400).json({error: 'El descuento porcentual máximo es 90%.'});
+      return;
+    }
+    if (db.coupons.some((c) => c.code.toUpperCase() === code)) {
+      res.status(409).json({error: `El cupón ${code} ya existe.`});
+      return;
+    }
+
+    const coupon: Coupon = {
+      id: `cpn-${crypto.randomUUID().slice(0, 6)}`,
+      code,
+      description:
+        description ||
+        (discountType === 'percent'
+          ? `${Math.round(value)}% de descuento`
+          : `$${Math.round(value)} MXN de descuento`),
+      discountType,
+      value: Math.round(value),
+      active: true,
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    db.coupons.unshift(coupon);
+    saveDb(db);
+    if (isSupabaseConfigured()) {
+      await supabaseStore.upsertCoupon(coupon);
+    }
+    broadcastEvent({type: 'config'});
+    res.status(201).json({coupon});
+  });
+
+  app.patch('/api/admin/config/coupons/:id', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    const coupon = db.coupons.find((c) => c.id === req.params.id);
+    if (!coupon) {
+      res.status(404).json({error: 'Cupón no encontrado.'});
+      return;
+    }
+    if (typeof req.body?.active === 'boolean') coupon.active = req.body.active;
+    const description = sanitizeText(req.body?.description, 160);
+    if (description) coupon.description = description;
+    const value = Number(req.body?.value);
+    if (Number.isFinite(value) && value > 0) {
+      coupon.value =
+        coupon.discountType === 'percent'
+          ? Math.min(90, Math.round(value))
+          : Math.round(value);
+    }
+    saveDb(db);
+    if (isSupabaseConfigured()) {
+      await supabaseStore.upsertCoupon(coupon);
+    }
+    broadcastEvent({type: 'config'});
+    res.json({coupon});
+  });
+
+  app.delete('/api/admin/config/coupons/:id', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    const idx = db.coupons.findIndex((c) => c.id === req.params.id);
+    if (idx < 0) {
+      res.status(404).json({error: 'Cupón no encontrado.'});
+      return;
+    }
+    const [removed] = db.coupons.splice(idx, 1);
+    saveDb(db);
+    if (isSupabaseConfigured()) {
+      await supabaseStore.deleteCoupon(removed.id);
+    }
+    broadcastEvent({type: 'config'});
+    res.json({ok: true});
   });
 
   // --- ADMIN USER MANAGEMENT (Register Admins & Clients + Share Credentials via WhatsApp) ---

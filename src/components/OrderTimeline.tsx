@@ -28,6 +28,23 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
     return match;
   };
 
+  if (currentStatus === 'Cancelado') {
+    const cancelEntry = [...safeHistory]
+      .reverse()
+      .find((h) => h.status === 'Cancelado');
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 space-y-1">
+        <div className="font-bold">Pedido cancelado</div>
+        {cancelEntry?.note && <p className="text-xs text-red-700">{cancelEntry.note}</p>}
+        {cancelEntry?.timestamp && (
+          <div className="font-mono text-[11px] text-red-600">
+            {new Date(cancelEntry.timestamp).toLocaleString('es-MX')}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1">
       {TIMELINE_STEPS.map((step, idx) => {
