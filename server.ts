@@ -74,6 +74,12 @@ export class ErrorOverlay extends HTMLElement {}
     app.use(
       express.static(distDir, {
         setHeaders(res, filePath) {
+          if (filePath.endsWith('sw.js')) {
+            res.setHeader('Service-Worker-Allowed', '/');
+          }
+          if (filePath.endsWith('manifest.webmanifest')) {
+            res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+          }
           if (
             filePath.endsWith('index.html') ||
             filePath.endsWith('sw.js') ||

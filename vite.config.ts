@@ -12,13 +12,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: [
-          'apple-touch-icon.png',
-          'pwa-192x192.png',
-          'pwa-512x512.png',
-          'pwa-maskable-512x512.png',
-          'xrlogo.png',
-        ],
+        useCredentials: true,
         manifest: {
           id: '/',
           name: 'Kicks XR',
@@ -31,7 +25,6 @@ export default defineConfig(() => {
           background_color: '#FFFFFF',
           display: 'standalone',
           display_override: ['standalone', 'minimal-ui'],
-          orientation: 'portrait-primary',
           start_url: '/',
           scope: '/',
           prefer_related_applications: false,
@@ -116,7 +109,7 @@ export default defineConfig(() => {
         },
         devOptions: {
           enabled: true,
-          type: 'module',
+          type: 'classic',
           suppressWarnings: true,
         },
       }),
