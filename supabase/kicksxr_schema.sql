@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
   whatsapp_normalized TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   address TEXT NOT NULL,
+  maps_url TEXT,
+  age INTEGER,
+  id_document_number TEXT,
   user_type TEXT NOT NULL DEFAULT 'general',
   ine_photo_data_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -43,9 +46,14 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
 -- Compatibilidad si la tabla ya había sido creada previamente
 ALTER TABLE public.kicksxr_clients
   ADD COLUMN IF NOT EXISTS username TEXT;
-
 ALTER TABLE public.kicksxr_clients
   ADD COLUMN IF NOT EXISTS ine_photo_data_url TEXT;
+ALTER TABLE public.kicksxr_clients
+  ADD COLUMN IF NOT EXISTS id_document_number TEXT;
+ALTER TABLE public.kicksxr_clients
+  ADD COLUMN IF NOT EXISTS age INTEGER;
+ALTER TABLE public.kicksxr_clients
+  ADD COLUMN IF NOT EXISTS maps_url TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kicksxr_clients_username
   ON public.kicksxr_clients (LOWER(username))
@@ -89,6 +97,10 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_orders (
   client_id TEXT NOT NULL,
   client_name TEXT NOT NULL,
   client_whatsapp TEXT NOT NULL,
+  client_age INTEGER,
+  client_id_document TEXT,
+  client_address TEXT,
+  client_maps_url TEXT,
   user_type TEXT NOT NULL DEFAULT 'general',
   campus_id TEXT NOT NULL,
   campus_name TEXT NOT NULL,
@@ -114,6 +126,8 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_orders (
   payment_method TEXT NOT NULL,
   payment_status TEXT NOT NULL DEFAULT 'Pago pendiente',
   card_last4 TEXT,
+  mp_preference_id TEXT,
+  mp_payment_id TEXT,
   status TEXT NOT NULL DEFAULT 'Pendiente de depósito',
   collection_status TEXT NOT NULL DEFAULT 'Pendiente',
   bag_verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -132,6 +146,12 @@ ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS discount_amount INTEG
 ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rating INTEGER;
 ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rating_comment TEXT;
 ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS rated_at TIMESTAMPTZ;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS client_age INTEGER;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS client_id_document TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS client_address TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS client_maps_url TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS mp_preference_id TEXT;
+ALTER TABLE public.kicksxr_orders ADD COLUMN IF NOT EXISTS mp_payment_id TEXT;
 
 -- 7. Incidencias operativas
 CREATE TABLE IF NOT EXISTS public.kicksxr_incidents (
@@ -163,13 +183,22 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 9. Configuración general y secuencias
+-- 9. Configuración general, secuencias y Mercado Pago
 CREATE TABLE IF NOT EXISTS public.kicksxr_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
   shipping_fee INTEGER NOT NULL DEFAULT 75,
   next_order_seq INTEGER NOT NULL DEFAULT 1044,
-  next_bag_seq INTEGER NOT NULL DEFAULT 30
+  next_bag_seq INTEGER NOT NULL DEFAULT 30,
+  mp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  mp_sandbox BOOLEAN NOT NULL DEFAULT TRUE,
+  mp_public_key TEXT,
+  mp_access_token TEXT
 );
+
+ALTER TABLE public.kicksxr_settings ADD COLUMN IF NOT EXISTS mp_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.kicksxr_settings ADD COLUMN IF NOT EXISTS mp_sandbox BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.kicksxr_settings ADD COLUMN IF NOT EXISTS mp_public_key TEXT;
+ALTER TABLE public.kicksxr_settings ADD COLUMN IF NOT EXISTS mp_access_token TEXT;
 
 INSERT INTO public.kicksxr_settings (id, shipping_fee, next_order_seq, next_bag_seq)
 VALUES (1, 75, 1044, 30)

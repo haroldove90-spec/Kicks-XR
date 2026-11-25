@@ -1,6 +1,10 @@
 import React, {useEffect} from 'react';
-import {Download, Printer, X} from 'lucide-react';
+import {Download, ExternalLink, MapPin, Printer, X} from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
+import {
+  formatPaymentMethodLabel,
+  isSafeGoogleMapsUrl,
+} from '../lib/qrPayload';
 import type {Order} from '../types';
 import {isSafePhotoDataUrl} from './AdminOrderDetailModal';
 
@@ -40,6 +44,13 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
   const discount = order.discountAmount || 0;
   const hasBeforePhoto = isSafePhotoDataUrl(order.photoDataUrl);
   const hasAfterPhoto = isSafePhotoDataUrl(order.afterPhotoDataUrl);
+  const paymentLabel = formatPaymentMethodLabel(
+    order.paymentMethod,
+    order.cardLast4,
+  );
+  const safeMapsUrl = isSafeGoogleMapsUrl(order.clientMapsUrl)
+    ? order.clientMapsUrl
+    : undefined;
 
   const handleDownloadHtmlReceipt = () => {
     const html = `<!doctype html>
@@ -66,22 +77,23 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
   <div class="card">
     <div class="header">
       <div>
-        <h1>Kicks XR · Nota de Servicio</h1>
+        <h1>Kicks XR · Orden de Servicio</h1>
         <div style="font-size:12px;opacity:.8;margin-top:4px;">Folio ${escapeHtml(order.folio)} · Bolsa ${escapeHtml(order.bagCode)}</div>
       </div>
       <span class="badge">${escapeHtml(order.status)}</span>
     </div>
     <div class="body">
       <div class="row"><span class="label">Fecha</span><span class="val">${escapeHtml(new Date(order.createdAt).toLocaleString('es-MX'))}</span></div>
-      <div class="row"><span class="label">Cliente</span><span class="val">${escapeHtml(order.clientName)}</span></div>
+      <div class="row"><span class="label">Cliente</span><span class="val">${escapeHtml(order.clientName)}${order.clientAge ? ` (${order.clientAge} años)` : ''}</span></div>
+      ${order.clientIdDocument ? `<div class="row"><span class="label">INE / Pasaporte</span><span class="val">${escapeHtml(order.clientIdDocument)}</span></div>` : ''}
       <div class="row"><span class="label">WhatsApp</span><span class="val">${escapeHtml(order.clientWhatsapp)}</span></div>
       <div class="row"><span class="label">Sede / Punto</span><span class="val">${escapeHtml(order.campusName)}</span></div>
       <div class="row"><span class="label">Servicio</span><span class="val">${escapeHtml(order.serviceName)} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})</span></div>
       <div class="row"><span class="label">Devolución</span><span class="val">${order.deliveryMethod === 'delivery' ? `Domicilio: ${escapeHtml(order.deliveryAddress || '')}` : `Recoger en ${escapeHtml(order.campusName)}`}</span></div>
       <div class="row"><span class="label">Subtotal</span><span class="val">$${subtotal} MXN</span></div>
-      ${discount > 0 ? `<div class="row"><span class="label">Descuento (${escapeHtml(order.discountCode || 'Cupón')})</span><span class="val" style="color:#8BAF03;">-$${discount} MXN</span></div>` : ''}
+      ${discount > 0 ? `<div class="row"><span class="label">Descuento (${escapeHtml(order.discountCode || 'Cupón')})</span><span class="val" style="color:#5E7800;">-$${discount} MXN</span></div>` : ''}
       <div class="row"><span class="label">Envío</span><span class="val">${order.shippingFee > 0 ? `$${order.shippingFee} MXN` : 'Sin costo'}</span></div>
-      <div class="row"><span class="label">Pago</span><span class="val">${order.paymentMethod === 'card' ? `Tarjeta${order.cardLast4 ? ` •••• ${escapeHtml(order.cardLast4)}` : ''}` : 'Efectivo'} · ${escapeHtml(order.paymentStatus)}</span></div>
+      <div class="row"><span class="label">Pago</span><span class="val">${escapeHtml(paymentLabel)} · ${escapeHtml(order.paymentStatus)}</span></div>
       <div class="row total"><span>Total</span><span>$${order.totalAmount} MXN</span></div>
       ${order.shoeNotes ? `<div class="note"><strong>Notas del calzado:</strong> ${escapeHtml(order.shoeNotes)}</div>` : ''}
     </div>
@@ -160,7 +172,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                 className="h-8 w-auto object-contain"
               />
               <div className="mt-1 text-xs text-slate-500">
-                Nota de servicio y comprobante de entrega
+                Orden de servicio y comprobante de entrega
               </div>
             </div>
             <div className="text-right">
@@ -176,10 +188,18 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
           <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 rounded-xl p-3.5 border border-slate-200">
             <div>
               <div className="text-slate-500">Cliente</div>
-              <div className="font-bold text-[#1A1E2A] mt-0.5">{order.clientName}</div>
+              <div className="font-bold text-[#1A1E2A] mt-0.5">
+                {order.clientName}
+                {order.clientAge ? ` · ${order.clientAge} años` : ''}
+              </div>
               <div className="font-mono text-[11px] text-slate-600">
                 {order.clientWhatsapp}
               </div>
+              {order.clientIdDocument && (
+                <div className="font-mono text-[11px] font-semibold text-[#5E7800] mt-0.5">
+                  ID: {order.clientIdDocument}
+                </div>
+              )}
             </div>
             <div className="text-right">
               <div className="text-slate-500">Fecha de registro</div>
@@ -241,18 +261,33 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
             <div className="flex justify-between gap-2 text-xs text-slate-600">
               <span>Forma y estado de pago</span>
               <span className="font-bold text-[#1A1E2A]">
-                {order.paymentMethod === 'card'
-                  ? `Tarjeta${order.cardLast4 ? ` •••• ${order.cardLast4}` : ''}`
-                  : 'Efectivo'}{' '}
-                · {order.paymentStatus}
+                {paymentLabel} · {order.paymentStatus}
               </span>
             </div>
           </div>
 
-          {order.deliveryMethod === 'delivery' && order.deliveryAddress && (
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs">
-              <span className="font-bold text-[#1A1E2A]">Dirección de entrega: </span>
-              <span className="text-slate-700">{order.deliveryAddress}</span>
+          {(order.deliveryAddress || order.clientAddress || safeMapsUrl) && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs space-y-1.5">
+              {(order.deliveryAddress || order.clientAddress) && (
+                <div>
+                  <span className="font-bold text-[#1A1E2A]">Dirección: </span>
+                  <span className="text-slate-700">
+                    {order.deliveryAddress || order.clientAddress}
+                  </span>
+                </div>
+              )}
+              {safeMapsUrl && (
+                <a
+                  href={safeMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 font-bold text-[#5E7800] hover:underline"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span>Abrir ubicación en Google Maps</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </div>
           )}
 

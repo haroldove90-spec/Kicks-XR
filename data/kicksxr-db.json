@@ -31,6 +31,17 @@
       "address": "Alamo 8",
       "userType": "general",
       "createdAt": "2026-11-24T02:22:56.398+00:00"
+    },
+    {
+      "id": "cli-2e7aadda-6",
+      "name": "Manoj",
+      "username": "manoj",
+      "whatsapp": "+522226285414",
+      "whatsappNormalized": "522226285414",
+      "passwordHash": "da7c47f01a7cf7c1b3ad185c015375e8:b98522439a9caa391364abc92c350bb9d968c3943ffa9760d004d281922af5827cdfa872fd64db1d77b0de2007c2cd47d6936c73847dc5b4b25fbf2f6237ead0",
+      "address": "Casa 66",
+      "userType": "general",
+      "createdAt": "2026-11-24T04:14:19.395+00:00"
     }
   ],
   "campuses": [

@@ -10,6 +10,12 @@ import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {isSupabaseConfigured, supabaseStore} from './supabase.ts';
+import {
+  buildOrderQrPayload,
+  isSafeGoogleMapsUrl,
+  isSafeMercadoPagoUrl,
+  normalizeGoogleMapsUrl,
+} from '../lib/qrPayload.ts';
 import type {
   AuthUser,
   Campus,
@@ -20,6 +26,7 @@ import type {
   IncidentStatus,
   IncidentType,
   Locker,
+  MercadoPagoAdminConfig,
   NotificationLog,
   Order,
   OrderStatus,
@@ -131,10 +138,21 @@ interface StoredClient {
   whatsappNormalized: string;
   passwordHash?: string;
   address: string;
+  mapsUrl?: string;
+  age?: number;
+  idDocumentNumber?: string;
   userType: 'general' | 'university';
   campusId?: string;
   inePhotoDataUrl?: string;
   createdAt: string;
+}
+
+interface StoredMercadoPagoConfig {
+  enabled: boolean;
+  sandboxMode: boolean;
+  publicKey: string;
+  accessToken: string;
+  updatedAt?: string;
 }
 
 interface DatabaseState {
@@ -148,6 +166,7 @@ interface DatabaseState {
   shippingFee: number;
   nextOrderSeq: number;
   nextBagSeq: number;
+  mercadoPago?: StoredMercadoPagoConfig;
   orders: Order[];
   incidents: Incident[];
   notifications: NotificationLog[];
@@ -189,6 +208,106 @@ function sanitizeUsername(raw: unknown): string {
   return sanitizeText(raw, 50)
     .toLowerCase()
     .replace(/[^a-z0-9._-]/g, '');
+}
+
+function sanitizeIdDocument(raw: unknown): string {
+  return sanitizeText(raw, 40)
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '');
+}
+
+function parseOptionalAge(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const num = Number(raw);
+  if (!Number.isInteger(num) || num < 12 || num > 120) return undefined;
+  return num;
+}
+
+function maskSecretToken(token: string): string {
+  const clean = token.trim();
+  if (!clean) return '';
+  if (clean.length <= 12) return '••••••••••••';
+  return `${clean.slice(0, 10)}••••••••${clean.slice(-4)}`;
+}
+
+function getEffectiveMercadoPago(): {
+  enabled: boolean;
+  sandboxMode: boolean;
+  publicKey: string;
+  accessToken: string;
+  usesEnvOverride: boolean;
+} {
+  const envToken = (process.env.MERCADOPAGO_ACCESS_TOKEN || '').trim();
+  const envPublicKey = (process.env.MERCADOPAGO_PUBLIC_KEY || '').trim();
+  const stored = db.mercadoPago || {
+    enabled: false,
+    sandboxMode: true,
+    publicKey: '',
+    accessToken: '',
+  };
+  const accessToken = stored.accessToken || envToken;
+  const publicKey = stored.publicKey || envPublicKey;
+  const usesEnvOverride = Boolean(!stored.accessToken && envToken);
+  const enabled = Boolean((stored.enabled || usesEnvOverride) && accessToken);
+  return {
+    enabled,
+    sandboxMode:
+      typeof stored.sandboxMode === 'boolean'
+        ? stored.sandboxMode
+        : accessToken.startsWith('TEST-'),
+    publicKey,
+    accessToken,
+    usesEnvOverride,
+  };
+}
+
+function buildMercadoPagoAdminView(): MercadoPagoAdminConfig {
+  const eff = getEffectiveMercadoPago();
+  return {
+    enabled: eff.enabled,
+    sandboxMode: eff.sandboxMode,
+    publicKey: eff.publicKey,
+    hasAccessToken: Boolean(eff.accessToken),
+    accessTokenMasked: maskSecretToken(eff.accessToken),
+    usesEnvOverride: eff.usesEnvOverride,
+  };
+}
+
+function buildSettingsRowForSupabase() {
+  const stored = db.mercadoPago || {
+    enabled: false,
+    sandboxMode: true,
+    publicKey: '',
+    accessToken: '',
+  };
+  return {
+    id: 1,
+    shipping_fee: db.shippingFee,
+    next_order_seq: db.nextOrderSeq,
+    next_bag_seq: db.nextBagSeq,
+    mp_enabled: Boolean(stored.enabled),
+    mp_sandbox: Boolean(stored.sandboxMode),
+    mp_public_key: stored.publicKey || null,
+    mp_access_token: stored.accessToken || null,
+  };
+}
+
+function resolveRequestOrigin(req: Request): string {
+  const forwardedProto =
+    typeof req.headers['x-forwarded-proto'] === 'string'
+      ? req.headers['x-forwarded-proto'].split(',')[0].trim()
+      : req.protocol;
+  const hostHeader =
+    (typeof req.headers['x-forwarded-host'] === 'string' &&
+      req.headers['x-forwarded-host'].split(',')[0].trim()) ||
+    req.get('host') ||
+    'localhost:3000';
+  const originHeader =
+    (typeof req.headers.origin === 'string' && req.headers.origin) ||
+    (process.env.APP_URL && process.env.APP_URL !== 'MY_APP_URL'
+      ? process.env.APP_URL
+      : `${forwardedProto}://${hostHeader}`);
+  return originHeader.replace(/\/+$/, '');
 }
 
 function hashPassword(password: string): string {
@@ -746,6 +865,18 @@ async function hydrateFromSupabase(): Promise<void> {
           whatsappNormalized: waNorm,
           passwordHash: row.password_hash || undefined,
           address: String(row.address || ''),
+          mapsUrl:
+            normalizeGoogleMapsUrl(row.maps_url) ||
+            (idx >= 0 ? db.clients[idx].mapsUrl : undefined),
+          age:
+            typeof row.age === 'number' && row.age > 0
+              ? row.age
+              : idx >= 0
+                ? db.clients[idx].age
+                : undefined,
+          idDocumentNumber:
+            (row.id_document_number ? String(row.id_document_number) : undefined) ||
+            (idx >= 0 ? db.clients[idx].idDocumentNumber : undefined),
           userType: row.user_type || 'general',
           inePhotoDataUrl:
             row.ine_photo_data_url ||
@@ -804,6 +935,24 @@ async function hydrateFromSupabase(): Promise<void> {
       db.shippingFee = sbSettings.shipping_fee;
       db.nextOrderSeq = Math.max(db.nextOrderSeq, sbSettings.next_order_seq);
       db.nextBagSeq = Math.max(db.nextBagSeq, sbSettings.next_bag_seq);
+      if (
+        sbSettings.mp_enabled !== undefined ||
+        sbSettings.mp_public_key !== undefined ||
+        sbSettings.mp_access_token !== undefined
+      ) {
+        db.mercadoPago = {
+          enabled: Boolean(sbSettings.mp_enabled),
+          sandboxMode:
+            typeof sbSettings.mp_sandbox === 'boolean'
+              ? sbSettings.mp_sandbox
+              : true,
+          publicKey: String(sbSettings.mp_public_key || ''),
+          accessToken:
+            String(sbSettings.mp_access_token || '') ||
+            db.mercadoPago?.accessToken ||
+            '',
+        };
+      }
       changed = true;
     }
     if (sbCoupons && sbCoupons.length > 0) {
@@ -960,12 +1109,16 @@ function buildPublicConfig() {
       (l) => l.campusId === campus.id && l.status === 'disponible',
     ).length;
   }
+  const mp = getEffectiveMercadoPago();
   return {
     campuses: db.campuses.filter((c) => c.active),
     services: db.services.filter((s) => s.active),
     shippingFee: db.shippingFee,
     availableLockersByCampus,
     supabaseConnected: isSupabaseConfigured(),
+    mercadoPagoEnabled: mp.enabled,
+    mercadoPagoSandbox: mp.sandboxMode,
+    mercadoPagoPublicKey: mp.enabled ? mp.publicKey : undefined,
   };
 }
 
@@ -978,6 +1131,9 @@ function buildAuthUserFromClient(client: StoredClient): AuthUser {
     username: client.username,
     whatsapp: client.whatsapp,
     address: client.address,
+    mapsUrl: client.mapsUrl,
+    age: client.age,
+    idDocumentNumber: client.idDocumentNumber,
     userType: client.userType,
     campusId: client.campusId,
     campusName: campus?.name,
@@ -1171,10 +1327,9 @@ export function createApiApp(): Express {
     const whatsappNormalized = normalizePhone(whatsapp);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     const address = sanitizeText(req.body?.address, 220);
-    const inePhotoDataUrl =
-      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
-        ? req.body.inePhotoDataUrl.trim()
-        : undefined;
+    const rawMapsUrl = sanitizeText(req.body?.mapsUrl, 500);
+    const idDocumentNumber = sanitizeIdDocument(req.body?.idDocumentNumber);
+    const age = parseOptionalAge(req.body?.age);
 
     if (name.length < 2) {
       res.status(400).json({error: 'Ingresa tu nombre completo.'});
@@ -1196,22 +1351,28 @@ export function createApiApp(): Express {
       res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
       return;
     }
-    if (address.length < 5) {
-      res.status(400).json({error: 'Ingresa tu dirección de entrega.'});
+    if (!age) {
+      res.status(400).json({error: 'Ingresa una edad válida (entre 12 y 120 años).'});
       return;
     }
-    if (inePhotoDataUrl) {
-      if (
-        inePhotoDataUrl.length > 4_500_000 ||
-        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
-      ) {
-        res.status(400).json({
-          error:
-            'La imagen de tu INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
-        });
-        return;
-      }
+    if (idDocumentNumber.length < 5) {
+      res.status(400).json({
+        error: 'Ingresa tu número de INE o Pasaporte (mínimo 5 caracteres).',
+      });
+      return;
     }
+    if (address.length < 5) {
+      res.status(400).json({error: 'Ingresa tu dirección completa.'});
+      return;
+    }
+    if (rawMapsUrl && !isSafeGoogleMapsUrl(rawMapsUrl)) {
+      res.status(400).json({
+        error:
+          'Ingresa un enlace válido de Google Maps (ej. https://maps.app.goo.gl/...).',
+      });
+      return;
+    }
+    const mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
 
     const existingUsernameLocal = db.clients.find(
       (c) => c.username && c.username.toLowerCase() === username,
@@ -1250,8 +1411,10 @@ export function createApiApp(): Express {
       whatsappNormalized,
       passwordHash,
       address,
+      mapsUrl,
+      age,
+      idDocumentNumber,
       userType: 'general',
-      inePhotoDataUrl,
       createdAt: new Date().toISOString(),
     };
     db.clients.push(client);
@@ -1266,8 +1429,10 @@ export function createApiApp(): Express {
         whatsapp_normalized: client.whatsappNormalized,
         password_hash: passwordHash,
         address: client.address,
+        maps_url: client.mapsUrl || null,
+        age: client.age ?? null,
+        id_document_number: client.idDocumentNumber || null,
         user_type: 'general',
-        ine_photo_data_url: client.inePhotoDataUrl || null,
         created_at: client.createdAt,
       });
     }
@@ -1316,6 +1481,12 @@ export function createApiApp(): Express {
           whatsappNormalized: sbClient.whatsapp_normalized,
           passwordHash: sbClient.password_hash,
           address: sbClient.address,
+          mapsUrl: normalizeGoogleMapsUrl(sbClient.maps_url),
+          age:
+            typeof sbClient.age === 'number' && sbClient.age > 0
+              ? sbClient.age
+              : undefined,
+          idDocumentNumber: sbClient.id_document_number || undefined,
           userType: sbClient.user_type || 'general',
           inePhotoDataUrl: sbClient.ine_photo_data_url || undefined,
           createdAt: sbClient.created_at,
@@ -1373,21 +1544,20 @@ export function createApiApp(): Express {
     const name = sanitizeText(req.body?.name, 80);
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
     const address = sanitizeText(req.body?.address, 220);
-    const inePhotoDataUrl =
-      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
-        ? req.body.inePhotoDataUrl.trim()
+    const rawMapsUrl =
+      typeof req.body?.mapsUrl === 'string' ? req.body.mapsUrl.trim() : undefined;
+    const idDocumentNumber =
+      typeof req.body?.idDocumentNumber === 'string'
+        ? sanitizeIdDocument(req.body.idDocumentNumber)
         : undefined;
+    const age = parseOptionalAge(req.body?.age);
 
-    if (inePhotoDataUrl) {
-      if (
-        inePhotoDataUrl.length > 4_500_000 ||
-        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
-      ) {
-        res.status(400).json({
-          error: 'La foto de INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
-        });
-        return;
-      }
+    if (rawMapsUrl && !isSafeGoogleMapsUrl(rawMapsUrl)) {
+      res.status(400).json({
+        error:
+          'El enlace de ubicación debe ser un link válido de Google Maps (https://maps.app.goo.gl/...).',
+      });
+      return;
     }
 
     if (req.auth?.role === 'admin') {
@@ -1399,6 +1569,9 @@ export function createApiApp(): Express {
           username: req.auth.username,
           whatsapp,
           address,
+          mapsUrl: normalizeGoogleMapsUrl(rawMapsUrl),
+          age,
+          idDocumentNumber,
         } satisfies AuthUser,
       });
       return;
@@ -1416,7 +1589,13 @@ export function createApiApp(): Express {
       client.whatsappNormalized = normalizePhone(whatsapp);
     }
     if (address) client.address = address;
-    if (inePhotoDataUrl) client.inePhotoDataUrl = inePhotoDataUrl;
+    if (rawMapsUrl !== undefined) {
+      client.mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
+    }
+    if (age !== undefined) client.age = age;
+    if (idDocumentNumber !== undefined && idDocumentNumber.length >= 5) {
+      client.idDocumentNumber = idDocumentNumber;
+    }
 
     saveDb(db);
     if (isSupabaseConfigured() && client.passwordHash) {
@@ -1428,6 +1607,9 @@ export function createApiApp(): Express {
         whatsapp_normalized: client.whatsappNormalized,
         password_hash: client.passwordHash,
         address: client.address,
+        maps_url: client.mapsUrl || null,
+        age: client.age ?? null,
+        id_document_number: client.idDocumentNumber || null,
         user_type: client.userType,
         ine_photo_data_url: client.inePhotoDataUrl || null,
         created_at: client.createdAt,
@@ -1751,9 +1933,23 @@ export function createApiApp(): Express {
       res.status(400).json({error: 'Ingresa la dirección de entrega a domicilio.'});
       return;
     }
-    if (paymentMethod !== 'cash' && paymentMethod !== 'card') {
+    if (
+      paymentMethod !== 'cash' &&
+      paymentMethod !== 'card' &&
+      paymentMethod !== 'mercadopago'
+    ) {
       res.status(400).json({error: 'Selecciona una forma de pago válida.'});
       return;
+    }
+    if (paymentMethod === 'mercadopago') {
+      const mp = getEffectiveMercadoPago();
+      if (!mp.enabled || !mp.accessToken) {
+        res.status(400).json({
+          error:
+            'Mercado Pago aún no está habilitado por el administrador. Elige Efectivo o Tarjeta.',
+        });
+        return;
+      }
     }
     if (photoDataUrl) {
       if (photoDataUrl.length > 4_500_000 || !IMAGE_DATA_URL_REGEX.test(photoDataUrl)) {
@@ -1799,18 +1995,39 @@ export function createApiApp(): Express {
       if (deliveryAddress) client.address = deliveryAddress;
     }
 
+    const clientAddress = deliveryAddress || client?.address || undefined;
+    const clientAge = client?.age;
+    const clientIdDocument = client?.idDocumentNumber;
+    const clientMapsUrl = normalizeGoogleMapsUrl(client?.mapsUrl);
+
     const freeLocker = db.lockers.find(
       (l) => l.campusId === campus.id && l.status === 'disponible',
     );
+
+    const orderQrPayload = buildOrderQrPayload({
+      folio,
+      bagCode,
+      serviceName: service.name,
+      totalAmount,
+      clientName,
+      clientAge,
+      clientIdDocument,
+      clientAddress,
+      clientMapsUrl,
+    });
 
     const order: Order = {
       id: `ord-${crypto.randomUUID().slice(0, 8)}`,
       folio,
       bagCode,
-      orderQrPayload: `KICKSXR|${folio}|${bagCode}|${campus.id}`,
+      orderQrPayload,
       clientId: req.auth!.sub,
       clientName,
       clientWhatsapp,
+      clientAge,
+      clientIdDocument,
+      clientAddress,
+      clientMapsUrl,
       userType: 'general',
       campusId: campus.id,
       campusName: campus.name,
@@ -1851,14 +2068,7 @@ export function createApiApp(): Express {
     const writes: Promise<unknown>[] = [];
     if (isSupabaseConfigured()) {
       writes.push(supabaseStore.upsertOrder(order));
-      writes.push(
-        supabaseStore.upsertSettings({
-          id: 1,
-          shipping_fee: db.shippingFee,
-          next_order_seq: db.nextOrderSeq,
-          next_bag_seq: db.nextBagSeq,
-        }),
-      );
+      writes.push(supabaseStore.upsertSettings(buildSettingsRowForSupabase()));
       if (client && client.passwordHash) {
         writes.push(
           supabaseStore.upsertClient({
@@ -1869,6 +2079,9 @@ export function createApiApp(): Express {
             whatsapp_normalized: client.whatsappNormalized,
             password_hash: client.passwordHash,
             address: client.address,
+            maps_url: client.mapsUrl || null,
+            age: client.age ?? null,
+            id_document_number: client.idDocumentNumber || null,
             user_type: client.userType,
             created_at: client.createdAt,
           }),
@@ -2075,9 +2288,14 @@ export function createApiApp(): Express {
       cardPaid: activeOrders
         .filter((o) => o.paymentStatus === 'Pagado' && o.paymentMethod === 'card')
         .reduce((acc, o) => acc + o.totalAmount, 0),
+      mercadoPagoPaid: activeOrders
+        .filter((o) => o.paymentStatus === 'Pagado' && o.paymentMethod === 'mercadopago')
+        .reduce((acc, o) => acc + o.totalAmount, 0),
       avgRating,
       ratedCount: ratedOrders.length,
     };
+
+    const mp = getEffectiveMercadoPago();
 
     res.json({
       metrics,
@@ -2094,6 +2312,9 @@ export function createApiApp(): Express {
         nextBagSeq: db.nextBagSeq,
         availableLockersByCampus: buildPublicConfig().availableLockersByCampus,
         supabaseConnected: isSupabaseConfigured(),
+        mercadoPagoEnabled: Boolean(mp.enabled && mp.accessToken),
+        mercadoPagoSandbox: mp.sandboxMode,
+        mercadoPagoPublicKey: mp.enabled ? mp.publicKey || undefined : undefined,
       },
     });
   });
@@ -2234,14 +2455,35 @@ export function createApiApp(): Express {
       }
     }
 
+    const clientAddress = deliveryAddress || existingClient?.address || undefined;
+    const clientAge = existingClient?.age;
+    const clientIdDocument = existingClient?.idDocumentNumber;
+    const clientMapsUrl = normalizeGoogleMapsUrl(existingClient?.mapsUrl);
+
+    const orderQrPayload = buildOrderQrPayload({
+      folio,
+      bagCode,
+      serviceName: service.name,
+      totalAmount,
+      clientName,
+      clientAge,
+      clientIdDocument,
+      clientAddress,
+      clientMapsUrl,
+    });
+
     const order: Order = {
       id: `ord-${crypto.randomUUID().slice(0, 8)}`,
       folio,
       bagCode,
-      orderQrPayload: `KICKSXR|${folio}|${bagCode}|${campus.id}`,
+      orderQrPayload,
       clientId: existingClient?.id || `walkin-${normalizePhone(clientWhatsapp)}`,
       clientName,
       clientWhatsapp,
+      clientAge,
+      clientIdDocument,
+      clientAddress,
+      clientMapsUrl,
       userType: 'general',
       campusId: campus.id,
       campusName: campus.name,
@@ -2284,14 +2526,7 @@ export function createApiApp(): Express {
 
     if (isSupabaseConfigured()) {
       writes.push(supabaseStore.upsertOrder(order));
-      writes.push(
-        supabaseStore.upsertSettings({
-          id: 1,
-          shipping_fee: db.shippingFee,
-          next_order_seq: db.nextOrderSeq,
-          next_bag_seq: db.nextBagSeq,
-        }),
-      );
+      writes.push(supabaseStore.upsertSettings(buildSettingsRowForSupabase()));
     }
 
     const whatsappUrl = buildOrderWhatsappUrl(
@@ -2464,7 +2699,6 @@ export function createApiApp(): Express {
       }
       const prevFolio = order.folio;
       order.folio = nextFolio;
-      order.orderQrPayload = `KICKSXR|${order.folio}|${order.bagCode}|${order.campusId}`;
       order.history.push({
         status: order.status,
         timestamp: now,
@@ -2483,7 +2717,6 @@ export function createApiApp(): Express {
         return;
       }
       order.bagCode = nextBagCode;
-      order.orderQrPayload = `KICKSXR|${order.folio}|${order.bagCode}|${order.campusId}`;
     }
 
     if (nextTotalAmountRaw !== undefined) {
@@ -2518,6 +2751,20 @@ export function createApiApp(): Express {
         order.unitPrice * order.pairs - (order.discountAmount || 0) + (order.shippingFee || 0),
       );
     }
+
+    // Keep QR payload synced with latest folio, bagCode, total and client details
+    const linkedClient = db.clients.find((c) => c.id === order.clientId);
+    order.orderQrPayload = buildOrderQrPayload({
+      folio: order.folio,
+      bagCode: order.bagCode,
+      serviceName: order.serviceName,
+      totalAmount: order.totalAmount,
+      clientName: order.clientName,
+      clientAge: order.clientAge ?? linkedClient?.age,
+      clientIdDocument: order.clientIdDocument ?? linkedClient?.idDocumentNumber,
+      clientAddress: order.clientAddress ?? order.deliveryAddress ?? linkedClient?.address,
+      clientMapsUrl: order.clientMapsUrl ?? linkedClient?.mapsUrl,
+    });
 
     const writes: Promise<unknown>[] = [];
     let afterPhotoAdded = false;
@@ -3050,12 +3297,7 @@ export function createApiApp(): Express {
     }
     saveDb(db);
     if (isSupabaseConfigured()) {
-      await supabaseStore.upsertSettings({
-        id: 1,
-        shipping_fee: db.shippingFee,
-        next_order_seq: db.nextOrderSeq,
-        next_bag_seq: db.nextBagSeq,
-      });
+      await supabaseStore.upsertSettings(buildSettingsRowForSupabase());
     }
     broadcastEvent({type: 'config'});
     res.json({
@@ -3202,6 +3444,18 @@ export function createApiApp(): Express {
             whatsappNormalized: row.whatsapp_normalized,
             passwordHash: row.password_hash,
             address: row.address,
+            mapsUrl:
+              normalizeGoogleMapsUrl(row.maps_url) ||
+              (idx >= 0 ? db.clients[idx].mapsUrl : undefined),
+            age:
+              typeof row.age === 'number' && row.age > 0
+                ? row.age
+                : idx >= 0
+                  ? db.clients[idx].age
+                  : undefined,
+            idDocumentNumber:
+              row.id_document_number ||
+              (idx >= 0 ? db.clients[idx].idDocumentNumber : undefined),
             userType: row.user_type || 'general',
             inePhotoDataUrl:
               row.ine_photo_data_url ||
@@ -3232,8 +3486,10 @@ export function createApiApp(): Express {
         username: c.username,
         whatsapp: c.whatsapp,
         address: c.address,
+        mapsUrl: c.mapsUrl,
+        age: c.age,
+        idDocumentNumber: c.idDocumentNumber,
         userType: c.userType,
-        inePhotoDataUrl: c.inePhotoDataUrl,
         createdAt: c.createdAt,
       })),
       supabaseConnected: isSupabaseConfigured(),
@@ -3411,11 +3667,11 @@ export function createApiApp(): Express {
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
     const whatsappNormalized = normalizePhone(whatsapp);
     const address = sanitizeText(req.body?.address, 220);
+    const rawMapsUrl = typeof req.body?.mapsUrl === 'string' ? req.body.mapsUrl.trim() : '';
+    const mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
+    const age = parseOptionalAge(req.body?.age);
+    const idDocumentNumber = sanitizeIdDocument(req.body?.idDocumentNumber);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    const inePhotoDataUrl =
-      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
-        ? req.body.inePhotoDataUrl.trim()
-        : undefined;
 
     if (name.length < 2) {
       res.status(400).json({error: 'Ingresa el nombre completo del cliente.'});
@@ -3435,20 +3691,16 @@ export function createApiApp(): Express {
       res.status(400).json({error: 'Ingresa la dirección de entrega del cliente.'});
       return;
     }
+    if (rawMapsUrl && !mapsUrl) {
+      res.status(400).json({
+        error:
+          'El enlace de ubicación debe ser un link válido de Google Maps (https://maps.app.goo.gl/...).',
+      });
+      return;
+    }
     if (password.length < 6) {
       res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
       return;
-    }
-    if (inePhotoDataUrl) {
-      if (
-        inePhotoDataUrl.length > 4_500_000 ||
-        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
-      ) {
-        res.status(400).json({
-          error: 'La imagen del INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
-        });
-        return;
-      }
     }
 
     const existsUserLocal = db.clients.some(
@@ -3489,8 +3741,10 @@ export function createApiApp(): Express {
       whatsappNormalized,
       passwordHash,
       address,
+      mapsUrl,
+      age,
+      idDocumentNumber: idDocumentNumber || undefined,
       userType: 'general',
-      inePhotoDataUrl,
       createdAt: now,
     };
 
@@ -3506,8 +3760,10 @@ export function createApiApp(): Express {
           whatsapp_normalized: newClient.whatsappNormalized,
           password_hash: passwordHash,
           address: newClient.address,
+          maps_url: newClient.mapsUrl || null,
+          age: newClient.age ?? null,
+          id_document_number: newClient.idDocumentNumber || null,
           user_type: 'general',
-          ine_photo_data_url: newClient.inePhotoDataUrl || null,
           created_at: newClient.createdAt,
         })
       : false;
@@ -3528,8 +3784,10 @@ export function createApiApp(): Express {
         username: newClient.username,
         whatsapp: newClient.whatsapp,
         address: newClient.address,
+        mapsUrl: newClient.mapsUrl,
+        age: newClient.age,
+        idDocumentNumber: newClient.idDocumentNumber,
         userType: newClient.userType,
-        inePhotoDataUrl: newClient.inePhotoDataUrl,
         createdAt: newClient.createdAt,
       },
       credentials,
@@ -3547,26 +3805,31 @@ export function createApiApp(): Express {
 
     const name = sanitizeText(req.body?.name, 80);
     const address = sanitizeText(req.body?.address, 220);
-    const inePhotoDataUrl =
-      typeof req.body?.inePhotoDataUrl === 'string' && req.body.inePhotoDataUrl.trim()
-        ? req.body.inePhotoDataUrl.trim()
+    const rawMapsUrl =
+      typeof req.body?.mapsUrl === 'string' ? req.body.mapsUrl.trim() : undefined;
+    const age = parseOptionalAge(req.body?.age);
+    const idDocumentNumber =
+      typeof req.body?.idDocumentNumber === 'string'
+        ? sanitizeIdDocument(req.body.idDocumentNumber)
         : undefined;
 
-    if (inePhotoDataUrl) {
-      if (
-        inePhotoDataUrl.length > 4_500_000 ||
-        !IMAGE_DATA_URL_REGEX.test(inePhotoDataUrl)
-      ) {
-        res.status(400).json({
-          error: 'La imagen del INE debe ser JPG, PNG o WebP y pesar menos de 3 MB.',
-        });
-        return;
-      }
-      client.inePhotoDataUrl = inePhotoDataUrl;
+    if (rawMapsUrl && !isSafeGoogleMapsUrl(rawMapsUrl)) {
+      res.status(400).json({
+        error:
+          'El enlace de ubicación debe ser un link válido de Google Maps (https://maps.app.goo.gl/...).',
+      });
+      return;
     }
 
     if (name.length >= 2) client.name = name;
     if (address.length >= 5) client.address = address;
+    if (rawMapsUrl !== undefined) {
+      client.mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
+    }
+    if (age !== undefined) client.age = age;
+    if (idDocumentNumber !== undefined) {
+      client.idDocumentNumber = idDocumentNumber || undefined;
+    }
 
     const newPassword =
       typeof req.body?.password === 'string' ? req.body.password : '';
@@ -3598,8 +3861,10 @@ export function createApiApp(): Express {
             whatsapp_normalized: client.whatsappNormalized,
             password_hash: client.passwordHash,
             address: client.address,
+            maps_url: client.mapsUrl || null,
+            age: client.age ?? null,
+            id_document_number: client.idDocumentNumber || null,
             user_type: client.userType,
-            ine_photo_data_url: client.inePhotoDataUrl || null,
             created_at: client.createdAt,
           })
         : false;
@@ -3611,14 +3876,387 @@ export function createApiApp(): Express {
         username: client.username,
         whatsapp: client.whatsapp,
         address: client.address,
+        mapsUrl: client.mapsUrl,
+        age: client.age,
+        idDocumentNumber: client.idDocumentNumber,
         userType: client.userType,
-        inePhotoDataUrl: client.inePhotoDataUrl,
         createdAt: client.createdAt,
       },
       credentials,
       supabaseSynced,
     });
   });
+
+  // --- MERCADO PAGO ADMIN CONFIG & CHECKOUT ---
+  app.get('/api/admin/mercadopago', requireAdmin, async (_req, res) => {
+    await ensureFreshState();
+    res.json({config: buildMercadoPagoAdminView()});
+  });
+
+  app.patch('/api/admin/mercadopago', requireAdmin, async (req, res) => {
+    await ensureFreshState();
+    if (!db.mercadoPago) {
+      db.mercadoPago = {
+        enabled: false,
+        sandboxMode: true,
+        publicKey: '',
+        accessToken: '',
+      };
+    }
+
+    if (typeof req.body?.enabled === 'boolean') {
+      db.mercadoPago.enabled = req.body.enabled;
+    }
+    if (typeof req.body?.sandboxMode === 'boolean') {
+      db.mercadoPago.sandboxMode = req.body.sandboxMode;
+    }
+    if (typeof req.body?.publicKey === 'string') {
+      db.mercadoPago.publicKey = sanitizeText(req.body.publicKey, 160);
+    }
+    if (typeof req.body?.accessToken === 'string') {
+      const trimmedToken = req.body.accessToken.trim();
+      if (trimmedToken.length > 0) {
+        if (trimmedToken.length < 15 || trimmedToken.length > 220) {
+          res.status(400).json({
+            error:
+              'El Access Token de Mercado Pago parece incompleto. Copia la clave completa desde tu panel de Mercado Pago Developers.',
+          });
+          return;
+        }
+        db.mercadoPago.accessToken = trimmedToken;
+      }
+    }
+    if (req.body?.clearAccessToken === true) {
+      db.mercadoPago.accessToken = '';
+      db.mercadoPago.enabled = false;
+    }
+
+    const effective = getEffectiveMercadoPago();
+    if (db.mercadoPago.enabled && !effective.accessToken) {
+      res.status(400).json({
+        error:
+          'Pega tu Access Token de Mercado Pago antes de activar el cobro en checkout.',
+      });
+      return;
+    }
+
+    db.mercadoPago.updatedAt = new Date().toISOString();
+    saveDb(db);
+
+    const supabaseSynced = isSupabaseConfigured()
+      ? await supabaseStore.upsertSettings(buildSettingsRowForSupabase())
+      : false;
+
+    broadcastEvent({type: 'config'});
+    res.json({
+      config: buildMercadoPagoAdminView(),
+      supabaseSynced,
+    });
+  });
+
+  app.post('/api/admin/mercadopago/test', requireAdmin, async (_req, res) => {
+    await ensureFreshState();
+    const mp = getEffectiveMercadoPago();
+    if (!mp.accessToken) {
+      res.status(400).json({
+        error:
+          'Aún no hay un Access Token configurado. Pégalo y guarda tu configuración primero.',
+      });
+      return;
+    }
+    try {
+      const response = await fetch('https://api.mercadopago.com/users/me', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${mp.accessToken}`,
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        id?: number | string;
+        nickname?: string;
+        email?: string;
+        site_id?: string;
+        message?: string;
+      };
+      if (!response.ok) {
+        res.status(400).json({
+          error:
+            data.message ||
+            'Mercado Pago rechazó el Access Token. Verifica que copiaste la clave correctamente.',
+        });
+        return;
+      }
+      res.json({
+        ok: true,
+        accountId: data.id ? String(data.id) : undefined,
+        nickname: data.nickname || undefined,
+        email: data.email || undefined,
+        siteId: data.site_id || undefined,
+        sandboxMode: mp.sandboxMode,
+      });
+    } catch {
+      res.status(502).json({
+        error:
+          'No se pudo conectar con Mercado Pago en este momento. Intenta nuevamente en unos segundos.',
+      });
+    }
+  });
+
+  app.post(
+    '/api/mercadopago/preference',
+    requireAuth,
+    async (req: AuthedRequest, res) => {
+      await ensureFreshState();
+      const orderId = sanitizeText(req.body?.orderId, 60);
+      const order = db.orders.find((o) => o.id === orderId);
+      if (!order) {
+        res.status(404).json({error: 'Pedido no encontrado.'});
+        return;
+      }
+      if (req.auth?.role !== 'admin' && order.clientId !== req.auth?.sub) {
+        res.status(403).json({
+          error: 'No tienes permiso para generar el pago de este pedido.',
+        });
+        return;
+      }
+
+      const mp = getEffectiveMercadoPago();
+      if (!mp.enabled || !mp.accessToken) {
+        res.status(400).json({
+          error:
+            'Mercado Pago no está habilitado por el administrador en este momento.',
+        });
+        return;
+      }
+
+      const origin = resolveRequestOrigin(req);
+      const baseReturn = `${origin}/?order_id=${encodeURIComponent(order.id)}`;
+      const isHttps = origin.startsWith('https://');
+
+      const preferenceBody: Record<string, unknown> = {
+        items: [
+          {
+            id: order.folio,
+            title: `Kicks XR · ${order.serviceName} (${order.folio})`,
+            description: `${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'} · Bolsa ${order.bagCode}`,
+            quantity: 1,
+            currency_id: 'MXN',
+            unit_price: Math.max(1, Number(order.totalAmount)),
+          },
+        ],
+        external_reference: order.id,
+        statement_descriptor: 'KICKS XR',
+        back_urls: {
+          success: `${baseReturn}&mp_status=approved`,
+          pending: `${baseReturn}&mp_status=pending`,
+          failure: `${baseReturn}&mp_status=failure`,
+        },
+        ...(isHttps ? {auto_return: 'approved'} : {}),
+      };
+
+      try {
+        const mpRes = await fetch(
+          'https://api.mercadopago.com/checkout/preferences',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${mp.accessToken}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(preferenceBody),
+            signal: AbortSignal.timeout(12000),
+          },
+        );
+        const mpData = (await mpRes.json().catch(() => ({}))) as {
+          id?: string;
+          init_point?: string;
+          sandbox_init_point?: string;
+          message?: string;
+        };
+
+        if (!mpRes.ok || !mpData.id) {
+          res.status(400).json({
+            error:
+              mpData.message ||
+              'Mercado Pago no pudo crear la orden de cobro. Verifica las credenciales configuradas por el administrador.',
+          });
+          return;
+        }
+
+        const candidateUrl = mp.sandboxMode
+          ? mpData.sandbox_init_point || mpData.init_point || ''
+          : mpData.init_point || mpData.sandbox_init_point || '';
+
+        if (!isSafeMercadoPagoUrl(candidateUrl)) {
+          res.status(502).json({
+            error: 'Mercado Pago devolvió una URL de pago no válida.',
+          });
+          return;
+        }
+
+        order.mpPreferenceId = mpData.id;
+        order.updatedAt = new Date().toISOString();
+        saveDb(db);
+        if (isSupabaseConfigured()) {
+          await supabaseStore.upsertOrder(order);
+        }
+
+        res.json({
+          preferenceId: mpData.id,
+          checkoutUrl: candidateUrl,
+          sandboxMode: mp.sandboxMode,
+        });
+      } catch {
+        res.status(502).json({
+          error:
+            'No se pudo contactar a Mercado Pago para iniciar el pago. Intenta nuevamente.',
+        });
+      }
+    },
+  );
+
+  app.post(
+    '/api/mercadopago/verify',
+    requireAuth,
+    async (req: AuthedRequest, res) => {
+      await ensureFreshState();
+      const orderId = sanitizeText(req.body?.orderId, 60);
+      const rawPaymentId = sanitizeText(req.body?.paymentId, 40).replace(/[^0-9]/g, '');
+      const order = db.orders.find((o) => o.id === orderId);
+      if (!order) {
+        res.status(404).json({error: 'Pedido no encontrado.'});
+        return;
+      }
+      if (req.auth?.role !== 'admin' && order.clientId !== req.auth?.sub) {
+        res.status(403).json({
+          error: 'No tienes permiso para verificar el pago de este pedido.',
+        });
+        return;
+      }
+
+      if (order.paymentStatus === 'Pagado') {
+        res.json({
+          verified: true,
+          mpStatus: 'approved',
+          order,
+        });
+        return;
+      }
+
+      const mp = getEffectiveMercadoPago();
+      if (!mp.accessToken) {
+        res.status(400).json({
+          error: 'Mercado Pago no está configurado en el servidor.',
+        });
+        return;
+      }
+
+      try {
+        let paymentStatus = 'pending';
+        let confirmedPaymentId: string | undefined;
+
+        if (rawPaymentId) {
+          const pRes = await fetch(
+            `https://api.mercadopago.com/v1/payments/${encodeURIComponent(rawPaymentId)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${mp.accessToken}`,
+                Accept: 'application/json',
+              },
+              signal: AbortSignal.timeout(10000),
+            },
+          );
+          if (pRes.ok) {
+            const pData = (await pRes.json().catch(() => ({}))) as {
+              id?: number | string;
+              status?: string;
+              external_reference?: string;
+            };
+            if (pData.external_reference === order.id && pData.status) {
+              paymentStatus = pData.status;
+              confirmedPaymentId = pData.id ? String(pData.id) : rawPaymentId;
+            }
+          }
+        }
+
+        if (paymentStatus !== 'approved') {
+          const sRes = await fetch(
+            `https://api.mercadopago.com/v1/payments/search?external_reference=${encodeURIComponent(order.id)}&sort=date_created&criteria=desc`,
+            {
+              headers: {
+                Authorization: `Bearer ${mp.accessToken}`,
+                Accept: 'application/json',
+              },
+              signal: AbortSignal.timeout(10000),
+            },
+          );
+          if (sRes.ok) {
+            const sData = (await sRes.json().catch(() => ({}))) as {
+              results?: Array<{id?: number | string; status?: string}>;
+            };
+            const approved = sData.results?.find((r) => r.status === 'approved');
+            const latest = approved || sData.results?.[0];
+            if (latest?.status) {
+              paymentStatus = latest.status;
+              confirmedPaymentId = latest.id ? String(latest.id) : undefined;
+            }
+          }
+        }
+
+        if (paymentStatus === 'approved') {
+          const now = new Date().toISOString();
+          order.paymentMethod = 'mercadopago';
+          order.paymentStatus = 'Pagado';
+          if (confirmedPaymentId) order.mpPaymentId = confirmedPaymentId;
+          order.updatedAt = now;
+          order.history.push({
+            status: order.status,
+            timestamp: now,
+            note: `Pago aprobado en Mercado Pago${confirmedPaymentId ? ` (Operación #${confirmedPaymentId})` : ''}.`,
+          });
+          saveDb(db);
+          const writes: Promise<unknown>[] = [];
+          if (isSupabaseConfigured()) {
+            writes.push(supabaseStore.upsertOrder(order));
+          }
+          writes.push(
+            createNotification({
+              orderId: order.id,
+              folio: order.folio,
+              recipientWhatsapp: order.clientWhatsapp,
+              recipientName: order.clientName,
+              title: `Pago confirmado · ${order.folio}`,
+              message: `Recibimos tu pago vía Mercado Pago por $${order.totalAmount} MXN para el pedido ${order.folio}.`,
+            }),
+          );
+          await Promise.all(writes);
+          broadcastEvent({
+            type: 'orders',
+            folio: order.folio,
+            orderId: order.id,
+            title: `Pago Mercado Pago aprobado · ${order.folio}`,
+            message: `${order.clientName} pagó $${order.totalAmount} MXN con Mercado Pago.`,
+          });
+          res.json({verified: true, mpStatus: 'approved', order});
+          return;
+        }
+
+        res.json({
+          verified: false,
+          mpStatus: paymentStatus,
+          order,
+        });
+      } catch {
+        res.status(502).json({
+          error:
+            'No se pudo verificar el estado del pago con Mercado Pago. Intenta de nuevo en unos segundos.',
+        });
+      }
+    },
+  );
 
   app.get('/api/admin/supabase/health', requireAdmin, async (_req, res) => {
     const health = await supabaseStore.checkHealth();

@@ -28,6 +28,9 @@ export interface SupabaseClientRow {
   whatsapp_normalized: string;
   password_hash: string;
   address: string;
+  maps_url?: string | null;
+  age?: number | null;
+  id_document_number?: string | null;
   user_type: 'general' | 'university';
   ine_photo_data_url?: string | null;
   created_at: string;
@@ -38,6 +41,10 @@ export interface SupabaseSettingsRow {
   shipping_fee: number;
   next_order_seq: number;
   next_bag_seq: number;
+  mp_enabled?: boolean | null;
+  mp_sandbox?: boolean | null;
+  mp_public_key?: string | null;
+  mp_access_token?: string | null;
 }
 
 interface SbResult<T> {
@@ -250,21 +257,22 @@ export const supabaseStore = {
       body: client,
     });
     if (!res.ok && res.status === 400) {
-      // Backward-compatible fallback if ine_photo_data_url or username columns were not yet added
-      if (res.error?.includes('ine_photo_data_url')) {
-        const {ine_photo_data_url: _omitIne, ...withoutIne} = client;
-        const retry1 = await sbRequest('kicksxr_clients?on_conflict=id', {
-          method: 'POST',
-          prefer: 'resolution=merge-duplicates,return=minimal',
-          body: withoutIne,
-        });
-        if (retry1.ok) return true;
-      }
+      // Backward-compatible fallback if newly added columns have not yet been migrated in Supabase
       const {
-        username: _omitUser,
-        ine_photo_data_url: _omitIne2,
-        ...legacyClient
+        maps_url: _omitMaps,
+        age: _omitAge,
+        id_document_number: _omitIdDoc,
+        ine_photo_data_url: _omitIne,
+        ...midClient
       } = client;
+      const retry1 = await sbRequest('kicksxr_clients?on_conflict=id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+        body: midClient,
+      });
+      if (retry1.ok) return true;
+
+      const {username: _omitUser, ...legacyClient} = midClient;
       const retry2 = await sbRequest('kicksxr_clients?on_conflict=id', {
         method: 'POST',
         prefer: 'resolution=merge-duplicates,return=minimal',
@@ -375,6 +383,15 @@ export const supabaseStore = {
       clientId: String(row.client_id),
       clientName: String(row.client_name),
       clientWhatsapp: String(row.client_whatsapp),
+      clientAge:
+        row.client_age !== null && row.client_age !== undefined
+          ? Number(row.client_age)
+          : undefined,
+      clientIdDocument: row.client_id_document
+        ? String(row.client_id_document)
+        : undefined,
+      clientAddress: row.client_address ? String(row.client_address) : undefined,
+      clientMapsUrl: row.client_maps_url ? String(row.client_maps_url) : undefined,
       userType: (row.user_type as 'general' | 'university') || 'general',
       campusId: String(row.campus_id),
       campusName: String(row.campus_name),
@@ -405,6 +422,8 @@ export const supabaseStore = {
       paymentMethod: row.payment_method as Order['paymentMethod'],
       paymentStatus: row.payment_status as Order['paymentStatus'],
       cardLast4: row.card_last4 ? String(row.card_last4) : undefined,
+      mpPreferenceId: row.mp_preference_id ? String(row.mp_preference_id) : undefined,
+      mpPaymentId: row.mp_payment_id ? String(row.mp_payment_id) : undefined,
       status: row.status as Order['status'],
       collectionStatus: row.collection_status as Order['collectionStatus'],
       bagVerified: Boolean(row.bag_verified),
@@ -460,6 +479,12 @@ export const supabaseStore = {
       rating: order.rating ?? null,
       rating_comment: order.ratingComment || null,
       rated_at: order.ratedAt || null,
+      client_age: order.clientAge ?? null,
+      client_id_document: order.clientIdDocument || null,
+      client_address: order.clientAddress || null,
+      client_maps_url: order.clientMapsUrl || null,
+      mp_preference_id: order.mpPreferenceId || null,
+      mp_payment_id: order.mpPaymentId || null,
     };
 
     const res = await sbRequest('kicksxr_orders?on_conflict=id', {
@@ -576,6 +601,19 @@ export const supabaseStore = {
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: settings,
     });
+    if (!res.ok && res.status === 400) {
+      const retry = await sbRequest('kicksxr_settings?on_conflict=id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+        body: {
+          id: settings.id,
+          shipping_fee: settings.shipping_fee,
+          next_order_seq: settings.next_order_seq,
+          next_bag_seq: settings.next_bag_seq,
+        },
+      });
+      return retry.ok;
+    }
     return res.ok;
   },
 

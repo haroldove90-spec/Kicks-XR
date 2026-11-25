@@ -12,6 +12,7 @@ import type {
   IncidentType,
   ManagedAdminUser,
   ManagedClientUser,
+  MercadoPagoAdminConfig,
   NotificationLog,
   Order,
   OrderStatus,
@@ -88,7 +89,9 @@ export const api = {
     whatsapp: string;
     password: string;
     address: string;
-    inePhotoDataUrl?: string;
+    mapsUrl?: string;
+    age?: number;
+    idDocumentNumber: string;
   }) =>
     request<{token: string; user: AuthUser}>('/api/auth/client/register', {
       method: 'POST',
@@ -105,7 +108,9 @@ export const api = {
     name: string;
     whatsapp: string;
     address: string;
-    inePhotoDataUrl?: string;
+    mapsUrl?: string;
+    age?: number;
+    idDocumentNumber?: string;
   }) =>
     request<{user: AuthUser}>('/api/client/profile', {
       method: 'PATCH',
@@ -227,8 +232,10 @@ export const api = {
     username: string;
     whatsapp: string;
     address: string;
+    mapsUrl?: string;
+    age?: number;
+    idDocumentNumber?: string;
     password: string;
-    inePhotoDataUrl?: string;
   }) =>
     request<{
       client: ManagedClientUser;
@@ -244,8 +251,10 @@ export const api = {
     body: {
       name?: string;
       address?: string;
+      mapsUrl?: string;
+      age?: number;
+      idDocumentNumber?: string;
       password?: string;
-      inePhotoDataUrl?: string;
     },
   ) =>
     request<{
@@ -450,6 +459,57 @@ export const api = {
     request<{ok: boolean}>(`/api/admin/config/coupons/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+
+  // Mercado Pago — Admin configuration
+  getMercadoPagoConfig: () =>
+    request<{config: MercadoPagoAdminConfig}>('/api/admin/mercadopago'),
+
+  updateMercadoPagoConfig: (body: {
+    enabled?: boolean;
+    sandboxMode?: boolean;
+    publicKey?: string;
+    accessToken?: string;
+    clearAccessToken?: boolean;
+  }) =>
+    request<{config: MercadoPagoAdminConfig; supabaseSynced: boolean}>(
+      '/api/admin/mercadopago',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      },
+    ),
+
+  testMercadoPagoConfig: () =>
+    request<{
+      ok: boolean;
+      accountId?: string;
+      nickname?: string;
+      email?: string;
+      siteId?: string;
+      sandboxMode: boolean;
+    }>('/api/admin/mercadopago/test', {
+      method: 'POST',
+    }),
+
+  // Mercado Pago — Client Checkout Pro
+  createMercadoPagoPreference: (orderId: string) =>
+    request<{
+      preferenceId: string;
+      checkoutUrl: string;
+      sandboxMode: boolean;
+    }>('/api/mercadopago/preference', {
+      method: 'POST',
+      body: JSON.stringify({orderId}),
+    }),
+
+  verifyMercadoPagoPayment: (orderId: string, paymentId?: string) =>
+    request<{order: Order; verified: boolean; mpStatus: string}>(
+      '/api/mercadopago/verify',
+      {
+        method: 'POST',
+        body: JSON.stringify({orderId, paymentId}),
+      },
+    ),
 };
 
 export function subscribeToRealtimeUpdates(

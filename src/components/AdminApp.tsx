@@ -17,6 +17,7 @@ import {
   Eye,
   FileText,
   Home,
+  IdCard,
   ImageOff,
   Layers,
   Lock,
@@ -39,6 +40,7 @@ import {
   Truck,
   UserPlus,
   Users,
+  Wallet,
   X,
   ZoomIn,
   ZoomOut,
@@ -46,6 +48,12 @@ import {
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
 import {compressImageFile} from '../lib/image';
+import {
+  formatPaymentMethodLabel,
+  isSafeGoogleMapsUrl,
+  parseOrderQrPayload,
+  type ParsedOrderQrData,
+} from '../lib/qrPayload';
 import type {
   AdminConfig,
   AdminDashboardMetrics,
@@ -62,11 +70,13 @@ import type {
   PopupAlert,
   SupabaseHealthStatus,
 } from '../types';
+import {AdminMercadoPagoModule} from './AdminMercadoPagoModule';
 import {
   AdminOrderDetailModal,
   isSafePhotoDataUrl,
 } from './AdminOrderDetailModal';
 import {AdminReportsModule} from './AdminReportsModule';
+import {AdminServicesModule} from './AdminServicesModule';
 import {AdminUsersModule} from './AdminUsersModule';
 import {AdminWalkInOrderModal} from './AdminWalkInOrderModal';
 import {AppShell, type NavModuleItem} from './AppShell';
@@ -86,6 +96,8 @@ type AdminTab =
   | 'home'
   | 'collections'
   | 'orders'
+  | 'services'
+  | 'mercadopago'
   | 'reports'
   | 'incidents'
   | 'users'
@@ -143,7 +155,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   // Module 2: Verificar bolsas
   const [bagScanInput, setBagScanInput] = useState('');
   const [checkedBags, setCheckedBags] = useState<Record<string, boolean>>({});
-  const [scannerTarget, setScannerTarget] = useState<'bag' | 'delivery' | null>(null);
+  const [scannerTarget, setScannerTarget] = useState<
+    'bag' | 'delivery' | 'quick' | null
+  >(null);
+  const [scannedQrResult, setScannedQrResult] = useState<{
+    decoded: ParsedOrderQrData;
+    matchedOrder: Order | null;
+  } | null>(null);
 
   // Module 3: Gestionar pedido
   const [orderSearch, setOrderSearch] = useState('');
@@ -397,15 +415,17 @@ export const AdminApp: React.FC<AdminAppProps> = ({
   );
 
   const handleScanOrAddBag = (rawValue: string) => {
-    let code = rawValue.trim().toUpperCase();
-    if (code.startsWith('KICKSXR|')) {
-      code = code.split('|')[2] || code;
-    }
+    const parsed = parseOrderQrPayload(rawValue);
+    const code = (parsed.bagCode || parsed.folio || rawValue.trim()).toUpperCase();
     if (!code) return;
     setBagScanInput(code);
 
     const match = orders.find(
-      (o) => o.bagCode.toUpperCase() === code || o.folio.toUpperCase() === code,
+      (o) =>
+        (parsed.bagCode && o.bagCode.toUpperCase() === parsed.bagCode) ||
+        (parsed.folio && o.folio.toUpperCase() === parsed.folio) ||
+        o.bagCode.toUpperCase() === code ||
+        o.folio.toUpperCase() === code,
     );
     if (!match) {
       onPushAlert({
@@ -428,6 +448,37 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       message: `Vinculada al folio ${match.folio} (${match.clientName}).`,
       tone: 'success',
     });
+  };
+
+  const handleQuickQrScan = (rawValue: string) => {
+    const decoded = parseOrderQrPayload(rawValue);
+    if (!decoded.raw) return;
+    const matchedOrder =
+      orders.find(
+        (o) =>
+          (decoded.folio && o.folio.toUpperCase() === decoded.folio) ||
+          (decoded.bagCode && o.bagCode.toUpperCase() === decoded.bagCode),
+      ) || null;
+    setScannedQrResult({decoded, matchedOrder});
+    if (matchedOrder) {
+      onPushAlert({
+        title: `QR leído · ${matchedOrder.folio}`,
+        message: `Cliente: ${matchedOrder.clientName} · Servicio: ${matchedOrder.serviceName}.`,
+        tone: 'success',
+      });
+    } else if (decoded.clientName || decoded.folio) {
+      onPushAlert({
+        title: 'Datos leídos del código QR',
+        message: `Se extrajo la ficha${decoded.clientName ? ` de ${decoded.clientName}` : ''}.`,
+        tone: 'info',
+      });
+    } else {
+      onPushAlert({
+        title: 'Código leído sin coincidencia',
+        message: `No se encontró un pedido con "${decoded.raw.slice(0, 32)}".`,
+        tone: 'warning',
+      });
+    }
   };
 
   const handleConfirmReception = async () => {
@@ -592,10 +643,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
   const handleConfirmDelivery = async (e: React.FormEvent) => {
     e.preventDefault();
-    let code = deliverFolio.trim().toUpperCase();
-    if (code.startsWith('KICKSXR|')) {
-      code = code.split('|')[1] || code;
-    }
+    const parsed = parseOrderQrPayload(deliverFolio);
+    const code = (parsed.folio || parsed.bagCode || deliverFolio.trim()).toUpperCase();
     if (!code) {
       onPushAlert({
         title: 'Folio requerido',
@@ -925,6 +974,20 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       badgeCount: (metrics?.inCleaning || 0) + (metrics?.readyForDelivery || 0),
     },
     {
+      id: 'services',
+      label: 'Servicios y Precios',
+      shortLabel: 'Servicios',
+      icon: Sparkles,
+      hideOnMobileBar: true, // Accessible via Inicio quick button & Desktop Sidebar
+    },
+    {
+      id: 'mercadopago',
+      label: 'Mercado Pago',
+      shortLabel: 'M. Pago',
+      icon: Wallet,
+      hideOnMobileBar: true, // Accessible via Inicio quick button & Desktop Sidebar
+    },
+    {
       id: 'reports',
       label: 'Reportes / Caja',
       shortLabel: 'Reportes',
@@ -970,6 +1033,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       onOpenNotifications={() => setActiveTab('notifications')}
       onLogout={onLogout}
       notifications={notifications}
+      quickAction={{
+        label: 'Escanear QR',
+        shortLabel: 'QR',
+        icon: QrCode,
+        onClick: () => setScannerTarget('quick'),
+      }}
       switchRoleAction={{
         label: 'Vista Cliente',
         shortLabel: 'Cliente',
@@ -1002,11 +1071,35 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => setScannerTarget('quick')}
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-[#FCF61C] hover:bg-[#11141D] transition-colors cursor-pointer"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    <span>Escanear QR</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('services')}
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 text-[#5E7800]" />
+                    <span>Servicios y precios</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('mercadopago')}
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
+                  >
+                    <Wallet className="h-4 w-4 text-[#5E7800]" />
+                    <span>Mercado Pago</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setActiveTab('reports')}
-                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
+                    className="min-h-[42px] inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                   >
                     <BarChart3 className="h-4 w-4 text-[#5E7800]" />
-                    <span>Corte de caja y reportes</span>
+                    <span>Corte de caja</span>
                   </button>
                   <button
                     type="button"
@@ -1014,7 +1107,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     className="min-h-[42px] inline-flex items-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors cursor-pointer"
                   >
                     <UserPlus className="h-4 w-4" />
-                    <span>+ Pedido en mostrador</span>
+                    <span>+ Pedido mostrador</span>
                   </button>
                 </div>
               </div>
@@ -1087,8 +1180,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                     ${metrics.revenuePaid}
                   </div>
                   <div className="mt-1 text-[11px] text-white/75 tabular-nums">
-                    Efectivo ${metrics.cashPaid} · Tarjeta ${metrics.cardPaid} · Pend. $
-                    {metrics.revenuePending}
+                    Efectivo ${metrics.cashPaid} · Tarjeta ${metrics.cardPaid}
+                    {(metrics.mercadoPagoPaid || 0) > 0
+                      ? ` · M. Pago $${metrics.mercadoPagoPaid}`
+                      : ''}{' '}
+                    · Pend. ${metrics.revenuePending}
                   </div>
                 </button>
               </div>
@@ -1959,8 +2055,19 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                               <span className="text-slate-500">Cliente</span>
                               <span className="font-bold text-[#1A1E2A] text-right">
                                 {selectedOrder.clientName}
+                                {selectedOrder.clientAge
+                                  ? ` · ${selectedOrder.clientAge} años`
+                                  : ''}
                               </span>
                             </div>
+                            {selectedOrder.clientIdDocument && (
+                              <div className="flex justify-between gap-2">
+                                <span className="text-slate-500">INE / Pasaporte</span>
+                                <span className="font-mono font-bold text-[#1A1E2A] text-right">
+                                  {selectedOrder.clientIdDocument}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">WhatsApp</span>
                               <a
@@ -2000,14 +2107,15 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             <div className="flex justify-between gap-2">
                               <span className="text-slate-500">Pago</span>
                               <span className="font-semibold text-[#1A1E2A] text-right">
-                                {selectedOrder.paymentMethod === 'card'
-                                  ? `Tarjeta${selectedOrder.cardLast4 ? ` •••• ${selectedOrder.cardLast4}` : ''}`
-                                  : 'Efectivo'}{' '}
+                                {formatPaymentMethodLabel(
+                                  selectedOrder.paymentMethod,
+                                  selectedOrder.cardLast4,
+                                )}{' '}
                                 ·{' '}
                                 <strong
                                   className={
                                     selectedOrder.paymentStatus === 'Pagado'
-                                      ? 'text-[#8BAF03]'
+                                      ? 'text-[#5E7800]'
                                       : 'text-[#1A1E2A]'
                                   }
                                 >
@@ -2034,16 +2142,35 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   : `Recoger en ${selectedOrder.campusName}`}
                               </span>
                             </div>
-                            {selectedOrder.deliveryMethod === 'delivery' &&
-                              selectedOrder.deliveryAddress && (
-                                <div className="rounded-lg bg-white border border-slate-200 p-2.5 text-xs text-[#1A1E2A] flex items-start gap-1.5">
-                                  <MapPin className="h-3.5 w-3.5 text-[#5E7800] shrink-0 mt-0.5" />
-                                  <span>
-                                    <strong>Dirección:</strong>{' '}
-                                    {selectedOrder.deliveryAddress}
-                                  </span>
-                                </div>
-                              )}
+                            {(selectedOrder.deliveryAddress ||
+                              selectedOrder.clientAddress ||
+                              isSafeGoogleMapsUrl(selectedOrder.clientMapsUrl)) && (
+                              <div className="rounded-lg bg-white border border-slate-200 p-2.5 text-xs text-[#1A1E2A] space-y-1.5">
+                                {(selectedOrder.deliveryAddress ||
+                                  selectedOrder.clientAddress) && (
+                                  <div className="flex items-start gap-1.5">
+                                    <MapPin className="h-3.5 w-3.5 text-[#5E7800] shrink-0 mt-0.5" />
+                                    <span>
+                                      <strong>Dirección:</strong>{' '}
+                                      {selectedOrder.deliveryAddress ||
+                                        selectedOrder.clientAddress}
+                                    </span>
+                                  </div>
+                                )}
+                                {isSafeGoogleMapsUrl(selectedOrder.clientMapsUrl) && (
+                                  <a
+                                    href={selectedOrder.clientMapsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F3F8DE] border border-[#8BAF03]/35 px-2.5 py-1 text-[11px] font-bold text-[#5E7800] hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors"
+                                  >
+                                    <MapPin className="h-3 w-3" />
+                                    <span>Abrir ubicación en Google Maps</span>
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
                             {selectedOrder.shoeNotes && (
                               <div className="rounded-lg bg-[#FCF61C]/20 border border-[#8BAF03]/30 p-2.5 text-xs text-[#1A1E2A] flex items-start gap-1.5">
                                 <FileText className="h-3.5 w-3.5 text-[#1A1E2A] shrink-0 mt-0.5" />
@@ -2117,7 +2244,12 @@ export const AdminApp: React.FC<AdminAppProps> = ({
 
                         <div className="rounded-xl border border-slate-200 p-4">
                           <label className="block text-xs font-bold text-slate-500 mb-2">
-                            Pago ({selectedOrder.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'})
+                            Pago (
+                            {formatPaymentMethodLabel(
+                              selectedOrder.paymentMethod,
+                              selectedOrder.cardLast4,
+                            )}
+                            )
                           </label>
                           <button
                             type="button"
@@ -2689,6 +2821,23 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 if (match) setSelectedOrderId(match.id);
                 setActiveTab('orders');
               }}
+            />
+          )}
+
+          {/* MODULE: SERVICIOS Y PRECIOS */}
+          {activeTab === 'services' && config && (
+            <AdminServicesModule
+              config={config}
+              onRefresh={fetchOverview}
+              onPushAlert={onPushAlert}
+            />
+          )}
+
+          {/* MODULE: MERCADO PAGO */}
+          {activeTab === 'mercadopago' && (
+            <AdminMercadoPagoModule
+              onRefreshOverview={fetchOverview}
+              onPushAlert={onPushAlert}
             />
           )}
 
@@ -3347,33 +3496,313 @@ export const AdminApp: React.FC<AdminAppProps> = ({
       <QRScannerModal
         open={scannerTarget !== null}
         title={
-          scannerTarget === 'bag'
-            ? 'Escanear código de bolsa'
-            : 'Escanear folio de devolución'
+          scannerTarget === 'quick'
+            ? 'Lector rápido de código QR'
+            : scannerTarget === 'bag'
+              ? 'Escanear código de bolsa'
+              : 'Escanear folio de devolución'
         }
         subtitle={
-          scannerTarget === 'bag'
-            ? 'Escanea la etiqueta de la bolsa o el QR de pedido del cliente'
-            : 'Escanea el QR de pedido para cerrar la entrega'
+          scannerTarget === 'quick'
+            ? 'Escanea el código QR del cliente o pedido para ver al instante sus datos, INE/Pasaporte, edad, ubicación y servicio'
+            : scannerTarget === 'bag'
+              ? 'Escanea la etiqueta de la bolsa o el QR de pedido del cliente'
+              : 'Escanea el QR de pedido para cerrar la entrega'
         }
-        placeholder={scannerTarget === 'bag' ? 'B-028' : 'KXR-1042'}
+        placeholder={
+          scannerTarget === 'quick'
+            ? 'KXR-1042 o QR completo'
+            : scannerTarget === 'bag'
+              ? 'B-028'
+              : 'KXR-1042'
+        }
         quickOptions={orders.slice(0, 4).map((o) => ({
-          label: scannerTarget === 'bag' ? `Bolsa ${o.bagCode}` : `Folio ${o.folio}`,
-          sublabel: `${o.folio} · ${o.clientName}`,
-          value: scannerTarget === 'bag' ? o.bagCode : o.folio,
+          label:
+            scannerTarget === 'bag' ? `Bolsa ${o.bagCode}` : `Folio ${o.folio}`,
+          sublabel: `${o.bagCode} · ${o.clientName} · ${o.serviceName}`,
+          value:
+            scannerTarget === 'quick'
+              ? o.orderQrPayload || o.folio
+              : scannerTarget === 'bag'
+                ? o.bagCode
+                : o.folio,
         }))}
         onScan={(val) => {
           const target = scannerTarget;
           setScannerTarget(null);
-          if (target === 'bag') {
+          if (target === 'quick') {
+            handleQuickQrScan(val);
+          } else if (target === 'bag') {
             handleScanOrAddBag(val);
           } else if (target === 'delivery') {
-            const parsed = val.startsWith('KICKSXR|') ? val.split('|')[1] || val : val;
-            setDeliverFolio(parsed);
+            const parsed = parseOrderQrPayload(val);
+            setDeliverFolio(parsed.folio || parsed.bagCode || val);
           }
         }}
         onClose={() => setScannerTarget(null)}
       />
+
+      {/* Quick QR Scan Result Modal (Client + Service Data) */}
+      {scannedQrResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/75 p-4 backdrop-blur-xs"
+          onClick={() => setScannedQrResult(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ficha de escaneo QR"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#1A1E2A] px-5 py-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C] text-[#1A1E2A] shrink-0">
+                  <QrCode className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#FCF61C]">
+                    Lectura QR confirmada
+                  </div>
+                  <h3 className="font-display text-lg font-extrabold text-white truncate">
+                    {scannedQrResult.matchedOrder?.folio ||
+                      scannedQrResult.decoded.folio ||
+                      'Código escaneado'}
+                    {(scannedQrResult.matchedOrder?.bagCode ||
+                      scannedQrResult.decoded.bagCode) && (
+                      <span className="ml-2 font-mono text-sm font-bold text-[#8BAF03]">
+                        ·{' '}
+                        {scannedQrResult.matchedOrder?.bagCode ||
+                          scannedQrResult.decoded.bagCode}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScannedQrResult(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 cursor-pointer shrink-0"
+                aria-label="Cerrar ficha QR"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              {/* Client section */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
+                  <IdCard className="h-4 w-4 text-[#5E7800]" />
+                  <span>Datos del cliente</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      Nombre completo
+                    </div>
+                    <div className="font-bold text-[#1A1E2A]">
+                      {scannedQrResult.matchedOrder?.clientName ||
+                        scannedQrResult.decoded.clientName ||
+                        'No especificado'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      Edad
+                    </div>
+                    <div className="font-bold text-[#1A1E2A]">
+                      {scannedQrResult.matchedOrder?.clientAge ||
+                      scannedQrResult.decoded.clientAge
+                        ? `${
+                            scannedQrResult.matchedOrder?.clientAge ||
+                            scannedQrResult.decoded.clientAge
+                          } años`
+                        : 'No registrada'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      Número de INE o Pasaporte
+                    </div>
+                    <div className="font-mono font-bold text-[#1A1E2A] break-all">
+                      {scannedQrResult.matchedOrder?.clientIdDocument ||
+                        scannedQrResult.decoded.clientIdDocument ||
+                        'No registrado'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      WhatsApp
+                    </div>
+                    <div className="font-mono font-bold text-[#5E7800]">
+                      {scannedQrResult.matchedOrder?.clientWhatsapp || '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {(scannedQrResult.matchedOrder?.clientAddress ||
+                  scannedQrResult.matchedOrder?.deliveryAddress ||
+                  scannedQrResult.decoded.clientAddress) && (
+                  <div className="pt-2 border-t border-slate-200 text-xs text-[#1A1E2A]">
+                    <span className="font-bold text-slate-500 block mb-0.5">
+                      Dirección registrada
+                    </span>
+                    <span>
+                      {scannedQrResult.matchedOrder?.clientAddress ||
+                        scannedQrResult.matchedOrder?.deliveryAddress ||
+                        scannedQrResult.decoded.clientAddress}
+                    </span>
+                  </div>
+                )}
+
+                {(() => {
+                  const mapsLink =
+                    scannedQrResult.matchedOrder?.clientMapsUrl ||
+                    scannedQrResult.decoded.clientMapsUrl;
+                  if (!isSafeGoogleMapsUrl(mapsLink)) return null;
+                  return (
+                    <a
+                      href={mapsLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      <span>Abrir ubicación del cliente en Google Maps</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  );
+                })()}
+              </div>
+
+              {/* Service & Order section */}
+              <div className="rounded-xl border border-[#8BAF03]/30 bg-[#F3F8DE]/55 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
+                    Servicio y pedido
+                  </span>
+                  {scannedQrResult.matchedOrder && (
+                    <span className="rounded-lg bg-[#1A1E2A] px-2.5 py-0.5 text-[11px] font-bold text-[#FCF61C]">
+                      {scannedQrResult.matchedOrder.status}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">
+                      Servicio solicitado
+                    </span>
+                    <span className="font-bold text-[#1A1E2A]">
+                      {scannedQrResult.matchedOrder?.serviceName ||
+                        scannedQrResult.decoded.serviceName ||
+                        '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">
+                      Total / Pago
+                    </span>
+                    <span className="font-mono font-extrabold text-[#5E7800]">
+                      $
+                      {scannedQrResult.matchedOrder?.totalAmount ??
+                        scannedQrResult.decoded.totalAmount ??
+                        0}{' '}
+                      MXN
+                    </span>
+                    {scannedQrResult.matchedOrder && (
+                      <span className="block text-[11px] font-semibold text-slate-600">
+                        {formatPaymentMethodLabel(
+                          scannedQrResult.matchedOrder.paymentMethod,
+                          scannedQrResult.matchedOrder.cardLast4,
+                        )}{' '}
+                        · {scannedQrResult.matchedOrder.paymentStatus}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Admin Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {scannedQrResult.matchedOrder ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ord = scannedQrResult.matchedOrder!;
+                        setScannedQrResult(null);
+                        setSelectedOrderId(ord.id);
+                        setActiveTab('orders');
+                      }}
+                      className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1E2A] px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#11141D] cursor-pointer"
+                    >
+                      <Pencil className="h-4 w-4 text-[#FCF61C]" />
+                      <span>Gestionar pedido</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ord = scannedQrResult.matchedOrder!;
+                        setScannedQrResult(null);
+                        setDetailOrderModal(ord);
+                      }}
+                      className="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
+                    >
+                      <Eye className="h-4 w-4 text-[#5E7800]" />
+                      <span>Ver ficha completa</span>
+                    </button>
+                    {scannedQrResult.matchedOrder.collectionStatus ===
+                      'Pendiente' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ord = scannedQrResult.matchedOrder!;
+                          try {
+                            await api.confirmCollectionBags([ord.bagCode]);
+                            onPushAlert({
+                              title: `Bolsa ${ord.bagCode} recibida`,
+                              message: `Pedido ${ord.folio} marcado como Recibido por KicksXR.`,
+                              tone: 'success',
+                            });
+                            setScannedQrResult(null);
+                            fetchOverview();
+                          } catch (err) {
+                            onPushAlert({
+                              title: 'Error en recepción',
+                              message:
+                                err instanceof Error
+                                  ? err.message
+                                  : 'No se pudo confirmar la recepción.',
+                              tone: 'error',
+                            });
+                          }
+                        }}
+                        className="sm:col-span-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#8BAF03] px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
+                      >
+                        <Check className="h-4 w-4" />
+                        <span>Confirmar recepción en taller</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannedQrResult(null);
+                      setScannerTarget('quick');
+                    }}
+                    className="sm:col-span-2 min-h-[44px] rounded-xl bg-[#8BAF03] px-4 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
+                  >
+                    Escanear otro código QR
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sede QR Modal */}
       {qrCampusModal && (

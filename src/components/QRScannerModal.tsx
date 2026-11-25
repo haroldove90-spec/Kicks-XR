@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Camera, QrCode, X, Check} from 'lucide-react';
+import jsQR from 'jsqr';
+import {Camera, Check, QrCode, X} from 'lucide-react';
 
 interface QuickOption {
   label: string;
@@ -29,15 +30,21 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   open,
   title,
   subtitle,
-  placeholder = 'Ej. KXR-CAMPUS-CENTRAL o B-028',
+  placeholder = 'Ej. KXR-1042 o B-028',
   quickOptions = [],
   onScan,
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const onScanRef = useRef(onScan);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   useEffect(() => {
     if (!open) return;
@@ -45,6 +52,15 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     let stream: MediaStream | null = null;
     let rafId = 0;
     let cancelled = false;
+    let detected = false;
+    let lastDecodeTs = 0;
+
+    const emitDecoded = (raw: string) => {
+      const cleaned = raw.trim();
+      if (!cleaned || detected || cancelled) return;
+      detected = true;
+      onScanRef.current(cleaned);
+    };
 
     const startCamera = async () => {
       setCameraError(null);
@@ -56,40 +72,90 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {facingMode: 'environment'},
+          video: {facingMode: {ideal: 'environment'}},
+          audio: false,
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setCameraActive(true);
-        }
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play();
+        setCameraActive(true);
 
-        if (window.BarcodeDetector && videoRef.current) {
-          const detector = new window.BarcodeDetector({
-            formats: ['qr_code', 'code_128', 'code_39'],
-          });
-          const scanFrame = async () => {
-            if (cancelled || !videoRef.current) return;
-            try {
-              const results = await detector.detect(videoRef.current);
-              if (results.length > 0 && results[0].rawValue) {
-                onScan(results[0].rawValue.trim());
-                return;
+        const detector = window.BarcodeDetector
+          ? new window.BarcodeDetector({
+              formats: ['qr_code', 'code_128', 'code_39'],
+            })
+          : null;
+
+        const canvas = canvasRef.current || document.createElement('canvas');
+        canvasRef.current = canvas;
+        const ctx = canvas.getContext('2d', {willReadFrequently: true});
+
+        const scanLoop = async (ts: number) => {
+          if (cancelled || detected || !videoRef.current) return;
+
+          if (
+            ts - lastDecodeTs >= 140 &&
+            videoRef.current.readyState >= videoRef.current.HAVE_CURRENT_DATA &&
+            videoRef.current.videoWidth > 0 &&
+            videoRef.current.videoHeight > 0
+          ) {
+            lastDecodeTs = ts;
+
+            // 1) Try native BarcodeDetector first when supported
+            if (detector) {
+              try {
+                const results = await detector.detect(videoRef.current);
+                if (results.length > 0 && results[0].rawValue) {
+                  emitDecoded(results[0].rawValue);
+                  return;
+                }
+              } catch {
+                // fall through to jsQR
               }
-            } catch {
-              // ignore frame read error
             }
-            rafId = window.requestAnimationFrame(scanFrame);
-          };
-          rafId = window.requestAnimationFrame(scanFrame);
-        }
+
+            // 2) Universal jsQR frame decoding (works on iOS Safari, Firefox, Android, Desktop)
+            if (ctx) {
+              try {
+                const vw = videoRef.current.videoWidth;
+                const vh = videoRef.current.videoHeight;
+                const maxDim = 640;
+                const scale = Math.min(1, maxDim / Math.max(vw, vh));
+                const w = Math.max(1, Math.floor(vw * scale));
+                const h = Math.max(1, Math.floor(vh * scale));
+                if (canvas.width !== w || canvas.height !== h) {
+                  canvas.width = w;
+                  canvas.height = h;
+                }
+                ctx.drawImage(videoRef.current, 0, 0, w, h);
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const qr = jsQR(imgData.data, w, h, {
+                  inversionAttempts: 'dontInvert',
+                });
+                if (qr?.data) {
+                  emitDecoded(qr.data);
+                  return;
+                }
+              } catch {
+                // ignore transient frame read errors
+              }
+            }
+          }
+
+          if (!cancelled && !detected) {
+            rafId = window.requestAnimationFrame(scanLoop);
+          }
+        };
+
+        rafId = window.requestAnimationFrame(scanLoop);
       } catch {
         setCameraError(
-          'No se pudo activar la cámara. Selecciona una opción directa o ingresa el código manualmente.',
+          'No se pudo activar la cámara. Verifica permisos o ingresa el folio manualmente.',
         );
       }
     };
@@ -104,7 +170,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         stream.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [open, onScan]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -118,7 +184,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/70 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/75 p-4 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
@@ -127,7 +193,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C]/25 text-[#1A1E2A]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C] text-[#1A1E2A]">
               <QrCode className="h-5 w-5" />
             </div>
             <div>
@@ -157,13 +223,16 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
             className={`h-full w-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-0'}`}
           />
           {cameraActive && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="h-44 w-44 rounded-2xl border-2 border-[#8BAF03] shadow-[0_0_0_9999px_rgba(26,30,42,0.45)]" />
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div className="h-44 w-44 rounded-2xl border-2 border-[#FCF61C] shadow-[0_0_0_9999px_rgba(26,30,42,0.45)]" />
+              <span className="mt-3 rounded-lg bg-[#1A1E2A]/80 px-2.5 py-1 text-[11px] font-bold text-[#FCF61C]">
+                Apunta al código QR del cliente o servicio
+              </span>
             </div>
           )}
           {!cameraActive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-              <Camera className="h-8 w-8 text-[#5E7800] mb-2" />
+              <Camera className="h-8 w-8 text-[#FCF61C] mb-2" />
               <p className="text-sm font-medium">
                 {cameraError || 'Activando cámara para escanear QR...'}
               </p>
@@ -174,7 +243,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         {quickOptions.length > 0 && (
           <div className="mt-5">
             <p className="text-xs font-semibold text-slate-500 mb-2.5">
-              Escaneo directo disponible
+              Acceso rápido a pedidos recientes
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {quickOptions.map((opt) => (
@@ -182,19 +251,19 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => onScan(opt.value)}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-[#8BAF03]/30 bg-[#F3F8DE] px-3.5 py-3 text-left hover:bg-[#8BAF03] hover:text-[#1A1E2A] transition-colors group cursor-pointer"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-[#8BAF03]/35 bg-[#F3F8DE] px-3.5 py-3 text-left hover:bg-[#8BAF03] transition-colors group cursor-pointer"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-[#1A1E2A] group-hover:text-white">
+                    <div className="text-sm font-bold truncate text-[#1A1E2A]">
                       {opt.label}
                     </div>
                     {opt.sublabel && (
-                      <div className="text-xs font-mono truncate text-slate-600 group-hover:text-white/85">
+                      <div className="text-xs font-mono truncate text-slate-600 group-hover:text-[#1A1E2A]/85">
                         {opt.sublabel}
                       </div>
                     )}
                   </div>
-                  <Check className="h-4 w-4 shrink-0 text-[#5E7800] group-hover:text-white" />
+                  <Check className="h-4 w-4 shrink-0 text-[#5E7800] group-hover:text-[#1A1E2A]" />
                 </button>
               ))}
             </div>
@@ -211,7 +280,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           />
           <button
             type="submit"
-            className="min-h-[44px] rounded-xl bg-[#8BAF03] px-5 text-sm font-semibold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-[44px] rounded-xl bg-[#8BAF03] px-5 text-sm font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Validar
           </button>

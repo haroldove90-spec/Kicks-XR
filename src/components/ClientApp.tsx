@@ -4,6 +4,7 @@ import {
   Banknote,
   Bell,
   Building2,
+  Calendar,
   Camera,
   Check,
   CreditCard,
@@ -12,6 +13,7 @@ import {
   IdCard,
   Image as ImageIcon,
   KeyRound,
+  Link2,
   ListChecks,
   Lock,
   MapPin,
@@ -21,6 +23,7 @@ import {
   PlusCircle,
   QrCode,
   Receipt,
+  RefreshCw,
   Search,
   ShoppingBag,
   Sparkles,
@@ -31,11 +34,18 @@ import {
   Truck,
   User,
   UserCheck,
+  Wallet,
   X,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
 import {api, subscribeToRealtimeUpdates} from '../lib/api';
 import {compressImageFile} from '../lib/image';
+import {
+  formatPaymentMethodLabel,
+  isSafeGoogleMapsUrl,
+  isSafeMercadoPagoUrl,
+  parseOrderQrPayload,
+} from '../lib/qrPayload';
 import type {
   AuthUser,
   DeliveryMethod,
@@ -138,15 +148,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     null,
   );
 
+  // Mercado Pago checkout & verification state
+  const [mpCheckoutUrl, setMpCheckoutUrl] = useState<string | null>(null);
+  const [mpSandboxMode, setMpSandboxMode] = useState<boolean>(false);
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpVerifying, setMpVerifying] = useState(false);
+
   // Profile editing & Password change
   const [profileName, setProfileName] = useState(user.name || '');
   const [profileWhatsapp, setProfileWhatsapp] = useState(user.whatsapp || '');
-  const [profileAddress, setProfileAddress] = useState(user.address || '');
-  const [profileInePhoto, setProfileInePhoto] = useState<string | undefined>(
-    user.inePhotoDataUrl,
+  const [profileAge, setProfileAge] = useState(user.age ? String(user.age) : '');
+  const [profileIdDocument, setProfileIdDocument] = useState(
+    user.idDocumentNumber || '',
   );
-  const [profileIneCameraOpen, setProfileIneCameraOpen] = useState(false);
-  const profileIneInputRef = useRef<HTMLInputElement | null>(null);
+  const [profileAddress, setProfileAddress] = useState(user.address || '');
+  const [profileMapsUrl, setProfileMapsUrl] = useState(user.mapsUrl || '');
   const [profileSaved, setProfileSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -195,6 +211,51 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     fetchMyOrders();
   }, [fetchMyOrders]);
 
+  // Auto-verify payment when returning from Mercado Pago checkout URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mpStatus = params.get('mp_status');
+    const orderId = params.get('order_id');
+    const paymentId = params.get('payment_id') || params.get('collection_id') || undefined;
+    if (!mpStatus || !orderId) return;
+
+    window.history.replaceState({}, '', window.location.pathname);
+    setActiveOrderId(orderId);
+    setActiveTab('track');
+
+    (async () => {
+      try {
+        const res = await api.verifyMercadoPagoPayment(orderId, paymentId);
+        if (res.verified) {
+          onPushAlert({
+            title: `Pago confirmado · ${res.order.folio}`,
+            message: 'Mercado Pago aprobó tu pago correctamente.',
+            tone: 'success',
+          });
+        } else {
+          onPushAlert({
+            title: `Pago en estado: ${res.mpStatus}`,
+            message:
+              mpStatus === 'failure'
+                ? 'El pago no se completó en Mercado Pago. Puedes intentarlo de nuevo desde tu pedido.'
+                : 'Mercado Pago aún está procesando tu pago. Puedes verificar nuevamente en unos segundos.',
+            tone: mpStatus === 'failure' ? 'warning' : 'info',
+          });
+        }
+        fetchMyOrders();
+      } catch (err) {
+        onPushAlert({
+          title: 'Verificación pendiente',
+          message:
+            err instanceof Error
+              ? err.message
+              : 'No se pudo confirmar tu pago en este momento.',
+          tone: 'warning',
+        });
+      }
+    })();
+  }, [fetchMyOrders, onPushAlert]);
+
   // Real-time SSE sync + Global Popups on service & delivery status updates
   useEffect(() => {
     return subscribeToRealtimeUpdates((ev) => {
@@ -228,9 +289,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   const handleTrackSearch = async (rawCode: string) => {
     const cleaned = rawCode.trim();
     if (!cleaned) return;
-    const normalized = cleaned.startsWith('KICKSXR|')
-      ? cleaned.split('|')[1] || cleaned
-      : cleaned;
+    const parsedQr = parseOrderQrPayload(cleaned);
+    const normalized = parsedQr.folio || parsedQr.bagCode || cleaned;
     setFolioQuery(normalized);
     setTrackSearchError(null);
 
@@ -334,14 +394,83 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     }
   };
 
+  const handleStartMercadoPago = async (orderId: string) => {
+    setMpLoading(true);
+    setError(null);
+    try {
+      const pref = await api.createMercadoPagoPreference(orderId);
+      if (isSafeMercadoPagoUrl(pref.checkoutUrl)) {
+        setMpCheckoutUrl(pref.checkoutUrl);
+        setMpSandboxMode(pref.sandboxMode);
+      } else {
+        throw new Error('La URL de cobro devuelta por Mercado Pago no es válida.');
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el enlace de Mercado Pago.';
+      setError(msg);
+      onPushAlert({
+        title: 'Error con Mercado Pago',
+        message: msg,
+        tone: 'error',
+      });
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
+  const handleVerifyMercadoPago = async (orderId: string) => {
+    setMpVerifying(true);
+    try {
+      const res = await api.verifyMercadoPagoPayment(orderId);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === res.order.id ? res.order : o)),
+      );
+      if (res.verified) {
+        setMpCheckoutUrl(null);
+        onPushAlert({
+          title: `Pago aprobado · ${res.order.folio}`,
+          message: 'Tu pago en Mercado Pago fue confirmado exitosamente.',
+          tone: 'success',
+        });
+      } else {
+        onPushAlert({
+          title: 'Pago aún pendiente',
+          message: `Estado actual en Mercado Pago: ${res.mpStatus}. Completa el pago y vuelve a verificar.`,
+          tone: 'info',
+        });
+      }
+    } catch (err) {
+      onPushAlert({
+        title: 'No se pudo verificar',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Error consultando el pago en Mercado Pago.',
+        tone: 'error',
+      });
+    } finally {
+      setMpVerifying(false);
+    }
+  };
+
   const handleConfirmOrder = async () => {
     setError(null);
+    setMpCheckoutUrl(null);
     if (paymentMethod === 'card') {
       const digits = cardNumber.replace(/\D/g, '');
       if (digits.length < 12 || !cardExpiry.trim() || cardCvv.trim().length < 3) {
         setError('Completa los datos de tu tarjeta para procesar el pago en línea.');
         return;
       }
+    }
+    if (paymentMethod === 'mercadopago' && !config.mercadoPagoEnabled) {
+      setError(
+        'Mercado Pago aún no está activado por el administrador. Elige Efectivo o Tarjeta.',
+      );
+      return;
     }
 
     if (!selectedService || !selectedCampus) {
@@ -373,9 +502,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       setOrders((prev) => [res.order, ...prev]);
       setActiveOrderId(res.order.id);
       setStep(4);
+
+      if (paymentMethod === 'mercadopago') {
+        void handleStartMercadoPago(res.order.id);
+      }
+
       onPushAlert({
-        title: `Pedido ${res.order.folio} confirmado`,
-        message: `Bolsa asignada: ${res.order.bagCode}. Ahora selecciona cómo entregarás tu bolsa.`,
+        title: `Orden ${res.order.folio} generada`,
+        message: `Código QR y bolsa ${res.order.bagCode} listos.${paymentMethod === 'mercadopago' ? ' Completa tu pago con Mercado Pago.' : ' Ahora selecciona cómo entregarás tu bolsa.'}`,
         tone: 'success',
       });
       fetchMyOrders();
@@ -454,41 +588,46 @@ export const ClientApp: React.FC<ClientAppProps> = ({
     setActiveTab('register');
   };
 
-  const handleProfileIneFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    try {
-      const compressed = await compressImageFile(file);
-      setProfileInePhoto(compressed);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'No se pudo procesar la foto de tu INE.',
-      );
-    }
-    e.target.value = '';
-  };
-
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSaved(false);
     setError(null);
+    const trimmedMaps = profileMapsUrl.trim();
+    if (trimmedMaps && !isSafeGoogleMapsUrl(trimmedMaps)) {
+      setError(
+        'El enlace de ubicación debe ser un link válido de Google Maps (ej. https://maps.app.goo.gl/...).',
+      );
+      return;
+    }
+    const parsedAge = profileAge.trim() ? Number(profileAge) : undefined;
+    if (
+      parsedAge !== undefined &&
+      (!Number.isInteger(parsedAge) || parsedAge < 12 || parsedAge > 120)
+    ) {
+      setError('Ingresa una edad válida (entre 12 y 120 años).');
+      return;
+    }
+
     try {
       const res = await api.updateClientProfile({
         name: profileName,
         whatsapp: profileWhatsapp,
         address: profileAddress,
-        inePhotoDataUrl: profileInePhoto,
+        mapsUrl: trimmedMaps,
+        age: parsedAge,
+        idDocumentNumber: profileIdDocument.trim().toUpperCase() || undefined,
       });
       onUserUpdated(res.user);
       setClientName(res.user.name);
       setClientWhatsapp(res.user.whatsapp || '');
       setDeliveryAddress(res.user.address || '');
-      setProfileInePhoto(res.user.inePhotoDataUrl);
+      setProfileAge(res.user.age ? String(res.user.age) : '');
+      setProfileIdDocument(res.user.idDocumentNumber || '');
+      setProfileMapsUrl(res.user.mapsUrl || '');
       setProfileSaved(true);
       onPushAlert({
         title: 'Perfil actualizado',
-        message: 'Tus datos de contacto, entrega e identificación fueron guardados.',
+        message: 'Tus datos, identificación y ubicación en Google Maps fueron guardados.',
         tone: 'success',
       });
       window.setTimeout(() => setProfileSaved(false), 3000);
@@ -1138,6 +1277,65 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </div>
                   )}
 
+                  {/* Mercado Pago Option */}
+                  <button
+                    type="button"
+                    disabled={!config.mercadoPagoEnabled}
+                    onClick={() => setPaymentMethod('mercadopago')}
+                    className={`w-full flex items-center gap-4 rounded-2xl p-5 text-left border-2 transition-all ${
+                      !config.mercadoPagoEnabled
+                        ? 'border-slate-200 bg-slate-50 opacity-70 cursor-not-allowed'
+                        : paymentMethod === 'mercadopago'
+                          ? 'border-[#8BAF03] bg-[#F3F8DE] cursor-pointer'
+                          : 'border-slate-200 bg-white hover:border-slate-300 cursor-pointer'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                        paymentMethod === 'mercadopago'
+                          ? 'border-[#8BAF03]'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {paymentMethod === 'mercadopago' && (
+                        <span className="h-3 w-3 rounded-full bg-[#8BAF03]" />
+                      )}
+                    </span>
+                    <Wallet className="h-7 w-7 text-[#009EE3] shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-display text-lg font-extrabold text-[#1A1E2A]">
+                          Mercado Pago
+                        </span>
+                        {config.mercadoPagoEnabled ? (
+                          <span className="rounded-md bg-[#FCF61C] px-2 py-0.5 text-[10px] font-extrabold text-[#1A1E2A]">
+                            {config.mercadoPagoSandbox ? 'Modo pruebas' : 'Pago seguro'}
+                          </span>
+                        ) : (
+                          <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                            No configurado aún
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        {config.mercadoPagoEnabled
+                          ? 'Paga con tarjeta, saldo de Mercado Pago, SPEI o efectivo en Checkout Pro'
+                          : 'El administrador todavía no activa su cuenta de Mercado Pago'}
+                      </div>
+                    </div>
+                  </button>
+
+                  {paymentMethod === 'mercadopago' && config.mercadoPagoEnabled && (
+                    <div className="rounded-2xl bg-[#009EE3]/10 border border-[#009EE3]/30 p-4 text-xs text-[#1A1E2A] space-y-1">
+                      <div className="font-bold">
+                        Checkout oficial de Mercado Pago
+                      </div>
+                      <p className="text-slate-700">
+                        Al confirmar tu orden se generará tu código de pedido, tu código QR y el enlace seguro para completar el pago en Mercado Pago.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Cupón de descuento */}
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
@@ -1262,37 +1460,129 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     </button>
                   </div>
 
-                  <div className="rounded-2xl bg-[#FCF61C]/25 border border-[#8BAF03]/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-5">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#1A1E2A] shrink-0">
-                        <ShoppingBag className="h-7 w-7" />
+                  {/* Mercado Pago Action Card in Step 4 */}
+                  {activeOrder.paymentMethod === 'mercadopago' &&
+                    activeOrder.paymentStatus !== 'Pagado' && (
+                      <div className="rounded-2xl border-2 border-[#009EE3]/40 bg-[#009EE3]/8 p-5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Wallet className="h-5 w-5 text-[#009EE3]" />
+                            <span className="font-display text-base font-extrabold text-[#1A1E2A]">
+                              Completa tu pago en Mercado Pago
+                            </span>
+                          </div>
+                          <span className="font-mono text-sm font-extrabold text-[#1A1E2A]">
+                            ${activeOrder.totalAmount} MXN
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700">
+                          Abre el enlace oficial de Mercado Pago para liquidar tu orden{' '}
+                          <strong className="font-mono">{activeOrder.folio}</strong>. Al terminar, pulsa «Verificar pago».
+                          {mpSandboxMode ? ' (Entorno de pruebas activo).' : ''}
+                        </p>
+                        <div className="flex flex-wrap gap-2.5">
+                          {mpCheckoutUrl && isSafeMercadoPagoUrl(mpCheckoutUrl) ? (
+                            <a
+                              href={mpCheckoutUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#009EE3] px-5 text-sm font-extrabold text-white hover:bg-[#0086C3] transition-colors"
+                            >
+                              <span>Pagar ahora en Mercado Pago</span>
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={mpLoading}
+                              onClick={() => handleStartMercadoPago(activeOrder.id)}
+                              className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#009EE3] px-5 text-sm font-extrabold text-white hover:bg-[#0086C3] disabled:opacity-60 cursor-pointer"
+                            >
+                              <span>
+                                {mpLoading
+                                  ? 'Generando enlace de pago...'
+                                  : 'Generar enlace de pago Mercado Pago'}
+                              </span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={mpVerifying}
+                            onClick={() => handleVerifyMercadoPago(activeOrder.id)}
+                            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-[#1A1E2A] hover:border-[#8BAF03] disabled:opacity-60 cursor-pointer"
+                          >
+                            <RefreshCw
+                              className={`h-4 w-4 ${mpVerifying ? 'animate-spin' : ''}`}
+                            />
+                            <span>
+                              {mpVerifying ? 'Verificando...' : 'Verificar pago'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-600">
-                          Código de bolsa asignado
+                    )}
+
+                  <div className="rounded-2xl bg-[#FCF61C]/25 border border-[#8BAF03]/30 p-5 flex flex-col sm:flex-row items-center justify-between gap-5">
+                    <div className="space-y-2.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#1A1E2A] shrink-0">
+                          <ShoppingBag className="h-6 w-6" />
                         </div>
-                        <div className="font-mono text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
-                          {activeOrder.bagCode}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-600">
+                            Orden de servicio y código de bolsa
+                          </div>
+                          <div className="font-mono text-2xl sm:text-3xl font-extrabold text-[#1A1E2A] tabular-nums">
+                            {activeOrder.folio}{' '}
+                            <span className="text-base font-bold text-[#5E7800]">
+                              · {activeOrder.bagCode}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-0.5 text-xs text-slate-600">
-                          Folio:{' '}
-                          <strong className="font-mono text-[#1A1E2A]">
-                            {activeOrder.folio}
-                          </strong>{' '}
-                          · {activeOrder.campusName}
+                      </div>
+
+                      <div className="rounded-xl bg-white/90 border border-slate-200 p-3 text-xs space-y-1 text-slate-700">
+                        <div className="font-bold text-[#1A1E2A]">
+                          Datos incluidos en tu código QR para escaneo del Admin:
                         </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span>
+                            <strong>Cliente:</strong> {activeOrder.clientName}
+                          </span>
+                          {activeOrder.clientAge && (
+                            <span>
+                              <strong>Edad:</strong> {activeOrder.clientAge} años
+                            </span>
+                          )}
+                          {activeOrder.clientIdDocument && (
+                            <span className="font-mono">
+                              <strong>ID:</strong> {activeOrder.clientIdDocument}
+                            </span>
+                          )}
+                        </div>
+                        {(activeOrder.clientAddress || activeOrder.deliveryAddress) && (
+                          <div className="truncate">
+                            <strong>Dirección:</strong>{' '}
+                            {activeOrder.deliveryAddress || activeOrder.clientAddress}
+                          </div>
+                        )}
+                        {isSafeGoogleMapsUrl(activeOrder.clientMapsUrl) && (
+                          <div className="text-[#5E7800] font-semibold">
+                            ✓ Ubicación de Google Maps incluida en el QR
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-center rounded-xl bg-white p-3 border border-slate-200">
+                    <div className="flex flex-col items-center rounded-xl bg-white p-3.5 border border-slate-200 shrink-0">
                       <QRCodeSVG
                         value={activeOrder.orderQrPayload}
-                        size={112}
+                        size={132}
                         fgColor="#1A1E2A"
                         level="M"
                       />
                       <span className="mt-1.5 font-mono text-[11px] font-bold text-[#1A1E2A]">
-                        QR de pedido
+                        QR · {activeOrder.folio}
                       </span>
                     </div>
                   </div>
@@ -1399,7 +1689,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-500">Pago</span>
                     <span className="font-semibold text-[#1A1E2A]">
-                      {paymentMethod === 'card' ? 'Tarjeta en línea' : 'Efectivo'}
+                      {formatPaymentMethodLabel(paymentMethod)}
                     </span>
                   </div>
                   {appliedCoupon && appliedDiscount > 0 && (
@@ -1662,8 +1952,52 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] hover:text-[#5E7800] transition-colors cursor-pointer"
                   >
                     <Receipt className="h-4 w-4 text-[#5E7800]" />
-                    <span>Ver / Descargar comprobante</span>
+                    <span>Ver / Descargar comprobante y QR</span>
                   </button>
+
+                  {activeOrder.paymentMethod === 'mercadopago' &&
+                    activeOrder.paymentStatus !== 'Pagado' &&
+                    config.mercadoPagoEnabled && (
+                      <div className="rounded-xl border border-[#009EE3]/35 bg-[#009EE3]/8 p-3 space-y-2">
+                        <div className="text-xs font-bold text-[#1A1E2A] flex items-center gap-1.5">
+                          <Wallet className="h-3.5 w-3.5 text-[#009EE3]" />
+                          <span>Pago pendiente en Mercado Pago</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {mpCheckoutUrl && isSafeMercadoPagoUrl(mpCheckoutUrl) ? (
+                            <a
+                              href={mpCheckoutUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#009EE3] px-3 text-xs font-bold text-white hover:bg-[#0086C3]"
+                            >
+                              <span>Ir a pagar</span>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={mpLoading}
+                              onClick={() => handleStartMercadoPago(activeOrder.id)}
+                              className="flex-1 min-h-[38px] rounded-lg bg-[#009EE3] px-3 text-xs font-bold text-white hover:bg-[#0086C3] disabled:opacity-60 cursor-pointer"
+                            >
+                              {mpLoading ? 'Cargando...' : 'Pagar con Mercado Pago'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={mpVerifying}
+                            onClick={() => handleVerifyMercadoPago(activeOrder.id)}
+                            className="min-h-[38px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
+                          >
+                            <RefreshCw
+                              className={`h-3.5 w-3.5 ${mpVerifying ? 'animate-spin' : ''}`}
+                            />
+                            <span>Verificar</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                   {activeOrder.status === 'Pendiente de depósito' && (
                     <button
@@ -2040,79 +2374,106 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                  WhatsApp
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={profileWhatsapp}
-                  onChange={(e) => setProfileWhatsapp(e.target.value)}
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                  Dirección de entrega predeterminada
-                </label>
-                <input
-                  type="text"
-                  value={profileAddress}
-                  onChange={(e) => setProfileAddress(e.target.value)}
-                  placeholder="Calle, número, colonia, CP"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
-                />
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-bold text-[#1A1E2A]">
-                    <IdCard className="h-4 w-4 text-[#5E7800]" />
-                    <span>Identificación oficial (INE)</span>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                <div className="sm:col-span-8">
+                  <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                    WhatsApp
                   </label>
-                  {isSafePhotoDataUrl(profileInePhoto) && (
-                    <span className="text-xs font-bold text-[#5E7800]">
-                      Registrada
-                    </span>
-                  )}
+                  <input
+                    type="tel"
+                    required
+                    value={profileWhatsapp}
+                    onChange={(e) => setProfileWhatsapp(e.target.value)}
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
                 </div>
-                <input
-                  ref={profileIneInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfileIneFile}
-                  className="hidden"
-                />
-                {isSafePhotoDataUrl(profileInePhoto) && (
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
-                    <img
-                      src={profileInePhoto}
-                      alt="Tu identificación INE"
-                      className="max-h-40 w-full object-contain rounded-lg"
+                <div className="sm:col-span-4">
+                  <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                    Edad
+                  </label>
+                  <div className="relative">
+                    <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="number"
+                      min={12}
+                      max={120}
+                      value={profileAge}
+                      onChange={(e) => setProfileAge(e.target.value)}
+                      placeholder="Ej. 24"
+                      className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
                     />
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setProfileIneCameraOpen(true)}
-                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
-                  >
-                    <Camera className="h-3.5 w-3.5 text-[#FCF61C]" />
-                    <span>Tomar foto INE</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => profileIneInputRef.current?.click()}
-                    className="min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
-                  >
-                    <ImageIcon className="h-3.5 w-3.5" />
-                    <span>Subir imagen</span>
-                  </button>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                  Número de INE o Pasaporte
+                </label>
+                <div className="relative">
+                  <IdCard className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    maxLength={40}
+                    value={profileIdDocument}
+                    onChange={(e) =>
+                      setProfileIdDocument(e.target.value.toUpperCase())
+                    }
+                    placeholder="Clave de elector / IDMEX o número de pasaporte"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm uppercase text-[#1A1E2A] placeholder:font-sans placeholder:normal-case focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                  Dirección
+                </label>
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={profileAddress}
+                    onChange={(e) => setProfileAddress(e.target.value)}
+                    placeholder="Calle, número, colonia, CP"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                  Enlace de ubicación en Google Maps
+                </label>
+                <div className="relative">
+                  <Link2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="url"
+                    value={profileMapsUrl}
+                    onChange={(e) => setProfileMapsUrl(e.target.value)}
+                    placeholder="https://maps.app.goo.gl/sL7aFF4pg11drELH9"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+                {isSafeGoogleMapsUrl(profileMapsUrl) && (
+                  <a
+                    href={profileMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-[#5E7800] hover:underline"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>Probar enlace en Google Maps</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+                  {error}
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -2222,16 +2583,6 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         }}
         onFallbackGallery={() => galleryInputRef.current?.click()}
         onClose={() => setCameraModalOpen(false)}
-      />
-
-      {/* Camera Modal for updating Client INE from Profile */}
-      <CameraCaptureModal
-        open={profileIneCameraOpen}
-        title="Fotografía de identificación (INE)"
-        subtitle="Enfoca el frente de tu INE con buena iluminación y pulsa Guardar cambios"
-        onCapture={(dataUrl) => setProfileInePhoto(dataUrl)}
-        onFallbackGallery={() => profileIneInputRef.current?.click()}
-        onClose={() => setProfileIneCameraOpen(false)}
       />
 
       {/* QR Scanner for Tracking inside Cliente */}

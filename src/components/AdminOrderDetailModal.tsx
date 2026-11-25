@@ -25,6 +25,10 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import {QRCodeSVG} from 'qrcode.react';
+import {
+  formatPaymentMethodLabel,
+  isSafeGoogleMapsUrl,
+} from '../lib/qrPayload';
 import type {Order} from '../types';
 import {OrderTimeline} from './OrderTimeline';
 
@@ -360,9 +364,10 @@ export const AdminOrderDetailModal: React.FC<AdminOrderDetailModalProps> = ({
                   <div className="mt-0.5 font-bold text-[#1A1E2A] flex items-center gap-1.5">
                     <CreditCard className="h-3.5 w-3.5 text-[#5E7800]" />
                     <span>
-                      {order.paymentMethod === 'card'
-                        ? `Tarjeta${order.cardLast4 ? ` •••• ${order.cardLast4}` : ''}`
-                        : 'Efectivo'}
+                      {formatPaymentMethodLabel(
+                        order.paymentMethod,
+                        order.cardLast4,
+                      )}
                     </span>
                   </div>
                 </div>
@@ -371,7 +376,7 @@ export const AdminOrderDetailModal: React.FC<AdminOrderDetailModalProps> = ({
                   <div
                     className={`mt-0.5 font-bold flex items-center gap-1.5 ${
                       order.paymentStatus === 'Pagado'
-                        ? 'text-[#8BAF03]'
+                        ? 'text-[#5E7800]'
                         : 'text-[#1A1E2A]'
                     }`}
                   >
@@ -392,8 +397,17 @@ export const AdminOrderDetailModal: React.FC<AdminOrderDetailModalProps> = ({
                   <span className="text-slate-500">Nombre</span>
                   <span className="font-bold text-[#1A1E2A] text-right">
                     {order.clientName}
+                    {order.clientAge ? ` · ${order.clientAge} años` : ''}
                   </span>
                 </div>
+                {order.clientIdDocument && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">INE / Pasaporte</span>
+                    <span className="font-mono font-bold text-[#5E7800] text-right">
+                      {order.clientIdDocument}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between gap-2">
                   <span className="text-slate-500">WhatsApp</span>
                   {whatsappDigits ? (
@@ -410,15 +424,29 @@ export const AdminOrderDetailModal: React.FC<AdminOrderDetailModalProps> = ({
                     <span className="font-mono text-slate-600">—</span>
                   )}
                 </div>
-                {order.deliveryMethod === 'delivery' && order.deliveryAddress && (
+                {(order.deliveryAddress || order.clientAddress) && (
                   <div className="pt-1 border-t border-slate-100">
                     <div className="text-xs text-slate-500 mb-0.5">
-                      Dirección de entrega a domicilio
+                      Dirección registrada
                     </div>
                     <div className="text-xs font-semibold text-[#1A1E2A] flex items-start gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-[#5E7800] shrink-0 mt-0.5" />
-                      <span>{order.deliveryAddress}</span>
+                      <span>{order.deliveryAddress || order.clientAddress}</span>
                     </div>
+                  </div>
+                )}
+                {isSafeGoogleMapsUrl(order.clientMapsUrl) && (
+                  <div className="pt-1">
+                    <a
+                      href={order.clientMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-h-[36px] w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#F3F8DE] border border-[#8BAF03]/40 px-3 text-xs font-bold text-[#1A1E2A] hover:bg-[#8BAF03] transition-colors"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-[#5E7800]" />
+                      <span>Abrir ubicación del cliente en Google Maps</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   </div>
                 )}
               </div>

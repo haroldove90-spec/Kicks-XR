@@ -12,7 +12,7 @@ export type OrderStatus =
 export type CollectionStatus = 'Pendiente' | 'Recolectado';
 export type DeliveryMethod = 'pickup' | 'delivery';
 export type DropoffMethod = 'staff' | 'locker';
-export type PaymentMethod = 'cash' | 'card';
+export type PaymentMethod = 'cash' | 'card' | 'mercadopago';
 export type PaymentStatus = 'Pago pendiente' | 'Pagado';
 
 export type IncidentType =
@@ -30,6 +30,9 @@ export interface AuthUser {
   whatsapp?: string;
   email?: string;
   address?: string;
+  mapsUrl?: string;
+  age?: number;
+  idDocumentNumber?: string;
   userType?: 'general' | 'university';
   campusId?: string;
   campusName?: string;
@@ -87,6 +90,10 @@ export interface Order {
   clientId: string;
   clientName: string;
   clientWhatsapp: string;
+  clientAge?: number;
+  clientIdDocument?: string;
+  clientAddress?: string;
+  clientMapsUrl?: string;
   userType: 'general' | 'university';
   campusId: string;
   campusName: string;
@@ -112,6 +119,8 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   cardLast4?: string;
+  mpPreferenceId?: string;
+  mpPaymentId?: string;
   status: OrderStatus;
   collectionStatus: CollectionStatus;
   bagVerified: boolean;
@@ -176,6 +185,9 @@ export interface PublicConfig {
   shippingFee: number;
   availableLockersByCampus: Record<string, number>;
   supabaseConnected?: boolean;
+  mercadoPagoEnabled?: boolean;
+  mercadoPagoSandbox?: boolean;
+  mercadoPagoPublicKey?: string;
 }
 
 export interface AdminConfig extends PublicConfig {
@@ -183,6 +195,15 @@ export interface AdminConfig extends PublicConfig {
   coupons: Coupon[];
   nextOrderSeq: number;
   nextBagSeq: number;
+}
+
+export interface MercadoPagoAdminConfig {
+  enabled: boolean;
+  sandboxMode: boolean;
+  publicKey: string;
+  hasAccessToken: boolean;
+  accessTokenMasked: string;
+  usesEnvOverride: boolean;
 }
 
 export interface AdminDashboardMetrics {
@@ -197,6 +218,7 @@ export interface AdminDashboardMetrics {
   revenuePending: number;
   cashPaid: number;
   cardPaid: number;
+  mercadoPagoPaid?: number;
   avgRating: number;
   ratedCount: number;
 }
@@ -228,6 +250,9 @@ export interface ManagedClientUser {
   username?: string;
   whatsapp: string;
   address: string;
+  mapsUrl?: string;
+  age?: number;
+  idDocumentNumber?: string;
   userType: 'general' | 'university';
   inePhotoDataUrl?: string;
   createdAt: string;

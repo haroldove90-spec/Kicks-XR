@@ -1,46 +1,39 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   Calendar,
-  Camera,
   Check,
-  CheckCircle2,
   Copy,
   Database,
-  Download,
   ExternalLink,
   Eye,
   EyeOff,
   IdCard,
-  Image as ImageIcon,
-  ImageOff,
   KeyRound,
+  Link2,
   Lock,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
   RefreshCw,
+  Save,
   Search,
   ShieldCheck,
   Sparkles,
-  Trash2,
   User,
   UserCheck,
   UserPlus,
   Users,
   X,
-  ZoomIn,
 } from 'lucide-react';
 import {api} from '../lib/api';
-import {compressImageFile} from '../lib/image';
+import {isSafeGoogleMapsUrl} from '../lib/qrPayload';
 import type {
   CreatedCredentials,
   ManagedAdminUser,
   ManagedClientUser,
   PopupAlert,
 } from '../types';
-import {isSafePhotoDataUrl} from './AdminOrderDetailModal';
-import {CameraCaptureModal} from './CameraCaptureModal';
 
 interface AdminUsersModuleProps {
   currentAdminId: string;
@@ -78,35 +71,27 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [age, setAge] = useState('');
+  const [idDocumentNumber, setIdDocumentNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [mapsUrl, setMapsUrl] = useState('');
   const [password, setPassword] = useState(() => generateStrongPassword());
   const [showPassword, setShowPassword] = useState(true);
-  const [inePhotoDataUrl, setInePhotoDataUrl] = useState<string | undefined>(
-    undefined,
-  );
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
-  // Camera & gallery inputs for INE
-  const [cameraTarget, setCameraTarget] = useState<'create' | 'detail' | null>(
-    null,
-  );
-  const createIneInputRef = useRef<HTMLInputElement | null>(null);
-  const detailIneInputRef = useRef<HTMLInputElement | null>(null);
 
   // Directory state
   const [directoryTab, setDirectoryTab] = useState<'clients' | 'admins'>('clients');
   const [search, setSearch] = useState('');
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
-  // Client detail + INE viewer modal
+  // Client detail + edit modal
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [updatingDetailIne, setUpdatingDetailIne] = useState(false);
-  const [zoomedIne, setZoomedIne] = useState<{
-    url: string;
-    name: string;
-    username?: string;
-  } | null>(null);
+  const [editAge, setEditAge] = useState('');
+  const [editIdDoc, setEditIdDoc] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editMapsUrl, setEditMapsUrl] = useState('');
+  const [savingDetail, setSavingDetail] = useState(false);
 
   // Created / Reset credentials modal card
   const [latestCredentials, setLatestCredentials] =
@@ -117,6 +102,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
     () => clients.find((c) => c.id === selectedClientId) || null,
     [clients, selectedClientId],
   );
+
+  useEffect(() => {
+    if (!selectedClient) return;
+    setEditAge(selectedClient.age ? String(selectedClient.age) : '');
+    setEditIdDoc(selectedClient.idDocumentNumber || '');
+    setEditAddress(selectedClient.address || '');
+    setEditMapsUrl(selectedClient.mapsUrl || '');
+  }, [selectedClient]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -142,70 +135,60 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
     loadUsers();
   }, [loadUsers]);
 
-  const handleCreateIneFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFormError(null);
-    try {
-      const compressed = await compressImageFile(file);
-      setInePhotoDataUrl(compressed);
-    } catch (err) {
-      setFormError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo procesar la foto del INE.',
-      );
-    }
-    e.target.value = '';
-  };
-
-  const handleSaveDetailIne = async (dataUrl: string) => {
+  const handleSaveClientDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedClient) return;
-    setUpdatingDetailIne(true);
+    const trimmedMaps = editMapsUrl.trim();
+    if (trimmedMaps && !isSafeGoogleMapsUrl(trimmedMaps)) {
+      onPushAlert({
+        title: 'Enlace de Google Maps inválido',
+        message: 'Pega un enlace válido de Google Maps (https://maps.app.goo.gl/...).',
+        tone: 'warning',
+      });
+      return;
+    }
+    setSavingDetail(true);
     try {
-      await api.updateClientUser(selectedClient.id, {inePhotoDataUrl: dataUrl});
+      await api.updateClientUser(selectedClient.id, {
+        address: editAddress.trim(),
+        mapsUrl: trimmedMaps,
+        age: editAge.trim() ? Number(editAge) : undefined,
+        idDocumentNumber: editIdDoc.trim().toUpperCase(),
+      });
       await loadUsers();
       onPushAlert({
-        title: 'INE actualizada',
-        message: `Se guardó la identificación oficial de ${selectedClient.name}.`,
+        title: 'Ficha actualizada',
+        message: `Se guardaron los datos de ${selectedClient.name}.`,
         tone: 'success',
       });
     } catch (err) {
       onPushAlert({
-        title: 'Error guardando INE',
+        title: 'Error guardando ficha',
         message:
           err instanceof Error
             ? err.message
-            : 'No se pudo actualizar la identificación.',
+            : 'No se pudo actualizar la información del cliente.',
         tone: 'error',
       });
     } finally {
-      setUpdatingDetailIne(false);
+      setSavingDetail(false);
     }
-  };
-
-  const handleDetailIneFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await compressImageFile(file);
-      await handleSaveDetailIne(compressed);
-    } catch (err) {
-      onPushAlert({
-        title: 'Error al procesar imagen',
-        message:
-          err instanceof Error
-            ? err.message
-            : 'No se pudo leer la foto seleccionada.',
-        tone: 'error',
-      });
-    }
-    e.target.value = '';
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (createRole === 'client') {
+      const trimmedMaps = mapsUrl.trim();
+      if (trimmedMaps && !isSafeGoogleMapsUrl(trimmedMaps)) {
+        setFormError(
+          'El enlace de ubicación debe ser un link válido de Google Maps (https://maps.app.goo.gl/...).',
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setCopied(false);
 
@@ -232,8 +215,10 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
           username: username.trim().toLowerCase(),
           whatsapp: whatsapp.trim(),
           address: address.trim(),
+          mapsUrl: mapsUrl.trim() || undefined,
+          age: age.trim() ? Number(age) : undefined,
+          idDocumentNumber: idDocumentNumber.trim().toUpperCase() || undefined,
           password,
-          inePhotoDataUrl,
         });
         setLatestCredentials(res.credentials);
         onPushAlert({
@@ -249,8 +234,10 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
       setUsername('');
       setEmail('');
       setWhatsapp('');
+      setAge('');
+      setIdDocumentNumber('');
       setAddress('');
-      setInePhotoDataUrl(undefined);
+      setMapsUrl('');
       setPassword(generateStrongPassword());
       await loadUsers();
     } catch (err) {
@@ -357,12 +344,13 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
         c.name.toLowerCase().includes(q) ||
         (c.username || '').toLowerCase().includes(q) ||
         c.whatsapp.toLowerCase().includes(q) ||
-        c.address.toLowerCase().includes(q),
+        c.address.toLowerCase().includes(q) ||
+        (c.idDocumentNumber || '').toLowerCase().includes(q),
     );
   }, [clients, search]);
 
-  const clientsWithIneCount = useMemo(
-    () => clients.filter((c) => isSafePhotoDataUrl(c.inePhotoDataUrl)).length,
+  const clientsWithIdCount = useMemo(
+    () => clients.filter((c) => Boolean(c.idDocumentNumber)).length,
     [clients],
   );
 
@@ -374,7 +362,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             Clientes, Alumnos y Credenciales
           </h1>
           <p className="text-sm text-slate-600">
-            Consulta los datos de registro e identificación oficial (INE) de tus clientes o alumnos, y administra cuentas de acceso.
+            Consulta edad, número de INE o Pasaporte, dirección y ubicación en Google Maps de tus clientes y administra accesos.
           </p>
         </div>
 
@@ -382,7 +370,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1E2A]">
             <IdCard className="h-4 w-4 text-[#5E7800]" />
             <span>
-              INE verificada: {clientsWithIneCount}/{clients.length}
+              INE / Pasaporte: {clientsWithIdCount}/{clients.length}
             </span>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1E2A]">
@@ -596,30 +584,68 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
-                {createRole === 'admin'
-                  ? 'WhatsApp del admin (para enviar credenciales)'
-                  : 'Teléfono / WhatsApp (notificaciones y envío de credenciales)'}
-              </label>
-              <div className="relative">
-                <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="tel"
-                  required={createRole === 'client'}
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="55 1234 5678"
-                  className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className={createRole === 'client' ? 'sm:col-span-8' : 'sm:col-span-12'}>
+                <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
+                  {createRole === 'admin'
+                    ? 'WhatsApp del admin'
+                    : 'Teléfono / WhatsApp'}
+                </label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="tel"
+                    required={createRole === 'client'}
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="55 1234 5678"
+                    className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
+                  />
+                </div>
               </div>
+
+              {createRole === 'client' && (
+                <div className="sm:col-span-4">
+                  <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
+                    Edad
+                  </label>
+                  <input
+                    type="number"
+                    min={12}
+                    max={120}
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="Ej. 24"
+                    className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+              )}
             </div>
 
             {createRole === 'client' && (
               <>
                 <div>
                   <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
-                    Dirección de entrega
+                    Número de INE o Pasaporte
+                  </label>
+                  <div className="relative">
+                    <IdCard className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      maxLength={40}
+                      value={idDocumentNumber}
+                      onChange={(e) =>
+                        setIdDocumentNumber(e.target.value.toUpperCase())
+                      }
+                      placeholder="Clave de elector / IDMEX o pasaporte"
+                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm uppercase text-[#1A1E2A] placeholder:font-sans placeholder:normal-case focus:border-[#8BAF03] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
+                    Dirección
                   </label>
                   <div className="relative">
                     <MapPin className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -634,73 +660,20 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   </div>
                 </div>
 
-                {/* Optional INE capture when admin creates a client */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1A1E2A]">
-                      <IdCard className="h-4 w-4 text-[#5E7800]" />
-                      <span>Identificación INE (opcional)</span>
-                    </label>
-                    {inePhotoDataUrl && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#5E7800]">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Adjunta</span>
-                      </span>
-                    )}
+                <div>
+                  <label className="block text-sm font-semibold text-[#1A1E2A] mb-1.5">
+                    Enlace de Google Maps (opcional)
+                  </label>
+                  <div className="relative">
+                    <Link2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="url"
+                      value={mapsUrl}
+                      onChange={(e) => setMapsUrl(e.target.value)}
+                      placeholder="https://maps.app.goo.gl/sL7aFF4pg11drELH9"
+                      className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                    />
                   </div>
-                  <input
-                    ref={createIneInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCreateIneFile}
-                    className="hidden"
-                  />
-                  {inePhotoDataUrl ? (
-                    <div className="space-y-2">
-                      <img
-                        src={inePhotoDataUrl}
-                        alt="Vista previa INE"
-                        className="max-h-32 w-full rounded-lg border border-slate-200 bg-white object-contain p-1"
-                      />
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCameraTarget('create')}
-                          className="flex-1 min-h-[36px] inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] cursor-pointer"
-                        >
-                          <Camera className="h-3.5 w-3.5 text-[#5E7800]" />
-                          <span>Otra foto</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInePhotoDataUrl(undefined)}
-                          className="min-h-[36px] inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-2.5 text-xs font-bold text-red-700 cursor-pointer"
-                          aria-label="Quitar INE"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCameraTarget('create')}
-                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] cursor-pointer"
-                      >
-                        <Camera className="h-3.5 w-3.5 text-[#FCF61C]" />
-                        <span>Cámara</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => createIneInputRef.current?.click()}
-                        className="min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer"
-                      >
-                        <ImageIcon className="h-3.5 w-3.5" />
-                        <span>Subir INE</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -793,7 +766,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nombre, usuario o teléfono..."
+                placeholder="Buscar nombre, usuario, INE o teléfono..."
                 className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-xs sm:text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
               />
             </div>
@@ -830,7 +803,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                         </span>
                         <span
                           className={`text-[11px] font-bold ${
-                            adm.active ? 'text-[#8BAF03]' : 'text-slate-400'
+                            adm.active ? 'text-[#5E7800]' : 'text-slate-400'
                           }`}
                         >
                           · {adm.active ? 'Activo' : 'Inactivo'}
@@ -878,80 +851,61 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                     Aún no hay clientes o alumnos registrados.
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Cuando los clientes se registren desde la app o los des de alta aquí, aparecerán sus datos completos e INE.
+                    Cuando los clientes se registren desde la app o los des de alta aquí, aparecerán sus datos completos, INE/Pasaporte y ubicación.
                   </p>
                 </div>
               ) : (
                 filteredClients.map((cli) => {
-                  const hasIne = isSafePhotoDataUrl(cli.inePhotoDataUrl);
+                  const hasSafeMaps = isSafeGoogleMapsUrl(cli.mapsUrl);
                   return (
                     <div
                       key={cli.id}
                       className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
                     >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedClientId(cli.id)}
-                          title={
-                            hasIne
-                              ? 'Ver ficha e identificación INE'
-                              : 'Ver datos de registro'
-                          }
-                          className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
-                            hasIne
-                              ? 'border-[#8BAF03]/40 bg-white hover:border-[#8BAF03]'
-                              : 'border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-slate-400'
-                          }`}
-                        >
-                          {hasIne ? (
-                            <img
-                              src={cli.inePhotoDataUrl}
-                              alt={`INE de ${cli.name}`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center px-1 text-center">
-                              <IdCard className="h-4 w-4 mb-0.5" />
-                              <span className="text-[9px] font-bold leading-none">
-                                Sin INE
-                              </span>
-                            </div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-display text-sm font-extrabold text-[#1A1E2A]">
+                            {cli.name}
+                          </span>
+                          {cli.username && (
+                            <span className="font-mono text-xs font-bold text-[#5E7800]">
+                              @{cli.username}
+                            </span>
                           )}
-                        </button>
-
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-display text-sm font-extrabold text-[#1A1E2A]">
-                              {cli.name}
+                          {cli.age && (
+                            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
+                              {cli.age} años
                             </span>
-                            {cli.username && (
-                              <span className="font-mono text-xs font-bold text-[#5E7800]">
-                                @{cli.username}
-                              </span>
-                            )}
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                                hasIne
-                                  ? 'bg-[#F3F8DE] text-[#8BAF03]'
-                                  : 'bg-amber-50 text-amber-700'
-                              }`}
-                            >
+                          )}
+                          {cli.idDocumentNumber && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-[#F3F8DE] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#5E7800]">
                               <IdCard className="h-3 w-3" />
-                              <span>{hasIne ? 'INE adjunta' : 'Pendiente INE'}</span>
+                              <span>{cli.idDocumentNumber}</span>
                             </span>
-                          </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600">
-                            <span className="font-mono">{cli.whatsapp}</span>
-                            <span className="text-slate-400">·</span>
-                            <span className="text-slate-500">
-                              Alta: {new Date(cli.createdAt).toLocaleDateString('es-MX')}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-xs text-slate-500 truncate">
-                            {cli.address}
-                          </p>
+                          )}
                         </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600">
+                          <span className="font-mono">{cli.whatsapp}</span>
+                          <span className="text-slate-400">·</span>
+                          <span className="text-slate-500">
+                            Alta: {new Date(cli.createdAt).toLocaleDateString('es-MX')}
+                          </span>
+                          {hasSafeMaps && (
+                            <a
+                              href={cli.mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-bold text-[#5E7800] hover:underline"
+                            >
+                              <MapPin className="h-3 w-3" />
+                              <span>Google Maps</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 truncate">
+                          {cli.address}
+                        </p>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -961,7 +915,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                           className="inline-flex items-center gap-1.5 min-h-[36px] rounded-lg border border-[#1A1E2A]/20 bg-[#1A1E2A] px-3 text-xs font-bold text-white hover:bg-[#11141D] transition-colors cursor-pointer"
                         >
                           <IdCard className="h-3.5 w-3.5 text-[#FCF61C]" />
-                          <span>Ver ficha e INE</span>
+                          <span>Ver / editar ficha</span>
                         </button>
                         <button
                           type="button"
@@ -984,7 +938,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
         </div>
       </div>
 
-      {/* Client Registration Details & INE Modal */}
+      {/* Client Registration Details & Edit Modal */}
       {selectedClient && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1E2A]/70 p-3 sm:p-5 backdrop-blur-xs"
@@ -1007,7 +961,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                     {selectedClient.name}
                   </h3>
                   <p className="text-xs text-white/75 truncate">
-                    Datos de registro e identificación oficial (INE)
+                    Datos de registro, identificación y ubicación
                   </p>
                 </div>
               </div>
@@ -1022,17 +976,8 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             </div>
 
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-              {/* Registration fields grid */}
+              {/* Static info grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Nombre completo
-                  </div>
-                  <div className="mt-1 text-sm font-extrabold text-[#1A1E2A]">
-                    {selectedClient.name}
-                  </div>
-                </div>
-
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Usuario de acceso
@@ -1068,186 +1013,120 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Fecha de registro
-                  </div>
-                  <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#1A1E2A]">
-                    <Calendar className="h-4 w-4 text-[#1A1E2A]" />
-                    <span>
-                      {new Date(selectedClient.createdAt).toLocaleString('es-MX')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Dirección de entrega registrada
-                  </div>
-                  <div className="mt-1 flex items-start gap-2 text-sm font-semibold text-[#1A1E2A]">
-                    <MapPin className="h-4 w-4 text-[#5E7800] shrink-0 mt-0.5" />
-                    <span>{selectedClient.address}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* INE photo card */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <IdCard className="h-4 w-4 text-[#5E7800]" />
-                    <h4 className="font-display text-sm font-extrabold text-[#1A1E2A]">
-                      Identificación Oficial (INE — México)
-                    </h4>
-                  </div>
-
-                  <input
-                    ref={detailIneInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleDetailIneFile}
-                    className="hidden"
-                  />
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={updatingDetailIne}
-                      onClick={() => setCameraTarget('detail')}
-                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer disabled:opacity-50"
-                    >
-                      <Camera className="h-3.5 w-3.5 text-[#5E7800]" />
-                      <span>Tomar INE</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={updatingDetailIne}
-                      onClick={() => detailIneInputRef.current?.click()}
-                      className="min-h-[34px] inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-[#1A1E2A] hover:border-[#8BAF03] cursor-pointer disabled:opacity-50"
-                    >
-                      <ImageIcon className="h-3.5 w-3.5 text-[#1A1E2A]" />
+                <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Fecha de registro
+                    </div>
+                    <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#1A1E2A]">
+                      <Calendar className="h-4 w-4 text-[#1A1E2A]" />
                       <span>
-                        {updatingDetailIne ? 'Guardando...' : 'Subir / reemplazar'}
+                        {new Date(selectedClient.createdAt).toLocaleString('es-MX')}
                       </span>
-                    </button>
-                  </div>
-                </div>
-
-                {isSafePhotoDataUrl(selectedClient.inePhotoDataUrl) ? (
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setZoomedIne({
-                          url: selectedClient.inePhotoDataUrl!,
-                          name: selectedClient.name,
-                          username: selectedClient.username,
-                        })
-                      }
-                      className="group relative block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 cursor-zoom-in"
-                    >
-                      <img
-                        src={selectedClient.inePhotoDataUrl}
-                        alt={`Identificación INE de ${selectedClient.name}`}
-                        className="max-h-72 w-full object-contain p-2"
-                      />
-                      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg bg-[#1A1E2A]/85 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
-                        <ZoomIn className="h-3.5 w-3.5" />
-                        <span>Ampliar INE</span>
-                      </span>
-                    </button>
-
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <a
-                        href={selectedClient.inePhotoDataUrl}
-                        download={`INE-${selectedClient.username || selectedClient.id}.jpg`}
-                        className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Descargar imagen de INE</span>
-                      </a>
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                    <ImageOff className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-[#1A1E2A]">
-                      Este cliente aún no tiene fotografía de INE registrada
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Puedes solicitarle que la suba desde su perfil o adjuntarla aquí mismo con los botones superiores.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full-screen INE Lightbox */}
-      {zoomedIne && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setZoomedIne(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`INE ampliada de ${zoomedIne.name}`}
-        >
-          <div
-            className="relative w-full max-w-4xl flex flex-col items-center gap-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between text-white">
-              <div>
-                <div className="font-display text-base font-extrabold">
-                  INE · {zoomedIne.name}
+                  {isSafeGoogleMapsUrl(selectedClient.mapsUrl) && (
+                    <a
+                      href={selectedClient.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-h-[38px] inline-flex items-center gap-1.5 rounded-xl bg-[#8BAF03] px-3.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] transition-colors"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      <span>Abrir ubicación en Google Maps</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
-                {zoomedIne.username && (
-                  <div className="font-mono text-xs text-white/75">
-                    @{zoomedIne.username}
-                  </div>
-                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setZoomedIne(null)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white cursor-pointer"
-                aria-label="Cerrar zoom"
+
+              {/* Editable Identification, Age, Address & Google Maps */}
+              <form
+                onSubmit={handleSaveClientDetails}
+                className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3.5"
               >
-                <X className="h-5 w-5" />
-              </button>
+                <div className="text-xs font-extrabold uppercase tracking-wider text-[#1A1E2A]">
+                  Identificación, edad y ubicación registradas
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-8">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
+                      Número de INE o Pasaporte
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={40}
+                      value={editIdDoc}
+                      onChange={(e) => setEditIdDoc(e.target.value.toUpperCase())}
+                      placeholder="Clave de elector / IDMEX o pasaporte"
+                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm uppercase text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-4">
+                    <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
+                      Edad
+                    </label>
+                    <input
+                      type="number"
+                      min={12}
+                      max={120}
+                      value={editAge}
+                      onChange={(e) => setEditAge(e.target.value)}
+                      placeholder="Ej. 24"
+                      className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#1A1E2A] mb-1">
+                    Enlace de ubicación en Google Maps
+                  </label>
+                  <input
+                    type="url"
+                    value={editMapsUrl}
+                    onChange={(e) => setEditMapsUrl(e.target.value)}
+                    placeholder="https://maps.app.goo.gl/sL7aFF4pg11drELH9"
+                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClientId(null)}
+                    className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-4 text-xs font-bold text-[#1A1E2A] hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingDetail}
+                    className="min-h-[40px] inline-flex items-center gap-1.5 rounded-xl bg-[#8BAF03] px-4 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] disabled:opacity-60 cursor-pointer"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    <span>{savingDetail ? 'Guardando...' : 'Guardar ficha'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
-            <img
-              src={zoomedIne.url}
-              alt={`INE ampliada de ${zoomedIne.name}`}
-              className="max-h-[82vh] w-auto max-w-full rounded-xl bg-white object-contain p-1 shadow-2xl"
-            />
           </div>
         </div>
       )}
-
-      {/* Camera modal for capturing INE (Create or Client Detail) */}
-      <CameraCaptureModal
-        open={cameraTarget !== null}
-        title="Capturar identificación (INE)"
-        subtitle="Enfoca el frente de la credencial INE con buena iluminación"
-        onCapture={(dataUrl) => {
-          if (cameraTarget === 'create') {
-            setInePhotoDataUrl(dataUrl);
-          } else if (cameraTarget === 'detail') {
-            void handleSaveDetailIne(dataUrl);
-          }
-        }}
-        onFallbackGallery={() => {
-          if (cameraTarget === 'create') {
-            createIneInputRef.current?.click();
-          } else if (cameraTarget === 'detail') {
-            detailIneInputRef.current?.click();
-          }
-        }}
-        onClose={() => setCameraTarget(null)}
-      />
     </div>
   );
 };

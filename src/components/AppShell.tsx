@@ -33,6 +33,12 @@ interface AppShellProps {
     shortLabel?: string;
     onSwitch: () => void;
   };
+  quickAction?: {
+    label: string;
+    shortLabel?: string;
+    icon: React.ComponentType<{className?: string}>;
+    onClick: () => void;
+  };
   children: React.ReactNode;
 }
 
@@ -46,12 +52,14 @@ export const AppShell: React.FC<AppShellProps> = ({
   onLogout,
   notifications = [],
   switchRoleAction,
+  quickAction,
   children,
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const mobileBarItems = navItems.filter((item) => !item.hideOnMobileBar);
+  const QuickActionIcon = quickAction?.icon;
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-[#F8FAFC] text-[#1A1E2A]">
@@ -73,6 +81,22 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Quick Action (e.g., 1-Tap QR Scanner for Admin) */}
+          {quickAction && QuickActionIcon && (
+            <button
+              type="button"
+              onClick={quickAction.onClick}
+              className="inline-flex items-center gap-1.5 min-h-[40px] rounded-xl bg-[#1A1E2A] px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-extrabold text-[#FCF61C] hover:bg-[#11141D] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs"
+              title={quickAction.label}
+            >
+              <QuickActionIcon className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">{quickAction.label}</span>
+              <span className="sm:hidden">
+                {quickAction.shortLabel || quickAction.label}
+              </span>
+            </button>
+          )}
+
           {/* Admin 2-Role Switcher */}
           {switchRoleAction && (
             <button
