@@ -1,5 +1,5 @@
 -- ============================================================================
--- Kicks XR — Esquema completo y actualizado de base de datos para Supabase
+-- Homeli (Kicks XR) — Esquema completo y actualizado de base de datos para Supabase
 -- Proyecto: kicksxr@appdesign.appdesignproyectos.com's Project
 -- Project ID: ayzsvsbxhmbjegrzxlds
 -- ============================================================================
@@ -26,40 +26,61 @@ CREATE TABLE IF NOT EXISTS public.kicksxr_admins (
 ALTER TABLE public.kicksxr_admins
   ADD COLUMN IF NOT EXISTS whatsapp TEXT;
 
--- 2. Clientes registrados
+-- 2. Clientes registrados (Homeli Onboarding + Perfil + Servicios)
 CREATE TABLE IF NOT EXISTS public.kicksxr_clients (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   username TEXT,
+  email TEXT,
   whatsapp TEXT NOT NULL,
   whatsapp_normalized TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  address TEXT NOT NULL,
+  address TEXT NOT NULL DEFAULT '',
   maps_url TEXT,
   age INTEGER,
   id_document_number TEXT,
   user_type TEXT NOT NULL DEFAULT 'general',
   ine_photo_data_url TEXT,
+  language TEXT NOT NULL DEFAULT 'es',
+  account_mode TEXT NOT NULL DEFAULT 'usuario',
+  city TEXT,
+  birth_date TEXT,
+  gender TEXT,
+  interests JSONB NOT NULL DEFAULT '[]'::jsonb,
+  avatar_data_url TEXT,
+  location_granted BOOLEAN NOT NULL DEFAULT FALSE,
+  notifications_granted BOOLEAN NOT NULL DEFAULT FALSE,
+  profile_completed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Compatibilidad si la tabla ya había sido creada previamente
-ALTER TABLE public.kicksxr_clients
-  ADD COLUMN IF NOT EXISTS username TEXT;
-ALTER TABLE public.kicksxr_clients
-  ADD COLUMN IF NOT EXISTS ine_photo_data_url TEXT;
-ALTER TABLE public.kicksxr_clients
-  ADD COLUMN IF NOT EXISTS id_document_number TEXT;
-ALTER TABLE public.kicksxr_clients
-  ADD COLUMN IF NOT EXISTS age INTEGER;
-ALTER TABLE public.kicksxr_clients
-  ADD COLUMN IF NOT EXISTS maps_url TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS ine_photo_data_url TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS id_document_number TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS age INTEGER;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS maps_url TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'es';
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS account_mode TEXT NOT NULL DEFAULT 'usuario';
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS birth_date TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS interests JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS avatar_data_url TEXT;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS location_granted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS notifications_granted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.kicksxr_clients ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kicksxr_clients_username
   ON public.kicksxr_clients (LOWER(username))
   WHERE username IS NOT NULL;
 
--- 3. Sedes y Puntos KicksXR
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kicksxr_clients_email
+  ON public.kicksxr_clients (LOWER(email))
+  WHERE email IS NOT NULL;
+
+-- 3. Sedes y Puntos Homeli
 CREATE TABLE IF NOT EXISTS public.kicksxr_campuses (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

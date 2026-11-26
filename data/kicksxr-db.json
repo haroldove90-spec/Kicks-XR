@@ -42,6 +42,15 @@
       "address": "Casa 66",
       "userType": "general",
       "createdAt": "2026-11-24T04:14:19.395+00:00"
+    },
+    {
+      "id": "cli-guest-smoke-test-01",
+      "name": "",
+      "whatsapp": "",
+      "whatsappNormalized": "",
+      "address": "",
+      "userType": "general",
+      "createdAt": "2026-11-26T14:42:12.141Z"
     }
   ],
   "campuses": [
@@ -359,5 +368,11 @@
       "usageCount": 0,
       "createdAt": "2025-01-01T00:00:00.000Z"
     }
-  ]
+  ],
+  "mercadoPago": {
+    "enabled": false,
+    "sandboxMode": true,
+    "publicKey": "",
+    "accessToken": ""
+  }
 }

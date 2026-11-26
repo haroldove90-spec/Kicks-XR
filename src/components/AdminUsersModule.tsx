@@ -577,7 +577,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="correo@kicksxr.com"
+                    placeholder="correo@homeli.app"
                     className="w-full min-h-[44px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                   />
                 </div>

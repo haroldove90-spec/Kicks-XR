@@ -76,7 +76,7 @@ export const AdminOrderDetailModal: React.FC<AdminOrderDetailModalProps> = ({
   const discount = order.discountAmount || 0;
   const whatsappDigits = (order.clientWhatsapp || '').replace(/\D/g, '');
   const waPhone = whatsappDigits.length === 10 ? `52${whatsappDigits}` : whatsappDigits;
-  const statusMessage = `¡Hola ${order.clientName}! Kicks XR te informa sobre tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}): su estatus actual es "${order.status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
+  const statusMessage = `¡Hola ${order.clientName}! Homeli te informa sobre tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}): su estatus actual es "${order.status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
   const waStatusUrl = waPhone
     ? `https://wa.me/${waPhone}?text=${encodeURIComponent(statusMessage)}`
     : `https://wa.me/?text=${encodeURIComponent(statusMessage)}`;

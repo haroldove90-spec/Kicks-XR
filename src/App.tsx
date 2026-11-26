@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from 'react';
 import {AdminApp} from './components/AdminApp';
 import {AdminAuth} from './components/AdminAuth';
 import {ClientApp} from './components/ClientApp';
-import {ClientAuth} from './components/ClientAuth';
+import {HomeliOnboardingFlow} from './components/HomeliOnboardingFlow';
 import {
   NotificationPopupHost,
   triggerDeviceNotification,
@@ -20,9 +20,53 @@ import {
   subscribeToRealtimeUpdates,
 } from './lib/api';
 import {playNotificationSound, unlockNotificationAudio} from './lib/sound';
-import type {AuthUser, PopupAlert, PublicConfig} from './types';
+import type {AuthUser, HomeliLanguage, PopupAlert, PublicConfig} from './types';
 
-type AppRoute = 'home' | 'client-auth' | 'admin-auth' | 'client-app' | 'admin-app';
+type AppRoute =
+  | 'onboarding'
+  | 'home'
+  | 'admin-auth'
+  | 'client-app'
+  | 'admin-app';
+
+const GUEST_DEVICE_STORAGE_KEY = 'homeli_guest_device_id';
+const REGISTERED_DEVICE_STORAGE_KEY = 'homeli_device_registered';
+const REMEMBERED_EMAIL_STORAGE_KEY = 'homeli_remembered_email';
+const LANGUAGE_STORAGE_KEY = 'homeli_language';
+
+function readStoredFlag(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function readStoredString(key: string): string {
+  try {
+    return window.localStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function getOrCreateGuestDeviceId(): string {
+  try {
+    const existing = window.localStorage.getItem(GUEST_DEVICE_STORAGE_KEY);
+    if (existing && existing.length >= 6) {
+      return existing;
+    }
+    const created = `dev-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+    window.localStorage.setItem(GUEST_DEVICE_STORAGE_KEY, created);
+    return created;
+  } catch {
+    return `dev-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+  }
+}
 
 const FALLBACK_CONFIG: PublicConfig = {
   campuses: [
@@ -44,7 +88,7 @@ const FALLBACK_CONFIG: PublicConfig = {
     },
     {
       id: 'punto-roma',
-      name: 'Punto KicksXR Roma',
+      name: 'Punto Homeli Roma',
       code: 'KXR-PUNTO-ROMA',
       address: 'Calle Orizaba 112, Col. Roma Norte',
       type: 'point',
@@ -76,7 +120,20 @@ const FALLBACK_CONFIG: PublicConfig = {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [route, setRoute] = useState<AppRoute>('home');
+  const [isDeviceRegistered, setIsDeviceRegistered] = useState<boolean>(() =>
+    readStoredFlag(REGISTERED_DEVICE_STORAGE_KEY),
+  );
+  const [rememberedEmail, setRememberedEmail] = useState<string>(() =>
+    readStoredString(REMEMBERED_EMAIL_STORAGE_KEY),
+  );
+  const [savedLanguage, setSavedLanguage] = useState<HomeliLanguage>(() =>
+    readStoredString(LANGUAGE_STORAGE_KEY) === 'en' ? 'en' : 'es',
+  );
+  const [route, setRoute] = useState<AppRoute>('onboarding');
+  const [homeInitialView, setHomeInitialView] = useState<'home' | 'services'>(
+    'home',
+  );
+  const [enteringService, setEnteringService] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [config, setConfig] = useState<PublicConfig>(FALLBACK_CONFIG);
   const [alerts, setAlerts] = useState<PopupAlert[]>([]);
@@ -95,7 +152,7 @@ export default function App() {
     const id = `pop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setAlerts((prev) => [{...alert, id}, ...prev].slice(0, 4));
     playNotificationSound(alert.tone || 'info');
-    triggerDeviceNotification(`Kicks XR · ${alert.title}`, alert.message);
+    triggerDeviceNotification(`Homeli · ${alert.title}`, alert.message);
     window.setTimeout(() => {
       setAlerts((prev) => prev.filter((a) => a.id !== id));
     }, 6500);
@@ -116,17 +173,66 @@ export default function App() {
     }
   }, []);
 
+  const enterSneakerService = useCallback(async () => {
+    if (user) {
+      setRoute('client-app');
+      return;
+    }
+    setEnteringService(true);
+    try {
+      const deviceId = getOrCreateGuestDeviceId();
+      const res = await api.startGuestClientSession(deviceId);
+      setAuthToken(res.token);
+      setUser(res.user);
+      setRoute('client-app');
+    } catch (err) {
+      pushAlert({
+        title: 'No se pudo abrir el servicio',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Verifica tu conexión e inténtalo nuevamente.',
+        tone: 'error',
+      });
+    } finally {
+      setEnteringService(false);
+    }
+  }, [user, pushAlert]);
+
+  // Handle Mercado Pago return URL parameters on initial load so payment confirmation is seamless
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mpStatus = params.get('mp_status');
+    const orderId = params.get('order_id');
+
+    if (mpStatus && orderId) {
+      void enterSneakerService();
+    }
+    // Run only once on initial mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      const targetRoute: AppRoute =
-        user?.role === 'admin' ? 'admin-auth' : 'client-auth';
+      if (user?.role === 'admin') {
+        setAuthToken(null);
+        setUser(null);
+        setRoute('admin-auth');
+        pushAlert({
+          title: 'Vuelve a iniciar sesión',
+          message: 'Tu sesión de administrador expiró. Ingresa tus credenciales.',
+          tone: 'warning',
+        });
+        return;
+      }
+
       setAuthToken(null);
       setUser(null);
-      setRoute(targetRoute);
+      setRoute('onboarding');
       pushAlert({
-        title: 'Vuelve a iniciar sesión',
-        message: 'Tu sesión expiró. Ingresa tus credenciales para continuar.',
-        tone: 'warning',
+        title: 'Sesión finalizada',
+        message: 'Ingresa nuevamente a tu cuenta de Homeli para continuar.',
+        tone: 'info',
       });
     });
     return () => setUnauthorizedHandler(null);
@@ -141,20 +247,68 @@ export default function App() {
     });
   }, [loadConfig]);
 
+  const handleOnboardingAuthenticated = (
+    authUser: AuthUser,
+    remembered?: string,
+  ) => {
+    try {
+      window.localStorage.setItem(REGISTERED_DEVICE_STORAGE_KEY, 'true');
+      if (remembered && remembered.trim()) {
+        window.localStorage.setItem(
+          REMEMBERED_EMAIL_STORAGE_KEY,
+          remembered.trim(),
+        );
+        setRememberedEmail(remembered.trim());
+      } else if (remembered === '') {
+        window.localStorage.removeItem(REMEMBERED_EMAIL_STORAGE_KEY);
+        setRememberedEmail('');
+      }
+      if (authUser.language === 'es' || authUser.language === 'en') {
+        window.localStorage.setItem(LANGUAGE_STORAGE_KEY, authUser.language);
+        setSavedLanguage(authUser.language);
+      }
+    } catch {
+      // ignore storage restrictions
+    }
+
+    setIsDeviceRegistered(true);
+    setUser(authUser);
+    setHomeInitialView('home');
+    setRoute('home');
+    pushAlert({
+      title: `Bienvenido, ${authUser.name.split(' ')[0]}`,
+      message: 'Tu cuenta de Homeli está lista. Explora nuestros servicios.',
+      tone: 'success',
+    });
+  };
+
   const handleSelectRole = (target: HomeEntryTarget) => {
-    if (target === 'client') setRoute('client-auth');
-    else if (target === 'admin') setRoute('admin-auth');
+    if (target === 'client') {
+      void enterSneakerService();
+    } else if (target === 'admin') {
+      if (user?.role === 'admin') {
+        setRoute('admin-app');
+      } else {
+        setRoute('admin-auth');
+      }
+    }
   };
 
   const handleLogout = () => {
     setAuthToken(null);
     setUser(null);
-    setRoute('home');
+    setHomeInitialView('home');
+    setRoute('onboarding');
     pushAlert({
       title: 'Sesión cerrada',
-      message: 'Has salido de forma segura de Kicks XR.',
+      message: 'Has salido de forma segura de Homeli.',
       tone: 'info',
     });
+  };
+
+  const handleExitClientToServices = () => {
+    setHomeInitialView('services');
+    setRoute('home');
   };
 
   const handleSplashFinish = useCallback(() => {
@@ -169,21 +323,24 @@ export default function App() {
       <NotificationPopupHost alerts={alerts} onDismiss={dismissAlert} />
       {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
 
-      {route === 'home' && <RoleSelectorHome onSelect={handleSelectRole} />}
+      {route === 'onboarding' && (
+        <HomeliOnboardingFlow
+          isReturningUser={isDeviceRegistered}
+          rememberedEmail={rememberedEmail}
+          initialLanguage={savedLanguage}
+          onAuthenticated={handleOnboardingAuthenticated}
+          onAdminAccess={() => setRoute('admin-auth')}
+          onPushAlert={pushAlert}
+        />
+      )}
 
-      {route === 'client-auth' && (
-        <ClientAuth
-          onAuthenticated={(authUser) => {
-            setUser(authUser);
-            setRoute('client-app');
-            pushAlert({
-              title: `¡Bienvenido, ${authUser.name}!`,
-              message:
-                'Ya puedes registrar tus tenis, tomar fotografía de evidencia y rastrear tus pedidos.',
-              tone: 'success',
-            });
-          }}
-          onBack={() => setRoute('home')}
+      {route === 'home' && (
+        <RoleSelectorHome
+          initialView={homeInitialView}
+          enteringService={enteringService}
+          user={user}
+          onSelect={handleSelectRole}
+          onLogout={handleLogout}
         />
       )}
 
@@ -199,7 +356,14 @@ export default function App() {
               tone: 'success',
             });
           }}
-          onBack={() => setRoute('home')}
+          onBack={() => {
+            if (user) {
+              setHomeInitialView('home');
+              setRoute('home');
+            } else {
+              setRoute('onboarding');
+            }
+          }}
         />
       )}
 
@@ -208,7 +372,7 @@ export default function App() {
           user={user}
           config={config}
           onUserUpdated={setUser}
-          onLogout={handleLogout}
+          onLogout={isAdminSession ? handleLogout : handleExitClientToServices}
           onPushAlert={pushAlert}
           onSwitchToAdmin={
             isAdminSession
@@ -216,7 +380,7 @@ export default function App() {
                   setRoute('admin-app');
                   pushAlert({
                     title: 'Modo Administrador',
-                    message: 'Regresaste al panel operativo de Kicks XR.',
+                    message: 'Regresaste al panel operativo de Homeli.',
                     tone: 'info',
                   });
                 }
@@ -235,7 +399,7 @@ export default function App() {
             pushAlert({
               title: 'Vista Cliente activa',
               message:
-                'Estás navegando el flujo de Cliente con tu sesión de Administrador. Pulsa "Panel Admin" para volver.',
+                'Estás navegando el flujo de Lavado de tenis con tu sesión de Administrador. Pulsa "Panel Admin" para volver.',
               tone: 'info',
             });
           }}

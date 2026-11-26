@@ -260,7 +260,7 @@ export const AdminMercadoPagoModule: React.FC<AdminMercadoPagoModuleProps> = ({
                   Crea o abre tu aplicación
                 </div>
                 <p className="text-white/75 text-xs mt-0.5 leading-relaxed">
-                  Pulsa <strong>«Crear aplicación»</strong>, ponle nombre (ej. <em>Kicks XR</em>) y elige <strong>Pagos online → Checkout Pro</strong>.
+                  Pulsa <strong>«Crear aplicación»</strong>, ponle nombre (ej. <em>Homeli</em>) y elige <strong>Pagos online → Checkout Pro</strong>.
                 </p>
               </div>
             </li>

@@ -8,8 +8,8 @@ import {
 import type {Order} from '../types';
 import {isSafePhotoDataUrl} from './AdminOrderDetailModal';
 
-const LOGO_URL = 'https://daloocomercializadora.com.mx/xrlogo2.png';
-const FALLBACK_LOGO_URL = '/xrlogo2.png';
+const LOGO_URL = 'https://daloocomercializadora.com.mx/homelilogo.png';
+const FALLBACK_LOGO_URL = '/homelilogo.png';
 
 function escapeHtml(raw: string): string {
   return String(raw || '')
@@ -57,7 +57,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Comprobante Kicks XR · ${escapeHtml(order.folio)}</title>
+<title>Comprobante Homeli · ${escapeHtml(order.folio)}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1A1E2A; margin: 0; padding: 24px; }
   .card { max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; }
@@ -77,7 +77,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
   <div class="card">
     <div class="header">
       <div>
-        <h1>Kicks XR · Orden de Servicio</h1>
+        <h1>Homeli · Orden de Servicio</h1>
         <div style="font-size:12px;opacity:.8;margin-top:4px;">Folio ${escapeHtml(order.folio)} · Bolsa ${escapeHtml(order.bagCode)}</div>
       </div>
       <span class="badge">${escapeHtml(order.status)}</span>
@@ -97,7 +97,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
       <div class="row total"><span>Total</span><span>$${order.totalAmount} MXN</span></div>
       ${order.shoeNotes ? `<div class="note"><strong>Notas del calzado:</strong> ${escapeHtml(order.shoeNotes)}</div>` : ''}
     </div>
-    <div class="footer">Gracias por confiar en Kicks XR · Conserva tu folio ${escapeHtml(order.folio)} para recoger tu pedido.</div>
+    <div class="footer">Gracias por confiar en Homeli · Conserva tu folio ${escapeHtml(order.folio)} para recoger tu pedido.</div>
   </div>
 </body>
 </html>`;
@@ -161,7 +161,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
             <div>
               <img
                 src={LOGO_URL}
-                alt="Kicks XR"
+                alt="Homeli"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   const img = e.currentTarget;
@@ -169,7 +169,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                     img.src = FALLBACK_LOGO_URL;
                   }
                 }}
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain rounded-md"
               />
               <div className="mt-1 text-xs text-slate-500">
                 Orden de servicio y comprobante de entrega
@@ -336,7 +336,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
               />
             </div>
             <p className="mt-2 text-[11px] text-slate-500 text-center">
-              Presenta este folio o QR al recoger tus tenis en Kicks XR.
+              Presenta este folio o QR al recoger tu servicio en Homeli.
             </p>
           </div>
         </div>

@@ -75,7 +75,7 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
       onPushAlert?.({
         title: 'Notificaciones en pantalla activas',
         message:
-          'Este navegador no soporta notificaciones nativas del sistema, pero recibirás todos los popups con sonido dentro de Kicks XR.',
+          'Este navegador no soporta notificaciones nativas del sistema, pero recibirás todos los popups con sonido dentro de Homeli.',
         tone: 'info',
       });
       return;
@@ -86,13 +86,13 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
       setPermissionState(result);
       if (result === 'granted') {
         triggerDeviceNotification(
-          'Kicks XR · Notificaciones activas',
+          'Homeli · Notificaciones activas',
           'Recibirás alertas en vivo sobre tus servicios, estatus y entregas.',
         );
         onPushAlert?.({
           title: 'Permiso de notificaciones concedido',
           message:
-            'Recibirás alertas sonoras y visuales en tiempo real en tu dispositivo y en Kicks XR.',
+            'Recibirás alertas sonoras y visuales en tiempo real en tu dispositivo y en Homeli.',
           tone: 'success',
         });
       } else {

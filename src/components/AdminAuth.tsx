@@ -49,7 +49,7 @@ export const AdminAuth: React.FC<AdminAuthProps> = ({
             <ArrowLeft className="h-4 w-4" />
             <span>Inicio</span>
           </button>
-          <BrandLogo className="h-8 w-auto object-contain" />
+          <BrandLogo className="h-9 w-auto object-contain rounded-lg" />
           <div className="w-20" />
         </div>
 

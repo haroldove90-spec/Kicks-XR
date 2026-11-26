@@ -25,7 +25,7 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    console.error('Kicks XR UI error:', error);
+    console.error('Homeli UI error:', error);
   }
 
   handleRecover = async () => {
@@ -53,7 +53,7 @@ export class ErrorBoundary extends React.Component<
       <div className="min-h-screen w-full bg-[#F8FAFC] flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 sm:p-8 text-center shadow-xs space-y-5">
           <div className="flex justify-center">
-            <BrandLogo className="h-10 w-auto object-contain" />
+            <BrandLogo className="h-12 w-auto object-contain rounded-lg" />
           </div>
 
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -65,7 +65,7 @@ export class ErrorBoundary extends React.Component<
               No se pudo mostrar esta vista
             </h1>
             <p className="text-sm text-slate-600">
-              Detectamos un problema temporal al cargar el sistema. Pulsa el botón para limpiar caché y recargar Kicks XR.
+              Detectamos un problema temporal al cargar el sistema. Pulsa el botón para limpiar caché y recargar Homeli.
             </p>
             {this.state.errorMessage && (
               <p className="mt-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 font-mono text-xs text-slate-600 break-words">

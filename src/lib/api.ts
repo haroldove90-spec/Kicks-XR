@@ -82,26 +82,82 @@ export const api = {
   trackOrder: (folio: string) =>
     request<PublicOrderTrack>(`/api/orders/track/${encodeURIComponent(folio.trim())}`),
 
-  // Client auth
+  // Client auth (Homeli onboarding + email/phone login)
   registerClient: (body: {
     name: string;
-    username: string;
+    email?: string;
+    username?: string;
     whatsapp: string;
     password: string;
-    address: string;
+    address?: string;
     mapsUrl?: string;
     age?: number;
-    idDocumentNumber: string;
+    idDocumentNumber?: string;
+    language?: 'es' | 'en';
+    accountMode?: 'usuario' | 'negocio' | 'ambos';
+    locationGranted?: boolean;
   }) =>
     request<{token: string; user: AuthUser}>('/api/auth/client/register', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
-  loginClient: (body: {username: string; password: string}) =>
+  loginClient: (body: {email?: string; username?: string; password: string}) =>
     request<{token: string; user: AuthUser}>('/api/auth/client/login', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+
+  requestPhoneOtp: (body: {phone: string; countryCode?: string}) =>
+    request<{
+      sent: boolean;
+      maskedPhone: string;
+      expiresInSeconds: number;
+      deliveryMode: 'twilio' | 'instant';
+      instantCode?: string;
+    }>('/api/auth/client/otp/request', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  verifyPhoneOtp: (body: {
+    phone: string;
+    code: string;
+    language?: 'es' | 'en';
+    accountMode?: 'usuario' | 'negocio' | 'ambos';
+    locationGranted?: boolean;
+  }) =>
+    request<{token: string; user: AuthUser; isNewUser: boolean}>(
+      '/api/auth/client/otp/verify',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ),
+
+  completeClientOnboarding: (body: {
+    name?: string;
+    city?: string;
+    birthDate?: string;
+    gender?: string;
+    interests?: string[];
+    avatarDataUrl?: string;
+    language?: 'es' | 'en';
+    accountMode?: 'usuario' | 'negocio' | 'ambos';
+    locationGranted?: boolean;
+    notificationsGranted?: boolean;
+    mapsUrl?: string;
+    profileCompleted?: boolean;
+  }) =>
+    request<{user: AuthUser}>('/api/client/onboarding', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  startGuestClientSession: (deviceId?: string) =>
+    request<{token: string; user: AuthUser}>('/api/auth/client/guest', {
+      method: 'POST',
+      body: JSON.stringify({deviceId}),
     }),
 
   updateClientProfile: (body: {
@@ -111,6 +167,12 @@ export const api = {
     mapsUrl?: string;
     age?: number;
     idDocumentNumber?: string;
+    email?: string;
+    city?: string;
+    birthDate?: string;
+    gender?: string;
+    interests?: string[];
+    avatarDataUrl?: string;
   }) =>
     request<{user: AuthUser}>('/api/client/profile', {
       method: 'PATCH',
@@ -145,6 +207,10 @@ export const api = {
   createOrder: (body: {
     clientName: string;
     clientWhatsapp: string;
+    clientAge?: number;
+    clientIdDocument?: string;
+    clientAddress?: string;
+    clientMapsUrl?: string;
     pairs: number;
     serviceId: string;
     campusId: string;

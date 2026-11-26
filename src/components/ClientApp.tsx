@@ -103,8 +103,18 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   // Step 1: Registra tus tenis
-  const [clientName, setClientName] = useState(user.name || '');
+  const isGuestClient =
+    user.role === 'client' && !user.username && user.id.startsWith('cli-guest-');
+  const [clientName, setClientName] = useState(
+    user.name && user.name !== 'Cliente Homeli' ? user.name : '',
+  );
   const [clientWhatsapp, setClientWhatsapp] = useState(user.whatsapp || '');
+  const [clientAge, setClientAge] = useState(user.age ? String(user.age) : '');
+  const [clientIdDocument, setClientIdDocument] = useState(
+    user.idDocumentNumber || '',
+  );
+  const [clientAddress, setClientAddress] = useState(user.address || '');
+  const [clientMapsUrl, setClientMapsUrl] = useState(user.mapsUrl || '');
   const [pairs, setPairs] = useState(1);
   const [serviceId, setServiceId] = useState(
     config.services.find((s) => s.name.toLowerCase().includes('premium'))?.id ||
@@ -155,7 +165,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({
   const [mpVerifying, setMpVerifying] = useState(false);
 
   // Profile editing & Password change
-  const [profileName, setProfileName] = useState(user.name || '');
+  const [profileName, setProfileName] = useState(
+    user.name && user.name !== 'Cliente Homeli' ? user.name : '',
+  );
   const [profileWhatsapp, setProfileWhatsapp] = useState(user.whatsapp || '');
   const [profileAge, setProfileAge] = useState(user.age ? String(user.age) : '');
   const [profileIdDocument, setProfileIdDocument] = useState(
@@ -357,6 +369,22 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       setError('Ingresa un número de WhatsApp válido (10 dígitos).');
       return;
     }
+    if (clientAge.trim()) {
+      const parsedAge = Number(clientAge);
+      if (!Number.isInteger(parsedAge) || parsedAge < 12 || parsedAge > 120) {
+        setError('Ingresa una edad válida (entre 12 y 120 años).');
+        return;
+      }
+    }
+    if (clientMapsUrl.trim() && !isSafeGoogleMapsUrl(clientMapsUrl.trim())) {
+      setError(
+        'El enlace de ubicación debe ser un link válido de Google Maps (ej. https://maps.app.goo.gl/...).',
+      );
+      return;
+    }
+    if (clientAddress.trim() && !deliveryAddress.trim()) {
+      setDeliveryAddress(clientAddress.trim());
+    }
     setStep(2);
   };
 
@@ -480,9 +508,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
     setSubmitting(true);
     try {
+      const parsedAge = clientAge.trim() ? Number(clientAge) : undefined;
+      const trimmedIdDoc = clientIdDocument.trim().toUpperCase() || undefined;
+      const trimmedAddress =
+        (deliveryMethod === 'delivery' ? deliveryAddress : clientAddress).trim() ||
+        clientAddress.trim() ||
+        undefined;
+      const trimmedMapsUrl = clientMapsUrl.trim() || undefined;
+
       const res = await api.createOrder({
         clientName: clientName.trim(),
         clientWhatsapp: clientWhatsapp.trim(),
+        clientAge: parsedAge,
+        clientIdDocument: trimmedIdDoc,
+        clientAddress: trimmedAddress,
+        clientMapsUrl: trimmedMapsUrl,
         pairs,
         serviceId: selectedService.id,
         campusId: selectedCampus.id,
@@ -498,6 +538,24 @@ export const ClientApp: React.FC<ClientAppProps> = ({
         shoeNotes: shoeNotes.trim() || undefined,
         discountCode: appliedCoupon?.code,
       });
+
+      if (user.role === 'client') {
+        onUserUpdated({
+          ...user,
+          name: clientName.trim(),
+          whatsapp: clientWhatsapp.trim(),
+          age: parsedAge ?? user.age,
+          idDocumentNumber: trimmedIdDoc ?? user.idDocumentNumber,
+          address: trimmedAddress ?? user.address,
+          mapsUrl: trimmedMapsUrl ?? user.mapsUrl,
+        });
+        setProfileName(clientName.trim());
+        setProfileWhatsapp(clientWhatsapp.trim());
+        if (parsedAge) setProfileAge(String(parsedAge));
+        if (trimmedIdDoc) setProfileIdDocument(trimmedIdDoc);
+        if (trimmedAddress) setProfileAddress(trimmedAddress);
+        if (trimmedMapsUrl) setProfileMapsUrl(trimmedMapsUrl);
+      }
 
       setOrders((prev) => [res.order, ...prev]);
       setActiveOrderId(res.order.id);
@@ -620,6 +678,10 @@ export const ClientApp: React.FC<ClientAppProps> = ({
       onUserUpdated(res.user);
       setClientName(res.user.name);
       setClientWhatsapp(res.user.whatsapp || '');
+      setClientAge(res.user.age ? String(res.user.age) : '');
+      setClientIdDocument(res.user.idDocumentNumber || '');
+      setClientAddress(res.user.address || '');
+      setClientMapsUrl(res.user.mapsUrl || '');
       setDeliveryAddress(res.user.address || '');
       setProfileAge(res.user.age ? String(res.user.age) : '');
       setProfileIdDocument(res.user.idDocumentNumber || '');
@@ -732,8 +794,12 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
   return (
     <AppShell
-      roleLabel={onSwitchToAdmin ? 'Vista Cliente (Admin)' : 'Cliente'}
-      userName={user.name}
+      brandVariant="kicksxr"
+      roleLabel={onSwitchToAdmin ? 'Vista Cliente (Admin)' : 'Lavado de tenis'}
+      userName={
+        user.name && user.name !== 'Cliente Homeli' ? user.name : undefined
+      }
+      exitLabel={onSwitchToAdmin ? 'Cerrar sesión' : 'Servicios'}
       navItems={navItems}
       activeNav={activeTab}
       onSelectNav={(id) => {
@@ -786,7 +852,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {step === 5 && 'Sigue tu pedido'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Paso {step} de 5 · Servicio Kicks XR
+                  Paso {step} de 5 · Servicio Lavado de tenis · Homeli
                 </p>
               </div>
             </div>
@@ -846,6 +912,80 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           value={clientWhatsapp}
                           onChange={(e) => setClientWhatsapp(e.target.value)}
                           placeholder="55 1234 5678"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Datos opcionales para Código QR y ubicación */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                    <div className="sm:col-span-4">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                        Edad <span className="text-xs font-normal text-slate-400">(opcional)</span>
+                      </label>
+                      <div className="relative">
+                        <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="number"
+                          min={12}
+                          max={120}
+                          value={clientAge}
+                          onChange={(e) => setClientAge(e.target.value)}
+                          placeholder="Ej. 24"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-8">
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                        INE o Pasaporte <span className="text-xs font-normal text-slate-400">(opcional · aparece en QR)</span>
+                      </label>
+                      <div className="relative">
+                        <IdCard className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          maxLength={40}
+                          value={clientIdDocument}
+                          onChange={(e) =>
+                            setClientIdDocument(e.target.value.toUpperCase())
+                          }
+                          placeholder="Clave de elector / IDMEX o pasaporte"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 font-mono text-sm uppercase text-[#1A1E2A] placeholder:font-sans placeholder:normal-case focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                        Dirección <span className="text-xs font-normal text-slate-400">(opcional)</span>
+                      </label>
+                      <div className="relative">
+                        <MapPin className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          value={clientAddress}
+                          onChange={(e) => setClientAddress(e.target.value)}
+                          placeholder="Calle, número, colonia"
+                          className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                        Link Google Maps <span className="text-xs font-normal text-slate-400">(opcional)</span>
+                      </label>
+                      <div className="relative">
+                        <Link2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="url"
+                          value={clientMapsUrl}
+                          onChange={(e) => setClientMapsUrl(e.target.value)}
+                          placeholder="https://maps.app.goo.gl/..."
                           className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none focus:ring-2 focus:ring-[#8BAF03]/20"
                         />
                       </div>
@@ -1023,7 +1163,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                         Recoger en el punto
                       </div>
                       <div className="text-sm text-slate-600">
-                        En el punto o sede KicksXR (Sin costo de envío)
+                        En el punto o sede Homeli (Sin costo de envío)
                       </div>
                     </div>
                   </button>
@@ -1031,7 +1171,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                   {deliveryMethod === 'pickup' && (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
                       <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                        Selecciona el punto KicksXR
+                        Selecciona el punto o sede
                       </label>
                       <select
                         value={campusId}
@@ -1429,7 +1569,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           Con personal
                         </div>
                         <p className="mt-1 text-sm text-slate-600 leading-snug">
-                          Entrega tu bolsa directamente al equipo de KicksXR en el punto.
+                          Entrega tu bolsa directamente al equipo de Homeli en el punto.
                         </p>
                       </div>
                     </button>
@@ -1449,7 +1589,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                           Autoservicio
                         </div>
                         <p className="mt-1 text-sm text-slate-600 leading-snug">
-                          Deposita tu bolsa en el locker de KicksXR con tu código de bolsa.
+                          Deposita tu bolsa en el locker de Homeli con tu código de bolsa.
                         </p>
                         {activeOrder.assignedLockerCode && (
                           <p className="mt-2 font-mono text-xs font-bold text-[#5E7800]">
@@ -1683,7 +1823,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({
                     <span className="font-semibold text-[#1A1E2A] text-right">
                       {deliveryMethod === 'delivery'
                         ? `Domicilio (+$${config.shippingFee})`
-                        : selectedCampus?.name || 'Punto KicksXR'}
+                        : selectedCampus?.name || 'Punto Homeli'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
@@ -2344,7 +2484,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({
 
       {/* MODULE: MI PERFIL */}
       {activeTab === 'profile' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div
+          className={`grid grid-cols-1 ${
+            isGuestClient ? 'max-w-2xl' : 'lg:grid-cols-2'
+          } gap-6 items-start`}
+        >
           <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
             <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
               Mi perfil
@@ -2484,89 +2628,91 @@ export const ClientApp: React.FC<ClientAppProps> = ({
             </form>
           </div>
 
-          {/* Cambio de contraseña del cliente */}
-          <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C]/25 text-[#1A1E2A]">
-                <KeyRound className="h-5 w-5" />
+          {/* Cambio de contraseña del cliente (solo cuentas con contraseña) */}
+          {!isGuestClient && (
+            <div className="rounded-2xl bg-white border border-slate-200 p-6 sm:p-8">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FCF61C]/25 text-[#1A1E2A]">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-extrabold text-[#1A1E2A]">
+                    Seguridad y contraseña
+                  </h2>
+                  <p className="text-xs text-slate-600">
+                    Actualiza tu contraseña de acceso cuando lo necesites
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-display text-xl font-extrabold text-[#1A1E2A]">
-                  Seguridad y contraseña
-                </h2>
-                <p className="text-xs text-slate-600">
-                  Actualiza tu contraseña de acceso cuando lo necesites
-                </p>
-              </div>
+
+              {passwordError && (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSaved && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#F3F8DE] px-4 py-3 text-sm font-semibold text-[#5E7800]">
+                  <Check className="h-4 w-4" />
+                  <span>Contraseña actualizada correctamente.</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                    Contraseña actual
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Tu contraseña actual"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                    Nueva contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={4}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 4 caracteres"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
+                    Confirmar nueva contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={4}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Repite la nueva contraseña"
+                    className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="min-h-[48px] rounded-xl bg-[#1A1E2A] px-6 text-sm font-bold text-white hover:bg-[#11141D] disabled:opacity-60 transition-colors cursor-pointer"
+                >
+                  {changingPassword ? 'Actualizando...' : 'Cambiar contraseña'}
+                </button>
+              </form>
             </div>
-
-            {passwordError && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
-                {passwordError}
-              </div>
-            )}
-
-            {passwordSaved && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#F3F8DE] px-4 py-3 text-sm font-semibold text-[#5E7800]">
-                <Check className="h-4 w-4" />
-                <span>Contraseña actualizada correctamente.</span>
-              </div>
-            )}
-
-            <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                  Contraseña actual
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Tu contraseña actual"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                  Nueva contraseña
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={4}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mínimo 4 caracteres"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1E2A] mb-1.5">
-                  Confirmar nueva contraseña
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={4}
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="Repite la nueva contraseña"
-                  className="w-full min-h-[46px] rounded-xl border border-slate-300 bg-white px-4 text-sm text-[#1A1E2A] focus:border-[#8BAF03] focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={changingPassword}
-                className="min-h-[48px] rounded-xl bg-[#1A1E2A] px-6 text-sm font-bold text-white hover:bg-[#11141D] disabled:opacity-60 transition-colors cursor-pointer"
-              >
-                {changingPassword ? 'Actualizando...' : 'Cambiar contraseña'}
-              </button>
-            </form>
-          </div>
+          )}
         </div>
       )}
 

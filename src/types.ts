@@ -22,6 +22,9 @@ export type IncidentType =
 
 export type IncidentStatus = 'Abierta' | 'En revisión' | 'Resuelta';
 
+export type HomeliLanguage = 'es' | 'en';
+export type HomeliAccountMode = 'usuario' | 'negocio' | 'ambos';
+
 export interface AuthUser {
   id: string;
   role: UserRole;
@@ -37,6 +40,16 @@ export interface AuthUser {
   campusId?: string;
   campusName?: string;
   inePhotoDataUrl?: string;
+  language?: HomeliLanguage;
+  accountMode?: HomeliAccountMode;
+  city?: string;
+  birthDate?: string;
+  gender?: string;
+  interests?: string[];
+  avatarDataUrl?: string;
+  locationGranted?: boolean;
+  notificationsGranted?: boolean;
+  profileCompleted?: boolean;
 }
 
 export interface Campus {

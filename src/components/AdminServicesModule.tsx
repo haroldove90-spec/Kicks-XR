@@ -64,7 +64,7 @@ export const AdminServicesModule: React.FC<AdminServicesModuleProps> = ({
     try {
       await api.createService({
         name: newName.trim(),
-        description: newDesc.trim() || 'Servicio profesional de limpieza Kicks XR.',
+        description: newDesc.trim() || 'Servicio profesional Homeli.',
         price: Math.round(parsedPrice),
         turnaroundHours: Math.max(1, Math.round(parsedHours)),
       });

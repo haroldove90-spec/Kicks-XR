@@ -210,7 +210,7 @@ export const AdminReportsModule: React.FC<AdminReportsModuleProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `KicksXR-Corte-Pedidos-${toLocalYmd(new Date())}.csv`;
+    a.download = `Homeli-Corte-Pedidos-${toLocalYmd(new Date())}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };

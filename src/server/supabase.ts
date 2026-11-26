@@ -24,6 +24,7 @@ export interface SupabaseClientRow {
   id: string;
   name: string;
   username?: string | null;
+  email?: string | null;
   whatsapp: string;
   whatsapp_normalized: string;
   password_hash: string;
@@ -33,6 +34,16 @@ export interface SupabaseClientRow {
   id_document_number?: string | null;
   user_type: 'general' | 'university';
   ine_photo_data_url?: string | null;
+  language?: string | null;
+  account_mode?: string | null;
+  city?: string | null;
+  birth_date?: string | null;
+  gender?: string | null;
+  interests?: string[] | null;
+  avatar_data_url?: string | null;
+  location_granted?: boolean | null;
+  notifications_granted?: boolean | null;
+  profile_completed?: boolean | null;
   created_at: string;
 }
 
@@ -242,6 +253,14 @@ export const supabaseStore = {
     return res.ok && res.data && res.data.length > 0 ? res.data[0] : null;
   },
 
+  async findClientByEmail(email: string): Promise<SupabaseClientRow | null> {
+    const clean = encodeURIComponent(email.trim().toLowerCase());
+    const res = await sbRequest<SupabaseClientRow[]>(
+      `kicksxr_clients?email=ilike.${clean}&limit=1`,
+    );
+    return res.ok && res.data && res.data.length > 0 ? res.data[0] : null;
+  },
+
   async findClientByWhatsapp(whatsappNormalized: string): Promise<SupabaseClientRow | null> {
     const clean = encodeURIComponent(whatsappNormalized);
     const res = await sbRequest<SupabaseClientRow[]>(
@@ -257,14 +276,35 @@ export const supabaseStore = {
       body: client,
     });
     if (!res.ok && res.status === 400) {
-      // Backward-compatible fallback if newly added columns have not yet been migrated in Supabase
+      // Backward-compatible fallback if newly added Homeli columns have not yet been migrated in Supabase
+      const {
+        email: _omitEmail,
+        language: _omitLang,
+        account_mode: _omitMode,
+        city: _omitCity,
+        birth_date: _omitBirth,
+        gender: _omitGender,
+        interests: _omitInterests,
+        avatar_data_url: _omitAvatar,
+        location_granted: _omitLoc,
+        notifications_granted: _omitNotif,
+        profile_completed: _omitDone,
+        ...v2Client
+      } = client;
+      const retry0 = await sbRequest('kicksxr_clients?on_conflict=id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+        body: v2Client,
+      });
+      if (retry0.ok) return true;
+
       const {
         maps_url: _omitMaps,
         age: _omitAge,
         id_document_number: _omitIdDoc,
         ine_photo_data_url: _omitIne,
         ...midClient
-      } = client;
+      } = v2Client;
       const retry1 = await sbRequest('kicksxr_clients?on_conflict=id', {
         method: 'POST',
         prefer: 'resolution=merge-duplicates,return=minimal',

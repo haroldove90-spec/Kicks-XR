@@ -121,7 +121,7 @@ function buildDirectWhatsappUrl(order: Order, customStatus?: OrderStatus): strin
         ? digits
         : `52${digits}`;
   const status = customStatus || order.status;
-  const text = `Hola ${order.clientName}, te contactamos de Kicks XR. Tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) se encuentra en estatus: "${status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
+  const text = `Hola ${order.clientName}, te contactamos de Homeli. Tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) se encuentra en estatus: "${status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
   return `https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`;
 }
 
@@ -1062,7 +1062,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h1 className="font-display text-2xl font-extrabold text-[#1A1E2A]">
-                    Panel Operativo Kicks XR
+                    Panel Operativo Homeli
                   </h1>
                   <p className="text-sm text-slate-600">
                     Resumen en tiempo real de recolecciones, taller, entregas, caja e incidencias
@@ -2781,7 +2781,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   handleResolveIncident(
                                     inc.id,
                                     'Resuelta',
-                                    'Resuelta por equipo operativo Kicks XR.',
+                                    'Resuelta por equipo operativo Homeli.',
                                   )
                                 }
                                 className="min-h-[38px] rounded-lg bg-[#8BAF03] px-3.5 text-xs font-bold text-[#1A1E2A] hover:bg-[#749402] cursor-pointer"
@@ -2916,7 +2916,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                 <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 space-y-4">
                   <div className="flex items-center gap-2 font-display text-base font-bold text-[#1A1E2A]">
                     <Building2 className="h-5 w-5 text-[#5E7800]" />
-                    <span>Sedes y puntos KicksXR</span>
+                    <span>Sedes y puntos Homeli</span>
                   </div>
 
                   <div className="space-y-2.5">
@@ -2946,7 +2946,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                                   }
                                   className="min-h-[38px] rounded-lg border border-slate-300 px-2.5 text-xs text-[#1A1E2A]"
                                 >
-                                  <option value="point">Punto físico KicksXR</option>
+                                  <option value="point">Punto físico Homeli</option>
                                   <option value="university">Sede universitaria</option>
                                 </select>
                               </div>
@@ -3054,7 +3054,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                         }
                         className="min-h-[42px] rounded-xl border border-slate-300 px-3 text-sm"
                       >
-                        <option value="point">Punto físico KicksXR</option>
+                        <option value="point">Punto físico Homeli</option>
                         <option value="university">Sede universitaria</option>
                       </select>
                     </div>
@@ -3297,7 +3297,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
                             </span>
                           </div>
                           <div className="mt-1 text-xs text-slate-500 truncate">
-                            {c.description || 'Promoción Kicks XR'} · {c.usageCount}{' '}
+                            {c.description || 'Promoción Homeli'} · {c.usageCount}{' '}
                             {c.usageCount === 1 ? 'uso' : 'usos'}
                           </div>
                         </div>
@@ -3815,7 +3815,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-display text-lg font-extrabold text-[#1A1E2A]">
-              QR de Sede Kicks XR
+              QR de Sede Homeli
             </h3>
             <p className="mt-1 text-sm text-slate-600">{qrCampusModal.name}</p>
             <div className="mt-5 inline-flex flex-col items-center rounded-2xl bg-[#FCF61C]/25 p-5 border border-[#8BAF03]/20">

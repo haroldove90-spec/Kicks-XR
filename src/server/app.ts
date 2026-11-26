@@ -134,6 +134,7 @@ interface StoredClient {
   id: string;
   name: string;
   username?: string;
+  email?: string;
   whatsapp: string;
   whatsappNormalized: string;
   passwordHash?: string;
@@ -144,8 +145,27 @@ interface StoredClient {
   userType: 'general' | 'university';
   campusId?: string;
   inePhotoDataUrl?: string;
+  language?: 'es' | 'en';
+  accountMode?: 'usuario' | 'negocio' | 'ambos';
+  city?: string;
+  birthDate?: string;
+  gender?: string;
+  interests?: string[];
+  avatarDataUrl?: string;
+  locationGranted?: boolean;
+  notificationsGranted?: boolean;
+  profileCompleted?: boolean;
   createdAt: string;
 }
+
+interface PendingOtpEntry {
+  code: string;
+  phoneNormalized: string;
+  expiresAt: number;
+  attempts: number;
+}
+
+const pendingPhoneOtps = new Map<string, PendingOtpEntry>();
 
 interface StoredMercadoPagoConfig {
   enabled: boolean;
@@ -760,14 +780,14 @@ function buildCredentialsPayload(params: {
   const idLabel = 'Usuario';
 
   const shareMessage = [
-    `¡Hola ${params.name}! Tus credenciales de acceso a Kicks XR (${roleLabel}) están listas:`,
+    `¡Hola ${params.name}! Tus credenciales de acceso a Homeli (${roleLabel}) están listas:`,
     ``,
     `• Rol: ${roleLabel}`,
     `• ${idLabel}: ${params.identifier}`,
     `• Contraseña: ${params.password}`,
     `• Acceso a la app: ${loginUrl}`,
     ``,
-    `Ingresa seleccionando el perfil "${roleLabel}" en Kicks XR.`,
+    `Ingresa seleccionando el perfil "${roleLabel}" en Homeli.`,
   ].join('\n');
 
   const cleanPhone = params.whatsapp ? normalizePhone(params.whatsapp) : '';
@@ -861,6 +881,9 @@ async function hydrateFromSupabase(): Promise<void> {
           id: row.id,
           name: String(row.name || 'Cliente'),
           username: rowUsername || (idx >= 0 ? db.clients[idx].username : undefined),
+          email:
+            (row.email ? String(row.email).trim().toLowerCase() : undefined) ||
+            (idx >= 0 ? db.clients[idx].email : undefined),
           whatsapp: String(row.whatsapp || waNorm),
           whatsappNormalized: waNorm,
           passwordHash: row.password_hash || undefined,
@@ -881,6 +904,52 @@ async function hydrateFromSupabase(): Promise<void> {
           inePhotoDataUrl:
             row.ine_photo_data_url ||
             (idx >= 0 ? db.clients[idx].inePhotoDataUrl : undefined),
+          language:
+            row.language === 'en'
+              ? 'en'
+              : row.language === 'es'
+                ? 'es'
+                : idx >= 0
+                  ? db.clients[idx].language
+                  : 'es',
+          accountMode:
+            row.account_mode === 'negocio' || row.account_mode === 'ambos'
+              ? row.account_mode
+              : row.account_mode === 'usuario'
+                ? 'usuario'
+                : idx >= 0
+                  ? db.clients[idx].accountMode
+                  : 'usuario',
+          city: row.city || (idx >= 0 ? db.clients[idx].city : undefined),
+          birthDate:
+            row.birth_date || (idx >= 0 ? db.clients[idx].birthDate : undefined),
+          gender: row.gender || (idx >= 0 ? db.clients[idx].gender : undefined),
+          interests: Array.isArray(row.interests)
+            ? row.interests.map(String)
+            : idx >= 0
+              ? db.clients[idx].interests
+              : undefined,
+          avatarDataUrl:
+            row.avatar_data_url ||
+            (idx >= 0 ? db.clients[idx].avatarDataUrl : undefined),
+          locationGranted:
+            typeof row.location_granted === 'boolean'
+              ? row.location_granted
+              : idx >= 0
+                ? db.clients[idx].locationGranted
+                : undefined,
+          notificationsGranted:
+            typeof row.notifications_granted === 'boolean'
+              ? row.notifications_granted
+              : idx >= 0
+                ? db.clients[idx].notificationsGranted
+                : undefined,
+          profileCompleted:
+            typeof row.profile_completed === 'boolean'
+              ? row.profile_completed
+              : idx >= 0
+                ? db.clients[idx].profileCompleted
+                : undefined,
           createdAt: row.created_at || new Date().toISOString(),
         };
         if (idx >= 0) db.clients[idx] = mapped;
@@ -1129,6 +1198,7 @@ function buildAuthUserFromClient(client: StoredClient): AuthUser {
     role: 'client',
     name: client.name,
     username: client.username,
+    email: client.email,
     whatsapp: client.whatsapp,
     address: client.address,
     mapsUrl: client.mapsUrl,
@@ -1138,6 +1208,85 @@ function buildAuthUserFromClient(client: StoredClient): AuthUser {
     campusId: client.campusId,
     campusName: campus?.name,
     inePhotoDataUrl: client.inePhotoDataUrl,
+    language: client.language || 'es',
+    accountMode: client.accountMode || 'usuario',
+    city: client.city,
+    birthDate: client.birthDate,
+    gender: client.gender,
+    interests: client.interests,
+    avatarDataUrl: client.avatarDataUrl,
+    locationGranted: client.locationGranted,
+    notificationsGranted: client.notificationsGranted,
+    profileCompleted: client.profileCompleted,
+  };
+}
+
+function clientToSupabaseRow(client: StoredClient) {
+  return {
+    id: client.id,
+    name: client.name || 'Cliente Homeli',
+    username: client.username || null,
+    email: client.email || null,
+    whatsapp: client.whatsapp,
+    whatsapp_normalized: client.whatsappNormalized,
+    password_hash:
+      client.passwordHash || hashPassword(crypto.randomBytes(12).toString('hex')),
+    address: client.address || '',
+    maps_url: client.mapsUrl || null,
+    age: client.age ?? null,
+    id_document_number: client.idDocumentNumber || null,
+    user_type: client.userType,
+    ine_photo_data_url: client.inePhotoDataUrl || null,
+    language: client.language || 'es',
+    account_mode: client.accountMode || 'usuario',
+    city: client.city || null,
+    birth_date: client.birthDate || null,
+    gender: client.gender || null,
+    interests: client.interests || [],
+    avatar_data_url: client.avatarDataUrl || null,
+    location_granted: Boolean(client.locationGranted),
+    notifications_granted: Boolean(client.notificationsGranted),
+    profile_completed: Boolean(client.profileCompleted),
+    created_at: client.createdAt,
+  };
+}
+
+function hydrateClientFromSupabaseRow(
+  sbClient: import('./supabase.ts').SupabaseClientRow,
+): StoredClient {
+  return {
+    id: sbClient.id,
+    name: sbClient.name,
+    username: sbClient.username ? sanitizeUsername(sbClient.username) : undefined,
+    email: sbClient.email ? String(sbClient.email).trim().toLowerCase() : undefined,
+    whatsapp: sbClient.whatsapp,
+    whatsappNormalized: sbClient.whatsapp_normalized,
+    passwordHash: sbClient.password_hash,
+    address: sbClient.address || '',
+    mapsUrl: normalizeGoogleMapsUrl(sbClient.maps_url),
+    age:
+      typeof sbClient.age === 'number' && sbClient.age > 0
+        ? sbClient.age
+        : undefined,
+    idDocumentNumber: sbClient.id_document_number || undefined,
+    userType: sbClient.user_type || 'general',
+    inePhotoDataUrl: sbClient.ine_photo_data_url || undefined,
+    language: sbClient.language === 'en' ? 'en' : 'es',
+    accountMode:
+      sbClient.account_mode === 'negocio' || sbClient.account_mode === 'ambos'
+        ? sbClient.account_mode
+        : 'usuario',
+    city: sbClient.city || undefined,
+    birthDate: sbClient.birth_date || undefined,
+    gender: sbClient.gender || undefined,
+    interests: Array.isArray(sbClient.interests)
+      ? sbClient.interests.map(String)
+      : undefined,
+    avatarDataUrl: sbClient.avatar_data_url || undefined,
+    locationGranted: Boolean(sbClient.location_granted),
+    notificationsGranted: Boolean(sbClient.notifications_granted),
+    profileCompleted: Boolean(sbClient.profile_completed),
+    createdAt: sbClient.created_at,
   };
 }
 
@@ -1156,7 +1305,7 @@ function buildOrderWhatsappUrl(order: Order, customMessage?: string): string {
   const waPhone = digits.length === 10 ? `52${digits}` : digits;
   const text =
     customMessage ||
-    `¡Hola ${order.clientName}! Kicks XR te informa sobre tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}): su estatus actual es "${order.status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
+    `¡Hola ${order.clientName}! Homeli te informa sobre tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}): su estatus actual es "${order.status}". Total: $${order.totalAmount} MXN (${order.paymentStatus}).`;
   return waPhone
     ? `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`
     : `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -1319,10 +1468,12 @@ export function createApiApp(): Express {
     });
   });
 
-  // --- CLIENT AUTH ---
+  // --- CLIENT AUTH (Homeli Onboarding: Email/Password + Phone OTP) ---
   app.post('/api/auth/client/register', async (req, res) => {
+    await ensureFreshState();
     const name = sanitizeText(req.body?.name, 80);
-    const username = sanitizeUsername(req.body?.username);
+    const email = sanitizeText(req.body?.email, 120).toLowerCase();
+    const rawUsername = sanitizeUsername(req.body?.username);
     const whatsapp = sanitizeText(req.body?.whatsapp, 25);
     const whatsappNormalized = normalizePhone(whatsapp);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
@@ -1330,39 +1481,46 @@ export function createApiApp(): Express {
     const rawMapsUrl = sanitizeText(req.body?.mapsUrl, 500);
     const idDocumentNumber = sanitizeIdDocument(req.body?.idDocumentNumber);
     const age = parseOptionalAge(req.body?.age);
+    const language: 'es' | 'en' = req.body?.language === 'en' ? 'en' : 'es';
+    const accountMode: 'usuario' | 'negocio' | 'ambos' =
+      req.body?.accountMode === 'negocio' || req.body?.accountMode === 'ambos'
+        ? req.body.accountMode
+        : 'usuario';
+    const locationGranted = Boolean(req.body?.locationGranted);
+
+    const isEmailFlow = Boolean(email);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (name.length < 2) {
       res.status(400).json({error: 'Ingresa tu nombre completo.'});
       return;
     }
-    if (username.length < 3) {
+    if (isEmailFlow && !emailRegex.test(email)) {
+      res.status(400).json({error: 'Ingresa un correo electrónico válido.'});
+      return;
+    }
+    if (!isEmailFlow && rawUsername.length < 3) {
       res.status(400).json({
-        error: 'Ingresa un nombre de usuario válido (mínimo 3 caracteres, sin espacios).',
+        error: 'Ingresa un correo electrónico o nombre de usuario válido.',
       });
       return;
     }
     if (whatsappNormalized.length < 10) {
       res.status(400).json({
-        error: 'Ingresa un número de WhatsApp válido de al menos 10 dígitos.',
+        error: 'Ingresa un número de teléfono válido de al menos 10 dígitos.',
+      });
+      return;
+    }
+    if (password.length < 8 && isEmailFlow) {
+      res.status(400).json({
+        error: 'La contraseña debe tener al menos 8 caracteres.',
       });
       return;
     }
     if (password.length < 6) {
-      res.status(400).json({error: 'La contraseña debe tener al menos 6 caracteres.'});
-      return;
-    }
-    if (!age) {
-      res.status(400).json({error: 'Ingresa una edad válida (entre 12 y 120 años).'});
-      return;
-    }
-    if (idDocumentNumber.length < 5) {
       res.status(400).json({
-        error: 'Ingresa tu número de INE o Pasaporte (mínimo 5 caracteres).',
+        error: 'La contraseña debe tener al menos 6 caracteres.',
       });
-      return;
-    }
-    if (address.length < 5) {
-      res.status(400).json({error: 'Ingresa tu dirección completa.'});
       return;
     }
     if (rawMapsUrl && !isSafeGoogleMapsUrl(rawMapsUrl)) {
@@ -1374,18 +1532,46 @@ export function createApiApp(): Express {
     }
     const mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
 
-    const existingUsernameLocal = db.clients.find(
-      (c) => c.username && c.username.toLowerCase() === username,
-    );
-    const existingUsernameSb = isSupabaseConfigured()
-      ? await supabaseStore.findClientByUsername(username)
-      : null;
+    // Derive clean username when registering with email
+    const derivedUsername =
+      rawUsername ||
+      sanitizeUsername(email.split('@')[0] || `user${whatsappNormalized.slice(-4)}`) ||
+      `user${whatsappNormalized.slice(-4)}`;
+    let username = derivedUsername;
+    if (
+      db.clients.some((c) => c.username?.toLowerCase() === username.toLowerCase())
+    ) {
+      username = `${derivedUsername}_${whatsappNormalized.slice(-4)}`;
+    }
 
-    if (existingUsernameLocal || existingUsernameSb) {
-      res.status(409).json({
-        error: `El usuario "${username}" ya está registrado. Elige otro nombre de usuario o inicia sesión.`,
-      });
-      return;
+    if (email) {
+      const existingEmailLocal = db.clients.find(
+        (c) => c.email && c.email.toLowerCase() === email,
+      );
+      const existingEmailSb = isSupabaseConfigured()
+        ? await supabaseStore.findClientByEmail(email)
+        : null;
+      if (existingEmailLocal || existingEmailSb) {
+        res.status(409).json({
+          error: 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión.',
+        });
+        return;
+      }
+    }
+
+    if (rawUsername) {
+      const existingUsernameLocal = db.clients.find(
+        (c) => c.username && c.username.toLowerCase() === rawUsername,
+      );
+      const existingUsernameSb = isSupabaseConfigured()
+        ? await supabaseStore.findClientByUsername(rawUsername)
+        : null;
+      if (existingUsernameLocal || existingUsernameSb) {
+        res.status(409).json({
+          error: `El usuario "${rawUsername}" ya está registrado. Elige otro o inicia sesión.`,
+        });
+        return;
+      }
     }
 
     const existingLocal = db.clients.find(
@@ -1397,7 +1583,7 @@ export function createApiApp(): Express {
 
     if (existingLocal || existingSb) {
       res.status(409).json({
-        error: 'Ya existe una cuenta registrada con ese WhatsApp. Inicia sesión.',
+        error: 'Ya existe una cuenta registrada con este número de teléfono. Inicia sesión.',
       });
       return;
     }
@@ -1407,34 +1593,27 @@ export function createApiApp(): Express {
       id: `cli-${crypto.randomUUID().slice(0, 10)}`,
       name,
       username,
+      email: email || undefined,
       whatsapp,
       whatsappNormalized,
       passwordHash,
       address,
       mapsUrl,
       age,
-      idDocumentNumber,
+      idDocumentNumber: idDocumentNumber || undefined,
       userType: 'general',
+      language,
+      accountMode,
+      locationGranted,
+      notificationsGranted: false,
+      profileCompleted: false,
       createdAt: new Date().toISOString(),
     };
     db.clients.push(client);
     saveDb(db);
 
     if (isSupabaseConfigured()) {
-      await supabaseStore.upsertClient({
-        id: client.id,
-        name: client.name,
-        username: client.username,
-        whatsapp: client.whatsapp,
-        whatsapp_normalized: client.whatsappNormalized,
-        password_hash: passwordHash,
-        address: client.address,
-        maps_url: client.mapsUrl || null,
-        age: client.age ?? null,
-        id_document_number: client.idDocumentNumber || null,
-        user_type: 'general',
-        created_at: client.createdAt,
-      });
+      await supabaseStore.upsertClient(clientToSupabaseRow(client));
     }
 
     const token = signToken({
@@ -1447,13 +1626,22 @@ export function createApiApp(): Express {
   });
 
   app.post('/api/auth/client/login', async (req, res) => {
-    const rawIdentifier = sanitizeText(req.body?.username || req.body?.whatsapp, 80);
-    const username = sanitizeUsername(rawIdentifier);
+    await ensureFreshState();
+    const rawIdentifier = sanitizeText(
+      req.body?.email || req.body?.username || req.body?.whatsapp,
+      120,
+    );
+    const emailLower = rawIdentifier.includes('@')
+      ? rawIdentifier.toLowerCase()
+      : '';
+    const username = emailLower ? '' : sanitizeUsername(rawIdentifier);
     const phoneFallback = normalizePhone(rawIdentifier);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
-    if ((!username || username.length < 3) && phoneFallback.length < 10) {
-      res.status(400).json({error: 'Ingresa tu nombre de usuario y contraseña.'});
+    if (!emailLower && username.length < 3 && phoneFallback.length < 10) {
+      res.status(400).json({
+        error: 'Ingresa tu correo electrónico, usuario o teléfono.',
+      });
       return;
     }
     if (!password) {
@@ -1463,39 +1651,26 @@ export function createApiApp(): Express {
 
     let client: StoredClient | undefined;
 
-    // 1) Prefer fresh Supabase lookup by username (with fallback to phone for legacy accounts)
+    // 1) Prefer fresh Supabase lookup by email, username, or phone
     if (isSupabaseConfigured()) {
-      let sbClient =
-        username.length >= 3
-          ? await supabaseStore.findClientByUsername(username)
-          : null;
+      let sbClient = emailLower
+        ? await supabaseStore.findClientByEmail(emailLower)
+        : null;
+      if (!sbClient && username.length >= 3) {
+        sbClient = await supabaseStore.findClientByUsername(username);
+      }
       if (!sbClient && phoneFallback.length >= 10) {
         sbClient = await supabaseStore.findClientByWhatsapp(phoneFallback);
       }
       if (sbClient) {
-        client = {
-          id: sbClient.id,
-          name: sbClient.name,
-          username: sbClient.username ? sanitizeUsername(sbClient.username) : undefined,
-          whatsapp: sbClient.whatsapp,
-          whatsappNormalized: sbClient.whatsapp_normalized,
-          passwordHash: sbClient.password_hash,
-          address: sbClient.address,
-          mapsUrl: normalizeGoogleMapsUrl(sbClient.maps_url),
-          age:
-            typeof sbClient.age === 'number' && sbClient.age > 0
-              ? sbClient.age
-              : undefined,
-          idDocumentNumber: sbClient.id_document_number || undefined,
-          userType: sbClient.user_type || 'general',
-          inePhotoDataUrl: sbClient.ine_photo_data_url || undefined,
-          createdAt: sbClient.created_at,
-        };
+        client = hydrateClientFromSupabaseRow(sbClient);
         const existingIdx = db.clients.findIndex(
           (c) =>
             c.id === client!.id ||
+            (client!.email && c.email?.toLowerCase() === client!.email) ||
             (client!.username && c.username?.toLowerCase() === client!.username) ||
-            c.whatsappNormalized === client!.whatsappNormalized,
+            (client!.whatsappNormalized &&
+              c.whatsappNormalized === client!.whatsappNormalized),
         );
         if (existingIdx >= 0) db.clients[existingIdx] = client;
         else db.clients.push(client);
@@ -1504,6 +1679,11 @@ export function createApiApp(): Express {
     }
 
     // 2) Fallback to local server-side store
+    if (!client && emailLower) {
+      client = db.clients.find(
+        (c) => c.email?.toLowerCase() === emailLower && c.passwordHash,
+      );
+    }
     if (!client && username.length >= 3) {
       client = db.clients.find(
         (c) => c.username?.toLowerCase() === username && c.passwordHash,
@@ -1519,7 +1699,7 @@ export function createApiApp(): Express {
       res.status(404).json({
         code: 'NOT_REGISTERED',
         error:
-          'Este usuario aún no está registrado. Crea tu cuenta para ingresar.',
+          'No encontramos una cuenta con estos datos. Crea tu cuenta para ingresar.',
       });
       return;
     }
@@ -1533,6 +1713,306 @@ export function createApiApp(): Express {
       sub: client.id,
       role: 'client',
       name: client.name,
+      username: client.username,
+    });
+    res.json({token, user: buildAuthUserFromClient(client)});
+  });
+
+  // Phone OTP request (Twilio SMS if configured, instant verifiable OTP otherwise)
+  app.post('/api/auth/client/otp/request', async (req, res) => {
+    const rawPhone = sanitizeText(req.body?.phone, 25);
+    const countryCode = sanitizeText(req.body?.countryCode, 6) || '+52';
+    const digits = normalizePhone(rawPhone);
+
+    if (digits.length < 10) {
+      res.status(400).json({
+        error: 'Ingresa un número de teléfono válido de 10 dígitos.',
+      });
+      return;
+    }
+
+    const code = String(crypto.randomInt(100000, 999999));
+    const expiresInSeconds = 300;
+    pendingPhoneOtps.set(digits, {
+      code,
+      phoneNormalized: digits,
+      expiresAt: Date.now() + expiresInSeconds * 1000,
+      attempts: 0,
+    });
+
+    const formattedPhone =
+      digits.length === 10
+        ? `${countryCode} ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
+        : `${countryCode} ${digits}`;
+
+    // Optional real Twilio SMS dispatch when credentials are set in environment
+    const twilioSid = (process.env.TWILIO_ACCOUNT_SID || '').trim();
+    const twilioToken = (process.env.TWILIO_AUTH_TOKEN || '').trim();
+    const twilioFrom = (process.env.TWILIO_FROM_NUMBER || '').trim();
+
+    if (twilioSid && twilioToken && twilioFrom) {
+      try {
+        const toNumber = digits.startsWith('52')
+          ? `+${digits}`
+          : `${countryCode}${digits}`;
+        const bodyParams = new URLSearchParams({
+          To: toNumber,
+          From: twilioFrom,
+          Body: `Tu código de verificación Homeli es: ${code}. Válido por 5 minutos.`,
+        });
+        const twilioRes = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(twilioSid)}/Messages.json`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Basic ${Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64')}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: bodyParams.toString(),
+          },
+        );
+        if (twilioRes.ok) {
+          res.json({
+            sent: true,
+            maskedPhone: formattedPhone,
+            expiresInSeconds,
+            deliveryMode: 'twilio',
+          });
+          return;
+        }
+      } catch (err) {
+        console.error('Twilio SMS error, falling back to instant OTP:', err);
+      }
+    }
+
+    res.json({
+      sent: true,
+      maskedPhone: formattedPhone,
+      expiresInSeconds,
+      deliveryMode: 'instant',
+      instantCode: code,
+    });
+  });
+
+  // Phone OTP verification
+  app.post('/api/auth/client/otp/verify', async (req, res) => {
+    await ensureFreshState();
+    const rawPhone = sanitizeText(req.body?.phone, 25);
+    const digits = normalizePhone(rawPhone);
+    const code = sanitizeText(req.body?.code, 10).replace(/\D/g, '');
+    const language: 'es' | 'en' = req.body?.language === 'en' ? 'en' : 'es';
+    const accountMode: 'usuario' | 'negocio' | 'ambos' =
+      req.body?.accountMode === 'negocio' || req.body?.accountMode === 'ambos'
+        ? req.body.accountMode
+        : 'usuario';
+    const locationGranted = Boolean(req.body?.locationGranted);
+
+    if (digits.length < 10 || code.length !== 6) {
+      res.status(400).json({error: 'Ingresa el código completo de 6 dígitos.'});
+      return;
+    }
+
+    const entry = pendingPhoneOtps.get(digits);
+    if (!entry) {
+      res.status(400).json({
+        error: 'El código expiró o no fue solicitado. Solicita un código nuevo.',
+      });
+      return;
+    }
+    if (Date.now() > entry.expiresAt) {
+      pendingPhoneOtps.delete(digits);
+      res.status(400).json({
+        error: 'Tu código de verificación ha expirado. Solicita uno nuevo.',
+      });
+      return;
+    }
+    entry.attempts += 1;
+    if (entry.attempts > 5) {
+      pendingPhoneOtps.delete(digits);
+      res.status(429).json({
+        error: 'Demasiados intentos. Solicita un nuevo código de verificación.',
+      });
+      return;
+    }
+    if (!constantTimeCompare(code, entry.code)) {
+      res.status(401).json({
+        error: 'Código incorrecto. Verifica los 6 dígitos e intenta nuevamente.',
+      });
+      return;
+    }
+
+    pendingPhoneOtps.delete(digits);
+
+    // Find existing client by phone (Supabase or local)
+    let client: StoredClient | undefined;
+    if (isSupabaseConfigured()) {
+      const sbClient = await supabaseStore.findClientByWhatsapp(digits);
+      if (sbClient) {
+        client = hydrateClientFromSupabaseRow(sbClient);
+        const idx = db.clients.findIndex((c) => c.id === client!.id);
+        if (idx >= 0) db.clients[idx] = client;
+        else db.clients.push(client);
+      }
+    }
+    if (!client) {
+      client = db.clients.find((c) => c.whatsappNormalized === digits);
+    }
+
+    let isNewUser = false;
+    if (!client) {
+      isNewUser = true;
+      client = {
+        id: `cli-${crypto.randomUUID().slice(0, 10)}`,
+        name: 'Usuario Homeli',
+        username: `tel_${digits.slice(-6)}`,
+        whatsapp: rawPhone || digits,
+        whatsappNormalized: digits,
+        passwordHash: hashPassword(crypto.randomBytes(16).toString('hex')),
+        address: '',
+        userType: 'general',
+        language,
+        accountMode,
+        locationGranted,
+        notificationsGranted: false,
+        profileCompleted: false,
+        createdAt: new Date().toISOString(),
+      };
+      db.clients.push(client);
+      saveDb(db);
+      if (isSupabaseConfigured()) {
+        await supabaseStore.upsertClient(clientToSupabaseRow(client));
+      }
+    } else {
+      isNewUser = !client.profileCompleted;
+      saveDb(db);
+    }
+
+    const token = signToken({
+      sub: client.id,
+      role: 'client',
+      name: client.name,
+      username: client.username,
+    });
+    res.json({token, user: buildAuthUserFromClient(client), isNewUser});
+  });
+
+  // Save Homeli Onboarding Profile (Step 11 & Step 12)
+  app.patch('/api/client/onboarding', requireAuth, async (req: AuthedRequest, res) => {
+    await ensureFreshState();
+    const client = db.clients.find((c) => c.id === req.auth?.sub);
+    if (!client) {
+      res.status(404).json({error: 'Cuenta de cliente no encontrada.'});
+      return;
+    }
+
+    const name = sanitizeText(req.body?.name, 80);
+    const city = sanitizeText(req.body?.city, 80);
+    const birthDate = sanitizeText(req.body?.birthDate, 20);
+    const gender = sanitizeText(req.body?.gender, 40);
+    const rawMapsUrl = sanitizeText(req.body?.mapsUrl, 500);
+    const avatarDataUrl =
+      typeof req.body?.avatarDataUrl === 'string'
+        ? req.body.avatarDataUrl.trim()
+        : undefined;
+
+    if (avatarDataUrl) {
+      if (
+        avatarDataUrl.length > 3_500_000 ||
+        !IMAGE_DATA_URL_REGEX.test(avatarDataUrl)
+      ) {
+        res.status(400).json({
+          error: 'Formato de foto de perfil inválido. Usa JPG, PNG o WebP.',
+        });
+        return;
+      }
+      client.avatarDataUrl = avatarDataUrl;
+    }
+
+    if (name.length >= 2) client.name = name;
+    if (city) client.city = city;
+    if (birthDate) {
+      client.birthDate = birthDate;
+      // Derive age if valid birth date
+      const parsed = new Date(birthDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        const diffYears = Math.floor(
+          (Date.now() - parsed.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+        );
+        if (diffYears >= 12 && diffYears <= 120) {
+          client.age = diffYears;
+        }
+      }
+    }
+    if (gender) client.gender = gender;
+    if (Array.isArray(req.body?.interests)) {
+      client.interests = req.body.interests
+        .filter((x: unknown): x is string => typeof x === 'string')
+        .map((x: string) => x.trim().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 12);
+    }
+    if (req.body?.language === 'en' || req.body?.language === 'es') {
+      client.language = req.body.language;
+    }
+    if (
+      req.body?.accountMode === 'usuario' ||
+      req.body?.accountMode === 'negocio' ||
+      req.body?.accountMode === 'ambos'
+    ) {
+      client.accountMode = req.body.accountMode;
+    }
+    if (typeof req.body?.locationGranted === 'boolean') {
+      client.locationGranted = req.body.locationGranted;
+    }
+    if (typeof req.body?.notificationsGranted === 'boolean') {
+      client.notificationsGranted = req.body.notificationsGranted;
+    }
+    if (rawMapsUrl && isSafeGoogleMapsUrl(rawMapsUrl)) {
+      client.mapsUrl = normalizeGoogleMapsUrl(rawMapsUrl);
+    }
+    if (typeof req.body?.profileCompleted === 'boolean') {
+      client.profileCompleted = req.body.profileCompleted;
+    }
+
+    saveDb(db);
+    if (isSupabaseConfigured() && client.whatsappNormalized.length >= 10) {
+      await supabaseStore.upsertClient(clientToSupabaseRow(client));
+    }
+
+    res.json({user: buildAuthUserFromClient(client)});
+  });
+
+  // Direct passwordless client session (Homeli → Lavado de tenis direct entry)
+  app.post('/api/auth/client/guest', async (req, res) => {
+    await ensureFreshState();
+    const rawDeviceId = sanitizeText(req.body?.deviceId, 64).replace(
+      /[^a-zA-Z0-9_-]/g,
+      '',
+    );
+    const stableId =
+      rawDeviceId.length >= 6
+        ? `cli-guest-${rawDeviceId.slice(0, 24)}`
+        : `cli-guest-${crypto.randomUUID().slice(0, 12)}`;
+
+    let client = db.clients.find((c) => c.id === stableId);
+    if (!client) {
+      client = {
+        id: stableId,
+        name: '',
+        whatsapp: '',
+        whatsappNormalized: '',
+        address: '',
+        userType: 'general',
+        createdAt: new Date().toISOString(),
+      };
+      db.clients.push(client);
+      saveDb(db);
+    }
+
+    const token = signToken({
+      sub: client.id,
+      role: 'client',
+      name: client.name || 'Cliente Homeli',
       username: client.username,
     });
     res.json({token, user: buildAuthUserFromClient(client)});
@@ -1598,14 +2078,14 @@ export function createApiApp(): Express {
     }
 
     saveDb(db);
-    if (isSupabaseConfigured() && client.passwordHash) {
+    if (isSupabaseConfigured() && client.whatsappNormalized.length >= 10) {
       await supabaseStore.upsertClient({
         id: client.id,
-        name: client.name,
+        name: client.name || 'Cliente Homeli',
         username: client.username || null,
         whatsapp: client.whatsapp,
         whatsapp_normalized: client.whatsappNormalized,
-        password_hash: client.passwordHash,
+        password_hash: client.passwordHash || hashPassword(crypto.randomBytes(12).toString('hex')),
         address: client.address,
         maps_url: client.mapsUrl || null,
         age: client.age ?? null,
@@ -1886,6 +2366,13 @@ export function createApiApp(): Express {
     await ensureFreshState();
     const clientName = sanitizeText(req.body?.clientName, 80);
     const clientWhatsapp = sanitizeText(req.body?.clientWhatsapp, 25);
+    const reqClientAge = parseOptionalAge(req.body?.clientAge);
+    const reqClientIdDocument =
+      typeof req.body?.clientIdDocument === 'string'
+        ? sanitizeIdDocument(req.body.clientIdDocument)
+        : '';
+    const reqClientAddress = sanitizeText(req.body?.clientAddress, 220);
+    const rawReqMapsUrl = sanitizeText(req.body?.clientMapsUrl, 500);
     const pairs = Number(req.body?.pairs);
     const serviceId = sanitizeText(req.body?.serviceId, 50);
     const campusId = sanitizeText(req.body?.campusId, 50);
@@ -1904,6 +2391,13 @@ export function createApiApp(): Express {
     }
     if (normalizePhone(clientWhatsapp).length < 10) {
       res.status(400).json({error: 'Ingresa un número de WhatsApp válido (10 dígitos).'});
+      return;
+    }
+    if (rawReqMapsUrl && !isSafeGoogleMapsUrl(rawReqMapsUrl)) {
+      res.status(400).json({
+        error:
+          'El enlace de ubicación debe ser un link válido de Google Maps (ej. https://maps.app.goo.gl/...).',
+      });
       return;
     }
     if (!Number.isInteger(pairs) || pairs < 1 || pairs > 10) {
@@ -1986,19 +2480,31 @@ export function createApiApp(): Express {
     }
 
     const client = db.clients.find((c) => c.id === req.auth?.sub);
+    const safeReqMapsUrl = normalizeGoogleMapsUrl(rawReqMapsUrl);
     if (client) {
       if (clientName) client.name = clientName;
       if (clientWhatsapp) {
         client.whatsapp = clientWhatsapp;
         client.whatsappNormalized = normalizePhone(clientWhatsapp);
       }
-      if (deliveryAddress) client.address = deliveryAddress;
+      if (reqClientAddress || deliveryAddress) {
+        client.address = reqClientAddress || deliveryAddress;
+      }
+      if (reqClientAge) client.age = reqClientAge;
+      if (reqClientIdDocument.length >= 5) {
+        client.idDocumentNumber = reqClientIdDocument;
+      }
+      if (safeReqMapsUrl) client.mapsUrl = safeReqMapsUrl;
     }
 
-    const clientAddress = deliveryAddress || client?.address || undefined;
-    const clientAge = client?.age;
-    const clientIdDocument = client?.idDocumentNumber;
-    const clientMapsUrl = normalizeGoogleMapsUrl(client?.mapsUrl);
+    const clientAddress =
+      reqClientAddress || deliveryAddress || client?.address || undefined;
+    const clientAge = reqClientAge ?? client?.age;
+    const clientIdDocument =
+      (reqClientIdDocument.length >= 5 ? reqClientIdDocument : undefined) ||
+      client?.idDocumentNumber;
+    const clientMapsUrl =
+      safeReqMapsUrl || normalizeGoogleMapsUrl(client?.mapsUrl);
 
     const freeLocker = db.lockers.find(
       (l) => l.campusId === campus.id && l.status === 'disponible',
@@ -2069,7 +2575,7 @@ export function createApiApp(): Express {
     if (isSupabaseConfigured()) {
       writes.push(supabaseStore.upsertOrder(order));
       writes.push(supabaseStore.upsertSettings(buildSettingsRowForSupabase()));
-      if (client && client.passwordHash) {
+      if (client && client.whatsappNormalized.length >= 10) {
         writes.push(
           supabaseStore.upsertClient({
             id: client.id,
@@ -2077,7 +2583,9 @@ export function createApiApp(): Express {
             username: client.username || null,
             whatsapp: client.whatsapp,
             whatsapp_normalized: client.whatsappNormalized,
-            password_hash: client.passwordHash,
+            password_hash:
+              client.passwordHash ||
+              hashPassword(crypto.randomBytes(12).toString('hex')),
             address: client.address,
             maps_url: client.mapsUrl || null,
             age: client.age ?? null,
@@ -2095,7 +2603,7 @@ export function createApiApp(): Express {
         recipientWhatsapp: order.clientWhatsapp,
         recipientName: order.clientName,
         title: `Pedido ${order.folio} confirmado`,
-        message: `Hola ${order.clientName}, tu pedido Kicks XR ${order.folio} fue confirmado. Código de bolsa: ${order.bagCode}. Total: $${order.totalAmount} MXN (${order.paymentStatus}).`,
+        message: `Hola ${order.clientName}, tu pedido Homeli ${order.folio} fue confirmado. Código de bolsa: ${order.bagCode}. Total: $${order.totalAmount} MXN (${order.paymentStatus}).`,
       }),
     );
     await Promise.all(writes);
@@ -2175,7 +2683,7 @@ export function createApiApp(): Express {
         recipientWhatsapp: order.clientWhatsapp,
         recipientName: order.clientName,
         title: `Depósito reportado · ${order.folio}`,
-        message: `Kicks XR: Registramos el depósito de tu bolsa ${order.bagCode} (${order.folio}) en ${order.campusName}. Te avisaremos cuando llegue a taller.`,
+        message: `Homeli: Registramos el depósito de tu bolsa ${order.bagCode} (${order.folio}) en ${order.campusName}. Te avisaremos cuando llegue a taller.`,
       }),
     );
     await Promise.all(writes);
@@ -2531,7 +3039,7 @@ export function createApiApp(): Express {
 
     const whatsappUrl = buildOrderWhatsappUrl(
       order,
-      `¡Hola ${order.clientName}! Registramos tu servicio en Kicks XR.\n• Folio: ${order.folio}\n• Bolsa: ${order.bagCode}\n• Servicio: ${order.serviceName} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})\n• Total: $${order.totalAmount} MXN (${order.paymentStatus})\n• Sede: ${order.campusName}`,
+      `¡Hola ${order.clientName}! Registramos tu servicio en Homeli.\n• Folio: ${order.folio}\n• Bolsa: ${order.bagCode}\n• Servicio: ${order.serviceName} (${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'})\n• Total: $${order.totalAmount} MXN (${order.paymentStatus})\n• Sede: ${order.campusName}`,
     );
 
     writes.push(
@@ -2589,7 +3097,7 @@ export function createApiApp(): Express {
         order.history.push({
           status: 'Recibido por KicksXR',
           timestamp: now,
-          note: `Bolsa ${order.bagCode} auditada y recibida en taller KicksXR.`,
+          note: `Bolsa ${order.bagCode} auditada y recibida en taller Homeli.`,
         });
       }
       order.updatedAt = now;
@@ -2614,8 +3122,8 @@ export function createApiApp(): Express {
           folio: order.folio,
           recipientWhatsapp: order.clientWhatsapp,
           recipientName: order.clientName,
-          title: `Recibido por KicksXR · ${order.folio}`,
-          message: `¡Hola ${order.clientName}! Recibimos tu bolsa ${order.bagCode} (${order.folio}) en el taller de Kicks XR. Pronto comenzaremos tu ${order.serviceName}.`,
+          title: `Recibido en taller · ${order.folio}`,
+          message: `¡Hola ${order.clientName}! Recibimos tu bolsa ${order.bagCode} (${order.folio}) en el taller de Homeli. Pronto comenzaremos tu ${order.serviceName}.`,
         }),
       );
     }
@@ -2812,7 +3320,7 @@ export function createApiApp(): Express {
             recipientWhatsapp: order.clientWhatsapp,
             recipientName: order.clientName,
             title: `${nextStatus} · ${order.folio}`,
-            message: `Kicks XR actualiza tu pedido ${order.folio} (Bolsa ${order.bagCode}): ahora está en estatus "${nextStatus}".${note ? ` Nota: ${note}` : ''}`,
+            message: `Homeli actualiza tu pedido ${order.folio} (Bolsa ${order.bagCode}): ahora está en estatus "${nextStatus}".${note ? ` Nota: ${note}` : ''}`,
           }),
         );
       } else if (note) {
@@ -2861,7 +3369,7 @@ export function createApiApp(): Express {
     });
     const whatsappUrl = buildOrderWhatsappUrl(
       order,
-      `¡Hola ${order.clientName}! Kicks XR te informa que tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) pasó a estatus "${order.status}".${note ? ` Nota: ${note}.` : ''} Estado de pago: ${order.paymentStatus} ($${order.totalAmount} MXN).`,
+      `¡Hola ${order.clientName}! Homeli te informa que tu pedido ${order.folio} (Bolsa ${order.bagCode} · ${order.serviceName}) pasó a estatus "${order.status}".${note ? ` Nota: ${note}.` : ''} Estado de pago: ${order.paymentStatus} ($${order.totalAmount} MXN).`,
     );
     res.json({order, whatsappUrl});
   });
@@ -2915,7 +3423,7 @@ export function createApiApp(): Express {
     broadcastEvent({type: 'config'});
     const whatsappUrl = buildOrderWhatsappUrl(
       order,
-      `Hola ${order.clientName}, te informamos que tu pedido ${order.folio} en Kicks XR fue cancelado. Motivo: ${reason}`,
+      `Hola ${order.clientName}, te informamos que tu pedido ${order.folio} en Homeli fue cancelado. Motivo: ${reason}`,
     );
     res.json({order, whatsappUrl});
   });
@@ -2993,7 +3501,7 @@ export function createApiApp(): Express {
         recipientWhatsapp: order.clientWhatsapp,
         recipientName: order.clientName,
         title: `Pedido entregado · ${order.folio}`,
-        message: `¡Gracias por confiar en Kicks XR, ${order.clientName}! Tu pedido ${order.folio} fue marcado como Entregado. ¡Disfruta tus tenis como nuevos y califica tu servicio en la app!`,
+        message: `¡Gracias por confiar en Homeli, ${order.clientName}! Tu pedido ${order.folio} fue marcado como Entregado. ¡Disfruta tus tenis como nuevos y califica tu servicio en la app!`,
       }),
     );
     await Promise.all(writes);
@@ -3008,7 +3516,7 @@ export function createApiApp(): Express {
     });
     const whatsappUrl = buildOrderWhatsappUrl(
       order,
-      `¡Gracias por confiar en Kicks XR, ${order.clientName}! Confirmamos la entrega de tu pedido ${order.folio}. ¡Disfruta tus tenis como nuevos!`,
+      `¡Gracias por confiar en Homeli, ${order.clientName}! Confirmamos la entrega de tu pedido ${order.folio}. ¡Disfruta tus tenis como nuevos!`,
     );
     res.json({order, whatsappUrl});
   });
@@ -3069,7 +3577,7 @@ export function createApiApp(): Express {
           recipientWhatsapp: linkedOrder.clientWhatsapp,
           recipientName: linkedOrder.clientName,
           title: `Aviso operativo · ${linkedOrder.folio}`,
-          message: `Hola ${linkedOrder.clientName}, nuestro equipo Kicks XR registró una revisión (${type}) en tu bolsa ${bagCode} (${linkedOrder.folio}). Estamos atendiéndolo de inmediato.`,
+          message: `Hola ${linkedOrder.clientName}, nuestro equipo Homeli registró una revisión (${type}) en tu bolsa ${bagCode} (${linkedOrder.folio}). Estamos atendiéndolo de inmediato.`,
         }),
       );
     }
@@ -4039,7 +4547,7 @@ export function createApiApp(): Express {
         items: [
           {
             id: order.folio,
-            title: `Kicks XR · ${order.serviceName} (${order.folio})`,
+            title: `Homeli · ${order.serviceName} (${order.folio})`,
             description: `${order.pairs} ${order.pairs === 1 ? 'par' : 'pares'} · Bolsa ${order.bagCode}`,
             quantity: 1,
             currency_id: 'MXN',
@@ -4047,7 +4555,7 @@ export function createApiApp(): Express {
           },
         ],
         external_reference: order.id,
-        statement_descriptor: 'KICKS XR',
+        statement_descriptor: 'HOMELI',
         back_urls: {
           success: `${baseReturn}&mp_status=approved`,
           pending: `${baseReturn}&mp_status=pending`,
